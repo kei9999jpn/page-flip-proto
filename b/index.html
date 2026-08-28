@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>B案</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0d0a07;overscroll-behavior:none}
+#bg{position:fixed;inset:0;background:url(../assets/bg.jpg) center/cover no-repeat}
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 25%,rgba(0,0,0,.6) 100%)}
+canvas{position:fixed;inset:0;touch-action:none;display:block}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+const N = 5;
+const SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
+
+let vw = innerWidth, vh = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(vw, vh);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-vw / 2, vw / 2, vh / 2, -vh / 2, -2000, 2000);
+
+// book size: 3:4, centered
+let BW, BH, TRAVEL;
+function layout() {
+  vw = innerWidth; vh = innerHeight;
+  BH = Math.min(vh * 0.78, vw * 0.92 * 4 / 3);
+  BW = BH * 3 / 4;
+  TRAVEL = vw / 2 + BW * 1.7;
+  camera.left = -vw / 2; camera.right = vw / 2; camera.top = vh / 2; camera.bottom = -vh / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(vw, vh);
+}
+layout();
+
+// ---------- textures ----------
+const loader = new THREE.TextureLoader();
+const texs = [];
+function loadTex(i) {
+  return new Promise((res, rej) => loader.load(SRC(i), t => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    texs[i] = t; res();
+  }, undefined, rej));
+}
+
+// ---------- base page (the sheet lying on the book) ----------
+const baseGeo = new THREE.PlaneGeometry(1, 1);
+const baseMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const base = new THREE.Mesh(baseGeo, baseMat);
+scene.add(base);
+
+// ---------- curl sheet ----------
+const SEG_X = 72, SEG_Y = 96;
+const curlGeo = new THREE.PlaneGeometry(1, 1, SEG_X, SEG_Y);
+const curlUniforms = {
+  uTex:   { value: null },
+  uAxisX: { value: 10000 },   // page-local x of curl axis at y=0
+  uPhi:   { value: 0 },       // axis tilt
+  uR:     { value: 40 },      // curl radius
+  uSize:  { value: new THREE.Vector2(1, 1) }
+};
+const curlMat = new THREE.ShaderMaterial({
+  uniforms: curlUniforms,
+  side: THREE.DoubleSide,
+  transparent: false,
+  vertexShader: `
+    uniform float uAxisX; uniform float uPhi; uniform float uR; uniform vec2 uSize;
+    varying vec2 vUv; varying float vZ; varying float vU;
+    void main(){
+      vUv = uv;
+      vec3 p = position;
+      p.x *= uSize.x; p.y *= uSize.y;           // to world px (plane is unit)
+      float ca = cos(uPhi), sa = sin(uPhi);
+      float u = (p.x - uAxisX) * ca + p.y * sa; // signed dist beyond axis
+      float z = 0.0;
+      if (u > 0.0) {
+        float PR = 3.14159265 * uR;
+        float un;
+        if (u < PR) { un = sin(u / uR) * uR; z = (1.0 - cos(u / uR)) * uR; }
+        else        { un = -(u - PR);        z = 2.0 * uR; }
+        float d = un - u;
+        p.x += d * ca; p.y += d * sa; p.z = z;
+      }
+      vZ = z; vU = u;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: `
+    uniform sampler2D uTex; uniform float uR;
+    varying vec2 vUv; varying float vZ; varying float vU;
+    void main(){
+      float PR = 3.14159265 * uR;
+      if (gl_FrontFacing) {
+        vec3 c = texture2D(uTex, vUv).rgb;
+        float lift = smoothstep(0.0, 2.0 * uR, vZ);
+        c *= (1.0 - 0.10 * lift);                       // slight tone as it lifts
+        float bend = 1.0 - 0.22 * exp(-pow((vU - uR * 0.55) / (uR * 0.6), 2.0)); // crease shading
+        if (vU > 0.0) c *= bend;
+        gl_FragColor = vec4(c, 1.0);
+      } else {
+        vec2 buv = vec2(1.0 - vUv.x, vUv.y);
+        vec3 paper = vec3(0.96, 0.935, 0.88);
+        vec3 ghost = texture2D(uTex, buv).rgb;
+        vec3 c = mix(paper, ghost, 0.10);               // faint show-through
+        float shade;
+        if (vU < PR) {
+          float ang = vU / uR;                           // 0..pi on the roll
+          shade = 0.66 + 0.34 * sin(ang);                // dark at fold edges, bright on the crest
+        } else {
+          shade = 0.80;                                  // flipped-flat part sits in its own shade
+        }
+        c *= shade;
+        gl_FragColor = vec4(c, 1.0);
+      }
+    }`
+});
+const curl = new THREE.Mesh(curlGeo, curlMat);
+curl.visible = false;
+scene.add(curl);
+
+// ---------- shadow cast on the base page ----------
+const shadowUniforms = {
+  uAxisX: { value: 10000 }, uPhi: { value: 0 }, uR: { value: 40 },
+  uSize: { value: new THREE.Vector2(1, 1) }, uOpacity: { value: 0 }
+};
+const shadowMat = new THREE.ShaderMaterial({
+  uniforms: shadowUniforms,
+  transparent: true,
+  depthWrite: false,
+  vertexShader: `
+    uniform vec2 uSize; varying vec2 vP;
+    void main(){
+      vec3 p = position; p.x *= uSize.x; p.y *= uSize.y;
+      vP = p.xy;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: `
+    uniform float uAxisX; uniform float uPhi; uniform float uR; uniform float uOpacity;
+    varying vec2 vP;
+    void main(){
+      float ca = cos(uPhi), sa = sin(uPhi);
+      float u = (vP.x - uAxisX) * ca + vP.y * sa;
+      float s = 0.0;
+      if (u > 0.0) {
+        s  = 0.55 * exp(-pow((u - uR * 1.2) / (uR * 2.2), 2.0)); // soft cast under the roll
+        s += 0.30 * smoothstep(uR * 0.9, 0.0, u);                 // contact darkening at the fold
+      } else {
+        s  = 0.20 * smoothstep(-uR * 0.9, 0.0, u);                // faint ambient just before the fold
+      }
+      gl_FragColor = vec4(0.0, 0.0, 0.0, s * uOpacity);
+    }`
+});
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadowMat);
+shadow.visible = false;
+scene.add(shadow);
+
+function applyLayout() {
+  base.scale.set(BW, BH, 1);
+  curlUniforms.uSize.value.set(BW, BH);
+  shadowUniforms.uSize.value.set(BW, BH);
+  base.position.z = 0;
+  shadow.position.z = 1;
+  curl.position.z = 2;
+}
+applyLayout();
+addEventListener('resize', () => { layout(); applyLayout(); });
+
+// ---------- flip state ----------
+let index = 0;          // current page
+let flip = null;        // {dir:+1 fwd | -1 back, t}
+let anim = null;
+
+function setBase(texIndex) { baseMat.map = texs[texIndex]; baseMat.color.set(0xffffff); baseMat.needsUpdate = true; }
+
+function beginFlip(dir) {
+  if (dir > 0 && index >= N - 1) return false;
+  if (dir < 0 && index <= 0) return false;
+  flip = { dir, t: dir > 0 ? 0 : 1 };
+  if (dir > 0) { setBase(index + 1); curlUniforms.uTex.value = texs[index]; }
+  else         { setBase(index);     curlUniforms.uTex.value = texs[index - 1]; }
+  curl.visible = true; shadow.visible = true;
+  return true;
+}
+function setT(t, phi) {
+  flip.t = Math.max(0, Math.min(1, t));
+  const R = BW * 0.10 * (1 - 0.30 * flip.t) + 6;
+  const ax = BW / 2 - flip.t * TRAVEL;
+  curlUniforms.uAxisX.value = ax;  curlUniforms.uPhi.value = phi;  curlUniforms.uR.value = R;
+  shadowUniforms.uAxisX.value = ax; shadowUniforms.uPhi.value = phi; shadowUniforms.uR.value = R;
+  shadowUniforms.uOpacity.value = Math.sin(Math.min(flip.t * 2.2, 1) * Math.PI * 0.5); // fade in, stay
+}
+function endFlip(commitTo) {
+  const from = flip.t, dir = flip.dir, phi = curlUniforms.uPhi.value;
+  const dur = 90 + 380 * Math.abs(commitTo - from);
+  const t0 = performance.now();
+  cancelAnimationFrame(anim && anim.raf);
+  anim = {};
+  (function step(now) {
+    const k = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3); // easeOutCubic
+    setT(from + (commitTo - from) * e, phi);
+    if (k < 1) { anim.raf = requestAnimationFrame(step); }
+    else {
+      if (dir > 0 && commitTo === 1) index++;
+      if (dir < 0 && commitTo === 0) index--;
+      flip = null; anim = null;
+      curl.visible = false; shadow.visible = false;
+      setBase(index);
+    }
+  })(t0);
+}
+
+// ---------- input ----------
+let pd = null; // pointer drag state
+const hist = [];
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (flip && anim) return;
+  pd = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), started: false };
+  hist.length = 0; hist.push({ x: e.clientX, t: performance.now() });
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!pd) return;
+  pd.x = e.clientX; pd.y = e.clientY;
+  hist.push({ x: e.clientX, t: performance.now() });
+  while (hist.length > 2 && performance.now() - hist[0].t > 90) hist.shift();
+  if (!pd.started) {
+    const dx = pd.x - pd.x0;
+    if (Math.abs(dx) < 6) return;
+    const dir = dx < 0 ? +1 : -1;
+    if (!beginFlip(dir)) { pd = null; return; }
+    pd.started = true;
+    pd.tBase = flip.t;
+  }
+  if (flip) {
+    const t = pd.tBase + (pd.x0 - pd.x) / TRAVEL;
+    const phi = Math.max(-0.55, Math.min(0.55, (pd.y - vh / 2) / BH * -0.8));
+    setT(t, phi);
+  }
+});
+function release(e) {
+  if (!pd) return;
+  const dt = performance.now() - pd.t0;
+  const dx = pd.x - pd.x0;
+  if (!pd.started) {
+    // tap: auto flip
+    if (dt < 300 && Math.abs(dx) < 8) {
+      const dir = pd.x > vw / 2 ? +1 : -1;
+      if (beginFlip(dir)) { setT(flip.t, 0.15); endFlip(dir > 0 ? 1 : 0); }
+    }
+    pd = null; return;
+  }
+  // velocity px/ms over recent history
+  let vx = 0;
+  if (hist.length >= 2) {
+    const a = hist[0], b = hist[hist.length - 1];
+    if (b.t > a.t) vx = (b.x - a.x) / (b.t - a.t);
+  }
+  let commitTo;
+  if (flip.dir > 0) commitTo = (flip.t > 0.45 || vx < -0.45) ? 1 : 0;
+  else              commitTo = (flip.t < 0.55 || vx > 0.45) ? 0 : 1;
+  endFlip(commitTo);
+  pd = null;
+}
+renderer.domElement.addEventListener('pointerup', release);
+renderer.domElement.addEventListener('pointercancel', () => { if (pd && pd.started && flip) endFlip(flip.dir > 0 ? 0 : 1); pd = null; });
+
+// ---------- boot ----------
+Promise.all(Array.from({ length: N }, (_, i) => loadTex(i))).then(() => {
+  setBase(0);
+  renderer.setAnimationLoop(() => renderer.render(scene, camera));
+});
+</script>
+</body>
+</html>

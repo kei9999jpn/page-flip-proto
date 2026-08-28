@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>A案</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0d0a07;overscroll-behavior:none}
+#bg{position:fixed;inset:0;background:url(../assets/bg.jpg) center/cover no-repeat}
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 25%,rgba(0,0,0,.6) 100%)}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#book{touch-action:none}
+.page{background:#f5efe3}
+.page img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="stage"><div id="book"></div></div>
+<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<script>
+const N = 5;
+function calcSize(){
+  const vw = innerWidth, vh = innerHeight;
+  let h = Math.min(vh * 0.78, (vw * 0.92) * 4 / 3);
+  const w = h * 3 / 4;
+  return { w: Math.round(w), h: Math.round(h) };
+}
+const { w, h } = calcSize();
+const pf = new St.PageFlip(document.getElementById('book'), {
+  width: w,
+  height: h,
+  size: 'fixed',
+  usePortrait: true,
+  showCover: false,
+  maxShadowOpacity: 0.65,
+  flippingTime: 650,
+  swipeDistance: 12,
+  mobileScrollSupport: false,
+  useMouseEvents: true,
+  drawShadow: true,
+  autoSize: false,
+  showPageCorners: true,
+  disableFlipByClick: false
+});
+const pages = [];
+for (let i = 1; i <= N; i++) {
+  const d = document.createElement('div');
+  d.className = 'page';
+  d.innerHTML = '<img src="../assets/pages/p' + i + '.jpg" alt="">';
+  pages.push(d);
+}
+pf.loadFromHTML(pages);
+</script>
+</body>
+</html>
