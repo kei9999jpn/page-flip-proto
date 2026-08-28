@@ -8,49 +8,192 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#0d0a07;overscroll-behavior:none}
 #bg{position:fixed;inset:0;background:url(../assets/bg.jpg) center/cover no-repeat}
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 25%,rgba(0,0,0,.6) 100%)}
-#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-#book{touch-action:none}
-.page{background:#f5efe3}
-.page img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;pointer-events:none}
+#book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 18px 50px rgba(0,0,0,.65);border-radius:2px;touch-action:none;opacity:0;transition:opacity 1.2s ease,transform 1.2s ease}
+#book.in{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#fade{position:fixed;inset:0;background:#000;opacity:1;transition:opacity 1.6s ease;pointer-events:none}
 </style>
 </head>
 <body>
 <div id="bg"></div>
-<div id="stage"><div id="book"></div></div>
-<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<canvas id="book"></canvas>
+<div id="fade"></div>
+<audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
 <script>
-const N = 5;
-function calcSize(){
+(async () => {
+const N = 5, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
+const cv = document.getElementById('book'), ctx = cv.getContext('2d');
+let W, H, DPR, TRAVEL;
+function layout() {
   const vw = innerWidth, vh = innerHeight;
-  let h = Math.min(vh * 0.78, (vw * 0.92) * 4 / 3);
-  const w = h * 3 / 4;
-  return { w: Math.round(w), h: Math.round(h) };
+  H = Math.min(vh * 0.78, vw * 0.92 * 4 / 3); W = H * 3 / 4;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  TRAVEL = Math.max(180, Math.min(W * 1.05, vw * 0.72));
 }
-const { w, h } = calcSize();
-const pf = new St.PageFlip(document.getElementById('book'), {
-  width: w,
-  height: h,
-  size: 'fixed',
-  usePortrait: true,
-  showCover: false,
-  maxShadowOpacity: 0.65,
-  flippingTime: 650,
-  swipeDistance: 12,
-  mobileScrollSupport: false,
-  useMouseEvents: true,
-  drawShadow: true,
-  autoSize: false,
-  showPageCorners: true,
-  disableFlipByClick: false
+layout();
+addEventListener('resize', () => { layout(); draw(); });
+
+const imgs = await Promise.all(Array.from({ length: N }, (_, i) => new Promise((res, rej) => {
+  const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = SRC(i);
+})));
+
+let index = 0, flip = null, anim = null;
+
+// ---------- render ----------
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!flip) { ctx.drawImage(imgs[index], 0, 0, W, H); return; }
+  const under = flip.dir > 0 ? imgs[index + 1] : imgs[index];
+  const sheet = flip.dir > 0 ? imgs[index] : imgs[index - 1];
+  const t = flip.t;
+  const fx = (1 - t) * W;              // fold line x
+  const fl = 2 * fx - W;               // flap's far edge x
+  // under page
+  ctx.drawImage(under, 0, 0, W, H);
+  // sheet front, left of fold line
+  if (fx > 0) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, fx, H); ctx.clip();
+    ctx.drawImage(sheet, 0, 0, W, H);
+    const cw = Math.min(26, fx);
+    const g1 = ctx.createLinearGradient(fx - cw, 0, fx, 0);
+    g1.addColorStop(0, 'rgba(0,0,0,0)'); g1.addColorStop(1, 'rgba(0,0,0,0.26)');
+    ctx.fillStyle = g1; ctx.fillRect(fx - cw, 0, cw, H);
+    ctx.restore();
+  }
+  // shadow cast on the under page, right of the fold
+  const so = 0.42 * Math.sin(Math.PI * Math.min(Math.max(t, 0), 1));
+  if (so > 0.01 && fx < W) {
+    ctx.save(); ctx.beginPath(); ctx.rect(fx, 0, W - fx, H); ctx.clip();
+    const sw = Math.min(70, W - fx);
+    const g2 = ctx.createLinearGradient(fx, 0, fx + sw, 0);
+    g2.addColorStop(0, 'rgba(0,0,0,' + so.toFixed(3) + ')'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g2; ctx.fillRect(fx, 0, sw, H);
+    ctx.restore();
+  }
+  // flap: plain parchment backside (no content)
+  if (fx - Math.max(0, fl) > 0.5) {
+    ctx.save(); ctx.beginPath(); ctx.rect(Math.max(0, fl), 0, fx - Math.max(0, fl), H); ctx.clip();
+    ctx.fillStyle = '#d9cdaf';
+    ctx.fillRect(fl, 0, fx - fl, H);
+    const g3 = ctx.createLinearGradient(fx, 0, fl, 0);
+    g3.addColorStop(0, 'rgba(255,250,232,0.30)');
+    g3.addColorStop(0.10, 'rgba(255,250,232,0.05)');
+    g3.addColorStop(0.55, 'rgba(60,45,20,0.08)');
+    g3.addColorStop(1, 'rgba(60,45,20,0.26)');
+    ctx.fillStyle = g3; ctx.fillRect(fl, 0, fx - fl, H);
+    ctx.fillStyle = 'rgba(40,30,12,0.22)'; ctx.fillRect(fl, 0, 1.5, H);
+    ctx.restore();
+  }
+}
+draw();
+
+// ---------- audio ----------
+let ac = null; const bgm = document.getElementById('bgm');
+function ensureAudio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (bgm.paused) { bgm.volume = 0.32; bgm.play().catch(() => {}); }
+}
+function swish(strength) {
+  if (!ac) return;
+  const dur = 0.26, sr = ac.sampleRate;
+  const buf = ac.createBuffer(1, sr * dur, sr);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
+  bp.frequency.setValueAtTime(700, ac.currentTime);
+  bp.frequency.exponentialRampToValueAtTime(2600, ac.currentTime + dur * 0.7);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.28 * strength, ac.currentTime + 0.06);
+  g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+  src.connect(bp); bp.connect(g); g.connect(ac.destination);
+  src.start();
+}
+
+// ---------- flip control ----------
+function beginFlip(dir) {
+  if (dir > 0 && index >= N - 1) return false;
+  if (dir < 0 && index <= 0) return false;
+  flip = { dir, t: dir > 0 ? 0 : 1 };
+  return true;
+}
+function finishFlip(commitTo, withSound) {
+  const from = flip.t, dir = flip.dir;
+  const dur = 80 + 300 * Math.abs(commitTo - from);
+  const t0 = performance.now();
+  if (withSound && Math.abs(commitTo - from) > 0.05) swish(1);
+  anim = {};
+  (function step(now) {
+    const k = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    flip.t = from + (commitTo - from) * e;
+    draw();
+    if (k < 1) { anim.raf = requestAnimationFrame(step); }
+    else {
+      if (dir > 0 && commitTo === 1) index++;
+      if (dir < 0 && commitTo === 0) index--;
+      flip = null; anim = null; draw();
+    }
+  })(t0);
+}
+
+// ---------- input ----------
+let pd = null, hist = [];
+cv.addEventListener('pointerdown', e => {
+  if (anim) return;
+  ensureAudio();
+  pd = { x0: e.clientX, x: e.clientX, t0: performance.now(), started: false, tBase: 0 };
+  hist = [[e.clientX, performance.now()]];
+  cv.setPointerCapture(e.pointerId);
 });
-const pages = [];
-for (let i = 1; i <= N; i++) {
-  const d = document.createElement('div');
-  d.className = 'page';
-  d.innerHTML = '<img src="../assets/pages/p' + i + '.jpg" alt="">';
-  pages.push(d);
+cv.addEventListener('pointermove', e => {
+  if (!pd) return;
+  pd.x = e.clientX;
+  hist.push([e.clientX, performance.now()]);
+  while (hist.length > 2 && performance.now() - hist[0][1] > 90) hist.shift();
+  if (!pd.started) {
+    const dx = pd.x - pd.x0;
+    if (Math.abs(dx) < 5) return;
+    const dir = dx < 0 ? +1 : -1;
+    if (!beginFlip(dir)) { pd = null; return; }
+    pd.started = true; pd.tBase = flip.t;
+  }
+  flip.t = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
+  draw();
+});
+function release(e) {
+  if (!pd) return;
+  const dt = performance.now() - pd.t0, dx = pd.x - pd.x0;
+  if (!pd.started) {
+    if (dt < 300 && Math.abs(dx) < 8) {
+      const dir = pd.x0 > innerWidth / 2 ? +1 : -1;
+      if (beginFlip(dir)) finishFlip(dir > 0 ? 1 : 0, true);
+    }
+    pd = null; return;
+  }
+  let vx = 0;
+  if (hist.length >= 2) {
+    const a = hist[0], b = hist[hist.length - 1];
+    if (b[1] > a[1]) vx = (b[0] - a[0]) / (b[1] - a[1]);
+  }
+  let commitTo;
+  if (flip.dir > 0) commitTo = (flip.t > 0.4 || vx < -0.4) ? 1 : 0;
+  else              commitTo = (flip.t < 0.6 || vx > 0.4) ? 0 : 1;
+  finishFlip(commitTo, true);
+  pd = null;
 }
-pf.loadFromHTML(pages);
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', () => { if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
+
+// ---------- entry ----------
+requestAnimationFrame(() => {
+  document.getElementById('fade').style.opacity = '0';
+  cv.classList.add('in');
+});
+})();
 </script>
 </body>
 </html>
