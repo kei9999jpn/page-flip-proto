@@ -52,7 +52,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 /* ---- ambience overlays ---- */
 #candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:soft-light;z-index:5;
   background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(255,180,95,.5),transparent 70%)}
-#dust{position:fixed;inset:0;pointer-events:none;z-index:6}
+#dust{position:fixed;inset:0;pointer-events:none;z-index:26}
+#veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
+#cover{perspective:900px}
 </style>
 </head>
 <body>
@@ -60,6 +62,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <canvas id="book"></canvas>
 <div id="paperGlow"></div>
 <div id="candle"></div>
+<div id="veil"></div>
 <canvas id="dust"></canvas>
 <div id="cover"><div id="coverImg"></div><div id="coverVin"></div><div id="coverGlow"></div><img id="logoMark" src="../assets/logo-mark.png" alt=""></div>
 <div id="dim"></div>
@@ -337,9 +340,9 @@ function dustLayout() {
 dustLayout(); addEventListener('resize', dustLayout);
 function spawnEmber() {
   embers.push({
-    x: dc.width * (0.15 + Math.random() * 0.7), y: dc.height + 6,
-    r: 1.4 + Math.random() * 2.4, a: 0.5 + Math.random() * 0.35,
-    vy: -(0.25 + Math.random() * 0.45), sway: 14 + Math.random() * 26,
+    x: dc.width * (0.1 + Math.random() * 0.8), y: dc.height + 6,
+    r: 1.8 + Math.random() * 3.0, a: 0.6 + Math.random() * 0.3,
+    vy: -(0.28 + Math.random() * 0.5), sway: 14 + Math.random() * 26,
     ph: Math.random() * Math.PI * 2, life: 1
   });
 }
@@ -369,13 +372,13 @@ let glowFl = 0.8, glowTarget = 0.8;
     dctx.beginPath(); dctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); dctx.fill();
   }
   // 優しい火の粉: 下からふわふわ上がる小さな光の玉(最前面)
-  if (embers.length < 14 && Math.random() < 0.09) spawnEmber();
+  if (embers.length < 18 && Math.random() < 0.11) spawnEmber();
   for (let i = embers.length - 1; i >= 0; i--) {
     const e = embers[i];
     e.y += e.vy; e.life -= 0.0016;
     const x = e.x + Math.sin(ts / 1300 + e.ph) * e.sway * (1 - e.y / dc.height);
-    if (e.y < dc.height * 0.28 || e.life <= 0) { embers.splice(i, 1); continue; }
-    const fade = Math.min(1, (dc.height - e.y) / 90) * Math.min(1, (e.y - dc.height * 0.22) / (dc.height * 0.3));
+    if (e.y < dc.height * 0.10 || e.life <= 0) { embers.splice(i, 1); continue; }
+    const fade = Math.min(1, (dc.height - e.y) / 90) * Math.min(1, (e.y - dc.height * 0.06) / (dc.height * 0.25));
     const tw = 0.7 + 0.3 * Math.sin(ts / 260 + e.ph * 5);
     const al = e.a * fade * tw * e.life;
     // 明るい紙の上でも見えるよう、濃い橙のコア+ハロの二層で描く
@@ -388,11 +391,11 @@ let glowFl = 0.8, glowTarget = 0.8;
     dctx.fillStyle = 'rgba(235,110,25,' + Math.min(0.85, al * 1.5).toFixed(3) + ')';
     dctx.beginPath(); dctx.arc(x, e.y, e.r, 0, Math.PI * 2); dctx.fill();
   }
-  // 吸い込まれる時の光の粒(ワープ)
+  // 吸い込まれる時の光の粒(ワープ・集中線)
   if (warpOn) {
-    if (warps.length < 90) for (let i = 0; i < 5; i++) {
+    if (warps.length < 150) for (let i = 0; i < 8; i++) {
       const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 60;
-      warps.push({ a, d, sp: 1.5 + Math.random() * 3.5, w: 0.6 + Math.random() * 1.4, al: 0.15 + Math.random() * 0.4 });
+      warps.push({ a, d, sp: 1.5 + Math.random() * 4.5, w: 0.7 + Math.random() * 1.8, al: 0.2 + Math.random() * 0.5 });
     }
     const cx = dc.width / 2, cy = dc.height / 2;
     for (let i = warps.length - 1; i >= 0; i--) {
@@ -412,12 +415,17 @@ let glowFl = 0.8, glowTarget = 0.8;
 // ---------- candle flicker (room + ぽわぽわ paper glow) ----------
 const candle = document.getElementById('candle');
 const paperGlow = document.getElementById('paperGlow');
+const veil = document.getElementById('veil');
+let veilTarget = 0;
+veil.style.transition = 'opacity 1.4s ease';
 (function flicker() {
   candle.style.opacity = (0.75 + Math.random() * 0.25).toFixed(3);
   if (glowBase > 0) {
     paperGlow.style.opacity = (glowBase * (0.55 + Math.random() * 0.45)).toFixed(3);
     const s = 1 + (Math.random() - 0.5) * 0.05;
     paperGlow.style.transform = 'translate(-50%,-50%) scale(' + s.toFixed(3) + ')';
+    // 部屋の暗さが呼吸するように揺らぐ(蝋燭が揺れて暗くなる瞬間)
+    if (Math.random() < 0.18) { veilTarget = Math.random() < 0.35 ? 0.10 + Math.random() * 0.08 : 0.02; veil.style.opacity = veilTarget.toFixed(3); }
   }
   setTimeout(flicker, 90 + Math.random() * 240);
 })();
@@ -428,29 +436,61 @@ const title = document.getElementById('title');
 const dim = document.getElementById('dim');
 let opening = false;
 requestAnimationFrame(() => { document.getElementById('fade').style.opacity = '0'; });
-cover.addEventListener('pointerup', () => {
+const ci = document.getElementById('coverImg');
+// --- 表紙の疑似3D: 指でドラッグすると本を右から左から覗ける ---
+let cp = null, tiltX = 0, tiltY = 0, springing = false;
+function applyTilt() {
+  ci.style.transform = 'rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg) scale(1.06)';
+}
+cover.addEventListener('pointerdown', e => {
+  if (opening) return;
+  cp = { x0: e.clientX, y0: e.clientY, moved: false };
+  cover.setPointerCapture(e.pointerId);
+});
+cover.addEventListener('pointermove', e => {
+  if (!cp || opening) return;
+  const dx = e.clientX - cp.x0, dy = e.clientY - cp.y0;
+  if (!cp.moved && Math.hypot(dx, dy) < 8) return;
+  if (!cp.moved) { cp.moved = true; springing = false; ci.style.animation = 'none'; ci.style.transition = 'none'; }
+  tiltY = Math.max(-14, Math.min(14, dx / innerWidth * 34));
+  tiltX = Math.max(-12, Math.min(12, -dy / innerHeight * 30));
+  applyTilt();
+});
+cover.addEventListener('pointerup', e => {
+  if (!cp || opening) return;
+  const wasTap = !cp.moved; cp = null;
+  if (wasTap) { startOpening(); return; }
+  // ゆっくり正面に戻る
+  springing = true;
+  ci.style.transition = 'transform 1s cubic-bezier(.2,.9,.3,1.1)';
+  ci.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+  setTimeout(() => { if (springing && !opening) { ci.style.transition = ''; ci.style.transform = ''; ci.style.animation = ''; } }, 1050);
+});
+cover.addEventListener('pointercancel', () => { cp = null; });
+
+// --- タップで開幕: タイトル → 100%→2000%の吸い込みズーム → 暗転 → ページ世界 ---
+function startOpening() {
   if (opening) return; opening = true;
   ensureAudio(); thump();
   dim.style.opacity = '0.45';                            // the room sinks darker
   setTimeout(() => { title.classList.add('show'); }, 500);      // 名言集 1000枚 ボワーン
   setTimeout(() => { title.classList.add('hide'); }, 2600);     // and it dissolves
-  setTimeout(() => {                                            // slow suction into the book, light streaming past
+  setTimeout(() => {                                            // 本の中へ巨大化しながら飛び込む
     cover.classList.add('zooming');
     warpOn = true;
-    // iOSでもフレーム落ちしないよう、ズームはJSで直接駆動する(ブラーは使わない)
-    const ci = document.getElementById('coverImg');
-    ci.style.animation = 'none';
-    const zt0 = performance.now(), zdur = 3000;
+    ci.style.animation = 'none'; ci.style.transition = 'none';
+    const zt0 = performance.now(), zdur = 3800;
     (function zstep(now) {
       const k = Math.min(1, (now - zt0) / zdur);
-      const e = k * k * (0.6 + 0.4 * k);                        // ease-in: ゆっくり始まりギューンと加速
-      const s = 1.07 + e * 2.4;
-      ci.style.transform = 'scale(' + s.toFixed(4) + ')';
-      ci.style.filter = 'brightness(' + (0.82 - e * 0.62).toFixed(3) + ')';
-      if (k < 1 && !ci.dataset.done) requestAnimationFrame(zstep);
+      const e = k * k * k;                                      // ゆっくり始まり、最後は一気に
+      const s = 1 + e * 19;                                     // 100% -> 2000%
+      ci.style.transform = 'scale(' + s.toFixed(3) + ')';
+      const br = k < 0.55 ? 0.82 : Math.max(0.04, 0.82 - (k - 0.55) * 1.75);
+      ci.style.filter = 'brightness(' + br.toFixed(3) + ')';
+      if (k < 1 && opening) requestAnimationFrame(zstep);
     })(zt0);
   }, 3300);
-  setTimeout(() => { dim.style.transition = 'opacity 1.1s ease'; dim.style.opacity = '1'; }, 5300);
+  setTimeout(() => { dim.style.transition = 'opacity 0.9s ease'; dim.style.opacity = '1'; }, 6200);
   setTimeout(() => {                                            // black breath, then the page world blooms in
     warpOn = false;
     cover.remove(); title.remove();
@@ -458,9 +498,9 @@ cover.addEventListener('pointerup', () => {
     pagesReady.then(() => { draw(); });
     cv.classList.add('in');
     glowBase = 0.55;                                            // ろうそくの灯りが紙にぽわぽわ
-  }, 6600);
-  setTimeout(() => { cv.classList.add('sway'); }, 8400);        // 手で持っているような微かな揺れ
-});
+  }, 7300);
+  setTimeout(() => { cv.classList.add('sway'); }, 9100);        // 手で持っているような微かな揺れ
+}
 })();
 </script>
 </body>
