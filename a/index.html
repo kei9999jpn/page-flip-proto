@@ -267,13 +267,14 @@ function beginFlip(dir) {
 }
 function finishFlip(commitTo, withSound) {
   const from = flip.t, dir = flip.dir;
-  const dur = 90 + 340 * Math.abs(commitTo - from);
+  const dur = 220 + 760 * Math.abs(commitTo - from);   // 紙の重さを感じるゆっくりめの旅
   const t0 = performance.now();
   if (withSound && Math.abs(commitTo - from) > 0.05) pageSound(Math.abs(commitTo - from));
   anim = {};
   (function step(now) {
     const k = Math.min(1, (now - t0) / dur);
-    const e = 1 - Math.pow(1 - k, 3);
+    // ふわっと持ち上がり、中程で流れ、最後は空気を挟んでそっと落ちる
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     flip.t = from + (commitTo - from) * e;
     draw();
     if (k < 1) { anim.raf = requestAnimationFrame(step); }
@@ -305,10 +306,22 @@ cv.addEventListener('pointermove', e => {
     const dir = dx < 0 ? +1 : -1;
     if (!beginFlip(dir)) { pd = null; return; }
     pd.started = true; pd.tBase = flip.t;
+    startFollow();
   }
-  flip.t = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
-  draw();
+  pd.tTarget = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
 });
+// 紙は指にワンテンポ遅れてしなやかに付いてくる(ぐにゃっとした紙の柔らかさ)
+let followRaf = null;
+function startFollow() {
+  if (followRaf) return;
+  (function fstep() {
+    if (pd && pd.started && flip) {
+      flip.t += ((pd.tTarget != null ? pd.tTarget : flip.t) - flip.t) * 0.16;
+      draw();
+      followRaf = requestAnimationFrame(fstep);
+    } else { followRaf = null; }
+  })();
+}
 function release(e) {
   if (!pd) return;
   const dt = performance.now() - pd.t0, dx = pd.x - pd.x0;
@@ -324,9 +337,10 @@ function release(e) {
     const a = hist[0], b = hist[hist.length - 1];
     if (b[1] > a[1]) vx = (b[0] - a[0]) / (b[1] - a[1]);
   }
+  const cur = pd.tTarget != null ? pd.tTarget : flip.t;
   let commitTo;
-  if (flip.dir > 0) commitTo = (flip.t > 0.4 || vx < -0.4) ? 1 : 0;
-  else              commitTo = (flip.t < 0.6 || vx > 0.4) ? 0 : 1;
+  if (flip.dir > 0) commitTo = (cur > 0.4 || vx < -0.4) ? 1 : 0;
+  else              commitTo = (cur < 0.6 || vx > 0.4) ? 0 : 1;
   finishFlip(commitTo, true);
   pd = null;
 }
