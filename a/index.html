@@ -71,9 +71,10 @@ let index = 0, flip = null, anim = null;
 // Fold line = perpendicular bisector of C..M. The part of the sheet on the
 // C-side of the line is folded over (drawn reflected, parchment backside).
 function peel(t, pw, ph) {
-  const C = { x: pw, y: 0 };
-  // quadratic bezier path for the dragged corner: right-top -> low-middle -> far left
-  const P1 = { x: pw * 0.12, y: ph * 0.78 }, P2 = { x: -pw * 1.65, y: ph * 0.10 };
+  // grab the sheet at the right edge, about 3/10 from the top — the fold stays
+  // near-vertical so the whole page turns at once (book-like), with a light diagonal
+  const C = { x: pw, y: ph * 0.30 };
+  const P1 = { x: pw * 0.05, y: ph * 0.62 }, P2 = { x: -pw * 1.7, y: ph * 0.22 };
   const u = 1 - t;
   const M = { x: u * u * C.x + 2 * t * u * P1.x + t * t * P2.x,
               y: u * u * C.y + 2 * t * u * P1.y + t * t * P2.y };
@@ -165,14 +166,13 @@ function draw() {
     ctx.save();
     ctx.transform(a, b, b, d, e, f);          // reflection (within current DPR transform)
     pathPoly(foldPoly); ctx.clip();
-    ctx.fillStyle = '#d9cdaf'; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
-    // curl shading: bright crease at fold, darkening toward the lifted corner C
-    const reach = Math.max(24, Math.hypot(g.C.x - g.mid.x, g.C.y - g.mid.y));
+    ctx.fillStyle = '#c3ab84'; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
+    // curl shading: faint crease light at fold, sinking into warm shadow toward the lifted edge
     const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x + (g.C.x - g.mid.x), g.mid.y + (g.C.y - g.mid.y));
-    gr.addColorStop(0, 'rgba(255,250,232,0.32)');
-    gr.addColorStop(0.12, 'rgba(255,250,232,0.06)');
-    gr.addColorStop(0.6, 'rgba(60,45,20,0.10)');
-    gr.addColorStop(1, 'rgba(60,45,20,0.30)');
+    gr.addColorStop(0, 'rgba(250,238,210,0.20)');
+    gr.addColorStop(0.15, 'rgba(250,238,210,0.03)');
+    gr.addColorStop(0.5, 'rgba(64,46,22,0.16)');
+    gr.addColorStop(1, 'rgba(48,34,16,0.42)');
     ctx.fillStyle = gr; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
     ctx.restore();
     // flap outline: soft edge + drop shadow of the flap onto everything beneath
@@ -191,27 +191,60 @@ function draw() {
 draw();
 
 // ---------- audio ----------
-let ac = null; const bgm = document.getElementById('bgm');
+let ac = null, ambientOn = false; const bgm = document.getElementById('bgm');
 function ensureAudio() {
   if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-  if (bgm.paused) { bgm.volume = 0.32; bgm.play().catch(() => {}); }
+  if (bgm.paused) {
+    bgm.volume = 0.32;
+    bgm.play().then(() => {}).catch(() => { startAmbient(); });
+    if (bgm.error || bgm.readyState === 0) startAmbient();
+  }
+}
+// placeholder room tone until assets/bgm.mp3 exists: soft filtered noise, barely there
+function startAmbient() {
+  if (!ac || ambientOn) return; ambientOn = true;
+  const sr = ac.sampleRate, len = sr * 4;
+  const buf = ac.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
+  const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.4;
+  const g = ac.createGain(); g.gain.value = 0.05;
+  const lfo = ac.createOscillator(); lfo.frequency.value = 0.07;
+  const lfoG = ac.createGain(); lfoG.gain.value = 0.02;
+  lfo.connect(lfoG); lfoG.connect(g.gain);
+  src.connect(lp); lp.connect(g); g.connect(ac.destination);
+  src.start(); lfo.start();
 }
 function swish(strength) {
   if (!ac) return;
-  const dur = 0.26, sr = ac.sampleRate;
+  const t0 = ac.currentTime, sr = ac.sampleRate;
+  // body: airy sweep of the sheet moving
+  const dur = 0.30;
   const buf = ac.createBuffer(1, sr * dur, sr);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
   const src = ac.createBufferSource(); src.buffer = buf;
-  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
-  bp.frequency.setValueAtTime(700, ac.currentTime);
-  bp.frequency.exponentialRampToValueAtTime(2600, ac.currentTime + dur * 0.7);
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.6;
+  bp.frequency.setValueAtTime(600, t0);
+  bp.frequency.exponentialRampToValueAtTime(2400, t0 + dur * 0.7);
   const g = ac.createGain();
-  g.gain.setValueAtTime(0.0001, ac.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.28 * strength, ac.currentTime + 0.06);
-  g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.30 * strength, t0 + 0.06);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   src.connect(bp); bp.connect(g); g.connect(ac.destination);
-  src.start();
+  src.start(t0);
+  // crisp paper "flick" as the page settles
+  const fd = 0.07;
+  const fb = ac.createBuffer(1, sr * fd, sr);
+  const fdd = fb.getChannelData(0);
+  for (let i = 0; i < fdd.length; i++) fdd[i] = (Math.random() * 2 - 1) * (1 - i / fdd.length);
+  const fsrc = ac.createBufferSource(); fsrc.buffer = fb;
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2800;
+  const fg = ac.createGain(); fg.gain.value = 0.22 * strength;
+  fsrc.connect(hp); hp.connect(fg); fg.connect(ac.destination);
+  fsrc.start(t0 + dur * 0.55);
 }
 function thump() {
   if (!ac) return;
