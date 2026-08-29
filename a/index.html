@@ -179,15 +179,15 @@ function draw() {
     // paper backside: KEI's parchment texture, pulled well down into shadow
     if (backTex) {
       ctx.drawImage(backTex, 0, 0, pw, ph);
-      ctx.fillStyle = 'rgba(24,16,7,0.42)'; ctx.fillRect(0, 0, pw, ph);
+      ctx.fillStyle = 'rgba(18,12,5,0.60)'; ctx.fillRect(0, 0, pw, ph);
     } else {
-      ctx.fillStyle = '#8a7554'; ctx.fillRect(0, 0, pw, ph);
+      ctx.fillStyle = '#5f4f38'; ctx.fillRect(0, 0, pw, ph);
     }
     const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x + (g.C.x - g.mid.x), g.mid.y + (g.C.y - g.mid.y));
-    gr.addColorStop(0, 'rgba(250,238,210,0.14)');
-    gr.addColorStop(0.18, 'rgba(250,238,210,0.02)');
-    gr.addColorStop(0.55, 'rgba(30,20,8,0.22)');
-    gr.addColorStop(1, 'rgba(18,12,5,0.55)');
+    gr.addColorStop(0, 'rgba(250,238,210,0.10)');
+    gr.addColorStop(0.15, 'rgba(250,238,210,0.0)');
+    gr.addColorStop(0.45, 'rgba(24,16,6,0.34)');
+    gr.addColorStop(1, 'rgba(10,7,3,0.72)');
     ctx.fillStyle = gr; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
     ctx.restore();
     const flapScreen = foldPoly.map(p => ({ x: a * p.x + b * p.y + e, y: b * p.x + d * p.y + f }));
