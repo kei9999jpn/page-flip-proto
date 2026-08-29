@@ -55,6 +55,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
 #cover{perspective:900px}
+/* 目覚めのまばたき: 上下のまぶた */
+#lidT,#lidB{position:fixed;left:-4%;right:-4%;background:#000;z-index:28;pointer-events:none;
+  transform:translateY(0);transition:transform .26s cubic-bezier(.5,.1,.5,.9)}
+#lidT{top:-2%;height:56%;border-radius:0 0 50% 50% / 0 0 10vh 10vh}
+#lidB{bottom:-2%;height:56%;border-radius:50% 50% 0 0 / 10vh 10vh 0 0}
+#lidT.open{transform:translateY(-106%)}
+#lidB.open{transform:translateY(106%)}
+#lidT.hidden,#lidB.hidden{display:none}
 </style>
 </head>
 <body>
@@ -67,6 +75,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="cover"><div id="coverImg"></div><div id="coverVin"></div><div id="coverGlow"></div><img id="logoMark" src="../assets/logo-mark.png" alt=""></div>
 <div id="dim"></div>
 <div id="title"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
+<div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
 <div id="fade"></div>
 <audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
 <audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
@@ -434,6 +443,8 @@ veil.style.transition = 'opacity 1.4s ease';
 const cover = document.getElementById('cover');
 const title = document.getElementById('title');
 const dim = document.getElementById('dim');
+const lidT = document.getElementById('lidT');
+const lidB = document.getElementById('lidB');
 let opening = false;
 requestAnimationFrame(() => { document.getElementById('fade').style.opacity = '0'; });
 const ci = document.getElementById('coverImg');
@@ -475,31 +486,52 @@ function startOpening() {
   dim.style.opacity = '0.45';                            // the room sinks darker
   setTimeout(() => { title.classList.add('show'); }, 500);      // 名言集 1000枚 ボワーン
   setTimeout(() => { title.classList.add('hide'); }, 2600);     // and it dissolves
-  setTimeout(() => {                                            // 本の中へ巨大化しながら飛び込む
+  setTimeout(() => {                                            // 本の中へ、徐々に加速して近づき、密着して真っ暗へ
     cover.classList.add('zooming');
-    warpOn = true;
     ci.style.animation = 'none'; ci.style.transition = 'none';
-    const zt0 = performance.now(), zdur = 3800;
+    const zt0 = performance.now(), zdur = 4200;
     (function zstep(now) {
       const k = Math.min(1, (now - zt0) / zdur);
-      const e = k * k * k;                                      // ゆっくり始まり、最後は一気に
+      const e = Math.pow(k, 3.2);                               // ゆっくり→どんどん速く
       const s = 1 + e * 19;                                     // 100% -> 2000%
       ci.style.transform = 'scale(' + s.toFixed(3) + ')';
-      const br = k < 0.55 ? 0.82 : Math.max(0.04, 0.82 - (k - 0.55) * 1.75);
-      ci.style.filter = 'brightness(' + br.toFixed(3) + ')';
+      const br = k < 0.6 ? 0.82 : Math.max(0, 0.82 * (1 - (k - 0.6) / 0.36));
+      ci.style.filter = 'brightness(' + br.toFixed(3) + ')';     // 最後は本に飲まれて完全な闇
       if (k < 1 && opening) requestAnimationFrame(zstep);
     })(zt0);
   }, 3300);
-  setTimeout(() => { dim.style.transition = 'opacity 0.9s ease'; dim.style.opacity = '1'; }, 6200);
-  setTimeout(() => {                                            // black breath, then the page world blooms in
-    warpOn = false;
+  setTimeout(() => { dim.style.transition = 'opacity 0.7s ease'; dim.style.opacity = '1'; }, 6900);
+  setTimeout(() => {                                            // 闇の中で場面が入れ替わる(まぶたは閉じたまま)
     cover.remove(); title.remove();
+    lidT.classList.remove('hidden'); lidB.classList.remove('hidden');
     dim.style.opacity = '0';
     pagesReady.then(() => { draw(); });
     cv.classList.add('in');
-    glowBase = 0.55;                                            // ろうそくの灯りが紙にぽわぽわ
-  }, 7300);
-  setTimeout(() => { cv.classList.add('sway'); }, 9100);        // 手で持っているような微かな揺れ
+  }, 7700);
+  // 目覚めのまばたき: パチ…パチ…と視界が開き、ろうそくがじわーっと灯る
+  const B = 8300;
+  const blink = (open) => { lidT.classList.toggle('open', open); lidB.classList.toggle('open', open); };
+  setTimeout(() => { blink(true); rampGlow(0.20, 900); }, B);            // うっすら開く
+  setTimeout(() => { blink(false); }, B + 480);
+  setTimeout(() => { blink(true); rampGlow(0.38, 900); }, B + 900);      // もう一度
+  setTimeout(() => { blink(false); }, B + 1520);
+  setTimeout(() => {                                                     // 今度こそ目が覚める
+    lidT.style.transition = lidB.style.transition = 'transform 1s cubic-bezier(.2,.6,.3,1)';
+    blink(true); rampGlow(0.55, 2200);
+  }, B + 1950);
+  setTimeout(() => { lidT.classList.add('hidden'); lidB.classList.add('hidden'); }, B + 3100);
+  setTimeout(() => { cv.classList.add('sway'); }, B + 3600);             // 手で持っているような微かな揺れ
+}
+// ろうそくの灯りをじわーっと目標値まで灯す
+let glowRaf = null;
+function rampGlow(target, ms) {
+  if (glowRaf) cancelAnimationFrame(glowRaf);
+  const from = glowBase, t0 = performance.now();
+  (function gstep(now) {
+    const k = Math.min(1, (now - t0) / ms);
+    glowBase = from + (target - from) * (1 - Math.pow(1 - k, 2));
+    if (k < 1) glowRaf = requestAnimationFrame(gstep); else glowRaf = null;
+  })(t0);
 }
 })();
 </script>
