@@ -12,7 +12,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.mouse.click(215, 400);
   await sleep(1800);
   await page.screenshot({ path: '_t1b_title.png' });
-  await sleep(4600);
+  await sleep(3000);
+  await page.screenshot({ path: '_t1c_zoom.png' });
+  await sleep(5500);
   await page.screenshot({ path: '_t2_page.png' });
   // drag mid-flip and hold
   const cv = await page.$('#book');
