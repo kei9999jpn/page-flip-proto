@@ -11,11 +11,36 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0a07;overscroll-beh
 #book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 18px 50px rgba(0,0,0,.65);border-radius:2px;touch-action:none;opacity:0;transition:opacity 1.2s ease,transform 1.2s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #fade{position:fixed;inset:0;background:#000;opacity:1;transition:opacity 1.6s ease;pointer-events:none}
+
+/* ---- cover scene ---- */
+#cover{position:fixed;inset:0;cursor:pointer;overflow:hidden}
+#coverImg{position:absolute;inset:-4%;background:url(../assets/cover.jpg) center/cover no-repeat;
+  animation:kenburns 26s ease-in-out infinite alternate}
+@keyframes kenburns{from{transform:scale(1)}to{transform:scale(1.07)}}
+#cover::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.72) 100%)}
+#coverGlow{position:absolute;left:50%;top:50%;width:46vmin;height:46vmin;transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(255,214,140,.14) 0%,transparent 62%);
+  animation:pulse 3.6s ease-in-out infinite;pointer-events:none;z-index:2}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+#logoMark{position:absolute;left:50%;bottom:6.5vh;transform:translateX(-50%);width:min(46vw,300px);
+  opacity:.16;pointer-events:none;z-index:2;filter:drop-shadow(0 0 14px rgba(255,230,180,.25));
+  animation:breathe 6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.12}50%{opacity:.22}}
+#cover.opening #coverImg{animation:none;transition:transform 1.5s cubic-bezier(.5,0,.8,.4);transform:scale(1.85)}
+#cover.opening{transition:opacity 1.4s ease .35s;opacity:0}
+
+/* ---- ambience overlays ---- */
+#candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:soft-light;z-index:5;
+  background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(255,190,110,.55),transparent 70%)}
+#dust{position:fixed;inset:0;pointer-events:none;z-index:6}
 </style>
 </head>
 <body>
 <div id="bg"></div>
 <canvas id="book"></canvas>
+<div id="candle"></div>
+<canvas id="dust"></canvas>
+<div id="cover"><div id="coverImg"></div><div id="coverGlow"></div><img id="logoMark" src="../assets/logo-white.png" alt=""></div>
 <div id="fade"></div>
 <audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
 <script>
@@ -23,6 +48,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0a07;overscroll-beh
 const N = 5, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
 const cv = document.getElementById('book'), ctx = cv.getContext('2d');
 let W, H, DPR, TRAVEL;
+const EDGE = 8;                       // room for the page-stack edges
 function layout() {
   const vw = innerWidth, vh = innerHeight;
   H = Math.min(vh * 0.78, vw * 0.92 * 4 / 3); W = H * 3 / 4;
@@ -40,50 +66,125 @@ const imgs = await Promise.all(Array.from({ length: N }, (_, i) => new Promise((
 
 let index = 0, flip = null, anim = null;
 
+// ---------- corner-peel geometry ----------
+// The sheet is grabbed at its top-right corner C and dragged to M(t).
+// Fold line = perpendicular bisector of C..M. The part of the sheet on the
+// C-side of the line is folded over (drawn reflected, parchment backside).
+function peel(t, pw, ph) {
+  const C = { x: pw, y: 0 };
+  // quadratic bezier path for the dragged corner: right-top -> low-middle -> far left
+  const P1 = { x: pw * 0.12, y: ph * 0.78 }, P2 = { x: -pw * 1.65, y: ph * 0.10 };
+  const u = 1 - t;
+  const M = { x: u * u * C.x + 2 * t * u * P1.x + t * t * P2.x,
+              y: u * u * C.y + 2 * t * u * P1.y + t * t * P2.y };
+  let dx = M.x - C.x, dy = M.y - C.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const n = { x: dx / len, y: dy / len };               // unit normal of fold line (points C->M)
+  const mid = { x: (C.x + M.x) / 2, y: (C.y + M.y) / 2 };
+  const k = mid.x * n.x + mid.y * n.y;                  // line: p·n = k ; C-side has p·n > k? C·n-k = -len/2 <0 → C-side: p·n < k
+  return { n, k, mid, C, M };
+}
+const sd = (p, g) => p.x * g.n.x + p.y * g.n.y - g.k;   // signed distance*|n| ; C-side < 0
+function clipPoly(poly, g, keepNeg) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const da = sd(a, g), db = sd(b, g);
+    const ina = keepNeg ? da <= 0 : da >= 0, inb = keepNeg ? db <= 0 : db >= 0;
+    if (ina) out.push(a);
+    if (ina !== inb) {
+      const f = da / (da - db);
+      out.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+    }
+  }
+  return out;
+}
+function pathPoly(poly) {
+  ctx.beginPath();
+  poly.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.closePath();
+}
+
 // ---------- render ----------
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  if (!flip) { ctx.drawImage(imgs[index], 0, 0, W, H); return; }
+  const pw = W - EDGE, ph = H - EDGE;
+
+  // page-stack edges (remaining pages, bottom-right)
+  const remain = Math.max(0, N - 1 - index - (flip && flip.dir > 0 ? 1 : 0));
+  for (let i = Math.min(3, remain); i >= 1; i--) {
+    const o = i * 2.4;
+    ctx.fillStyle = i % 2 ? '#cbbd9c' : '#bfb08d';
+    ctx.fillRect(o, o, pw, ph);
+    ctx.fillStyle = 'rgba(60,45,20,0.25)';
+    ctx.fillRect(o, o + ph - 1, pw, 1); ctx.fillRect(o + pw - 1, o, 1, ph);
+  }
+
+  if (!flip) { ctx.drawImage(imgs[index], 0, 0, pw, ph); return; }
   const under = flip.dir > 0 ? imgs[index + 1] : imgs[index];
   const sheet = flip.dir > 0 ? imgs[index] : imgs[index - 1];
-  const t = flip.t;
-  const fx = (1 - t) * W;              // fold line x
-  const fl = 2 * fx - W;               // flap's far edge x
+  const t = Math.min(Math.max(flip.t, 0.004), 0.996);   // avoid degenerate fold at the exact ends
+  const g = peel(t, pw, ph);
+  const rect = [{ x: 0, y: 0 }, { x: pw, y: 0 }, { x: pw, y: ph }, { x: 0, y: ph }];
+  const frontPoly = clipPoly(rect, g, false);   // still-flat part of the sheet
+  const foldPoly  = clipPoly(rect, g, true);    // part being folded over (original coords)
+
   // under page
-  ctx.drawImage(under, 0, 0, W, H);
-  // sheet front, left of fold line
-  if (fx > 0) {
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, fx, H); ctx.clip();
-    ctx.drawImage(sheet, 0, 0, W, H);
-    const cw = Math.min(26, fx);
-    const g1 = ctx.createLinearGradient(fx - cw, 0, fx, 0);
-    g1.addColorStop(0, 'rgba(0,0,0,0)'); g1.addColorStop(1, 'rgba(0,0,0,0.26)');
-    ctx.fillStyle = g1; ctx.fillRect(fx - cw, 0, cw, H);
+  ctx.drawImage(under, 0, 0, pw, ph);
+
+  // shadow on the revealed under page, along the fold (on the C-side, where the sheet lifted away)
+  const so = 0.40 * Math.sin(Math.PI * t);
+  if (so > 0.01 && foldPoly.length) {
+    ctx.save(); pathPoly(foldPoly); ctx.clip();
+    const sw = Math.min(64, pw * 0.28);
+    const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x - g.n.x * sw, g.mid.y - g.n.y * sw);
+    gr.addColorStop(0, 'rgba(0,0,0,' + so.toFixed(3) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillRect(0, 0, pw, ph);
     ctx.restore();
   }
-  // shadow cast on the under page, right of the fold
-  const so = 0.42 * Math.sin(Math.PI * Math.min(Math.max(t, 0), 1));
-  if (so > 0.01 && fx < W) {
-    ctx.save(); ctx.beginPath(); ctx.rect(fx, 0, W - fx, H); ctx.clip();
-    const sw = Math.min(70, W - fx);
-    const g2 = ctx.createLinearGradient(fx, 0, fx + sw, 0);
-    g2.addColorStop(0, 'rgba(0,0,0,' + so.toFixed(3) + ')'); g2.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g2; ctx.fillRect(fx, 0, sw, H);
+
+  // sheet front (not yet folded)
+  if (frontPoly.length) {
+    ctx.save(); pathPoly(frontPoly); ctx.clip();
+    ctx.drawImage(sheet, 0, 0, pw, ph);
+    // crease shading just before the fold line
+    const cw = Math.min(30, pw * 0.12);
+    const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x - g.n.x * -cw, g.mid.y - g.n.y * -cw);
+    gr.addColorStop(0, 'rgba(0,0,0,0.28)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, pw, ph);
     ctx.restore();
   }
-  // flap: plain parchment backside (no content)
-  if (fx - Math.max(0, fl) > 0.5) {
-    ctx.save(); ctx.beginPath(); ctx.rect(Math.max(0, fl), 0, fx - Math.max(0, fl), H); ctx.clip();
-    ctx.fillStyle = '#d9cdaf';
-    ctx.fillRect(fl, 0, fx - fl, H);
-    const g3 = ctx.createLinearGradient(fx, 0, fl, 0);
-    g3.addColorStop(0, 'rgba(255,250,232,0.30)');
-    g3.addColorStop(0.10, 'rgba(255,250,232,0.05)');
-    g3.addColorStop(0.55, 'rgba(60,45,20,0.08)');
-    g3.addColorStop(1, 'rgba(60,45,20,0.26)');
-    ctx.fillStyle = g3; ctx.fillRect(fl, 0, fx - fl, H);
-    ctx.fillStyle = 'rgba(40,30,12,0.22)'; ctx.fillRect(fl, 0, 1.5, H);
+
+  // flap: folded-over part, reflected across the fold line, plain parchment backside
+  if (foldPoly.length) {
+    const a = 1 - 2 * g.n.x * g.n.x, b = -2 * g.n.x * g.n.y, d = 1 - 2 * g.n.y * g.n.y;
+    const e = 2 * g.k * g.n.x, f = 2 * g.k * g.n.y;
+    ctx.save();
+    ctx.transform(a, b, b, d, e, f);          // reflection (within current DPR transform)
+    pathPoly(foldPoly); ctx.clip();
+    ctx.fillStyle = '#d9cdaf'; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
+    // curl shading: bright crease at fold, darkening toward the lifted corner C
+    const reach = Math.max(24, Math.hypot(g.C.x - g.mid.x, g.C.y - g.mid.y));
+    const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x + (g.C.x - g.mid.x), g.mid.y + (g.C.y - g.mid.y));
+    gr.addColorStop(0, 'rgba(255,250,232,0.32)');
+    gr.addColorStop(0.12, 'rgba(255,250,232,0.06)');
+    gr.addColorStop(0.6, 'rgba(60,45,20,0.10)');
+    gr.addColorStop(1, 'rgba(60,45,20,0.30)');
+    ctx.fillStyle = gr; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
+    ctx.restore();
+    // flap outline: soft edge + drop shadow of the flap onto everything beneath
+    const flapScreen = foldPoly.map(p => ({
+      x: a * p.x + b * p.y + e, y: b * p.x + d * p.y + f
+    }));
+    ctx.save();
+    pathPoly(flapScreen);
+    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = -6 * Math.sin(Math.PI * t); ctx.shadowOffsetY = 5 * Math.sin(Math.PI * t);
+    ctx.strokeStyle = 'rgba(40,30,12,0.35)'; ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -112,6 +213,24 @@ function swish(strength) {
   src.connect(bp); bp.connect(g); g.connect(ac.destination);
   src.start();
 }
+function thump() {
+  if (!ac) return;
+  const t0 = ac.currentTime;
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(96, t0); o.frequency.exponentialRampToValueAtTime(38, t0 + 0.28);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+  o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 0.5);
+  const dur = 0.18, buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240;
+  const g2 = ac.createGain(); g2.gain.value = 0.5;
+  src.connect(lp); lp.connect(g2); g2.connect(ac.destination); src.start(t0);
+}
 
 // ---------- flip control ----------
 function beginFlip(dir) {
@@ -122,7 +241,7 @@ function beginFlip(dir) {
 }
 function finishFlip(commitTo, withSound) {
   const from = flip.t, dir = flip.dir;
-  const dur = 80 + 300 * Math.abs(commitTo - from);
+  const dur = 90 + 340 * Math.abs(commitTo - from);
   const t0 = performance.now();
   if (withSound && Math.abs(commitTo - from) > 0.05) swish(1);
   anim = {};
@@ -188,11 +307,50 @@ function release(e) {
 cv.addEventListener('pointerup', release);
 cv.addEventListener('pointercancel', () => { if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
 
-// ---------- entry ----------
-requestAnimationFrame(() => {
-  document.getElementById('fade').style.opacity = '0';
-  cv.classList.add('in');
-});
+// ---------- dust motes ----------
+const dc = document.getElementById('dust'), dctx = dc.getContext('2d');
+let motes = [];
+function dustLayout() {
+  dc.width = innerWidth; dc.height = innerHeight;
+  const n = Math.round(innerWidth * innerHeight / 26000);
+  motes = Array.from({ length: n }, () => ({
+    x: Math.random() * dc.width, y: Math.random() * dc.height,
+    r: 0.6 + Math.random() * 1.6, a: 0.03 + Math.random() * 0.10,
+    vx: (Math.random() - 0.5) * 0.12, vy: -(0.05 + Math.random() * 0.16),
+    ph: Math.random() * Math.PI * 2
+  }));
+}
+dustLayout(); addEventListener('resize', dustLayout);
+(function dustStep(ts) {
+  dctx.clearRect(0, 0, dc.width, dc.height);
+  for (const m of motes) {
+    m.x += m.vx + Math.sin(ts / 2400 + m.ph) * 0.06; m.y += m.vy;
+    if (m.y < -4) { m.y = dc.height + 4; m.x = Math.random() * dc.width; }
+    if (m.x < -4) m.x = dc.width + 4; if (m.x > dc.width + 4) m.x = -4;
+    const tw = 0.6 + 0.4 * Math.sin(ts / 900 + m.ph * 3);
+    dctx.fillStyle = 'rgba(255,226,170,' + (m.a * tw).toFixed(3) + ')';
+    dctx.beginPath(); dctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); dctx.fill();
+  }
+  requestAnimationFrame(dustStep);
+})(0);
+
+// ---------- candle flicker ----------
+const candle = document.getElementById('candle');
+(function flicker() {
+  candle.style.opacity = (0.75 + Math.random() * 0.25).toFixed(3);
+  setTimeout(flicker, 90 + Math.random() * 240);
+})();
+
+// ---------- cover -> book entry ----------
+const cover = document.getElementById('cover');
+requestAnimationFrame(() => { document.getElementById('fade').style.opacity = '0'; });
+cover.addEventListener('pointerup', () => {
+  if (cover.classList.contains('opening')) return;
+  ensureAudio(); thump();
+  cover.classList.add('opening');
+  setTimeout(() => { cv.classList.add('in'); }, 650);
+  setTimeout(() => { cover.remove(); }, 1900);
+}, { once: false });
 })();
 </script>
 </body>
