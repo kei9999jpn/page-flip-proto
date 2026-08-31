@@ -124,14 +124,20 @@ def hook_tex(material, path):
     tex_node.image = img
     bsdf = nt.nodes.get("Principled BSDF")
     nt.links.new(tex_node.outputs["Color"], bsdf.inputs["Base Color"])
+m_pagetop = mat("M_PageTop", (0.9, 0.75, 0.5, 1))  # 開いた時に見える面=いつもの羊皮紙背景
 hook_tex(m_cover, r"D:\kei-tools\page-flip-proto\assets\cover-texture.png")
 hook_tex(m_spine, r"D:\kei-tools\page-flip-proto\assets\spine-texture.png")
 hook_tex(m_pages, r"D:\kei-tools\page-flip-proto\assets\pageedge-texture.png")
+hook_tex(m_pagetop, r"D:\kei-tools\page-flip-proto\assets\pagetop.jpg")
 
 for o in (front, back):
     o.data.materials.append(m_cover)
 spine.data.materials.append(m_spine)
-pages.data.materials.append(m_pages)
+pages.data.materials.append(m_pages)      # slot 0: 小口・天地の紙積層
+pages.data.materials.append(m_pagetop)    # slot 1: 上面(開いた時のページ)
+for poly in pm.polygons:
+    if poly.normal.z > 0.7:
+        poly.material_index = 1
 
 # ---- UV展開 ----
 # 表紙・裏表紙: 外側の面(表=+Z/裏=-Z)を 0-1 いっぱいに正確マッピング(テクスチャ全面貼り)。
