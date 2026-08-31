@@ -63,6 +63,26 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #lidT.open{transform:translateY(-106%)}
 #lidB.open{transform:translateY(106%)}
 #lidT.hidden,#lidB.hidden{display:none}
+
+/* ---- favorites ---- */
+#favBtn,#favListBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:27;width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;color:#d8cfbc;
+  background:rgba(20,14,8,.5);border:1px solid rgba(216,207,188,.3);border-radius:50%;
+  font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
+#favBtn{right:14px}
+#favListBtn{right:68px;font-size:15px}
+#favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
+#favBtn.on{color:#e8b04b}
+#favPanel{position:fixed;inset:0;z-index:29;display:none;background:rgba(5,3,1,.85);
+  align-items:center;justify-content:center}
+#favPanel .box{max-height:76vh;overflow:auto;background:#161009;border:1px solid rgba(216,207,188,.4);
+  padding:22px;color:#d8cfbc;font-family:serif;min-width:min(80vw,340px)}
+#favPanel h2{font-size:14px;letter-spacing:.4em;text-indent:.4em;text-align:center;margin:0 0 16px;font-weight:normal}
+#favPanel .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#favPanel .grid img{width:100%;border:1px solid rgba(216,207,188,.35);display:block;cursor:pointer}
+#favPanel .empty{font-size:13px;letter-spacing:.2em;text-align:center;padding:18px 6px;color:#a99e88}
+#favPanel .close{display:block;margin:18px auto 0;background:none;border:1px solid rgba(216,207,188,.4);
+  color:#d8cfbc;padding:7px 26px;letter-spacing:.3em;text-indent:.3em;font-family:serif;cursor:pointer}
 </style>
 </head>
 <body>
@@ -76,6 +96,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="dim"></div>
 <div id="title"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
 <div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
+<div id="favBtn">♡</div>
+<div id="favListBtn">栞</div>
+<div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
+<div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
 <audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
 <audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
@@ -103,6 +127,42 @@ const pagesReady = Promise.all(Array.from({ length: N }, (_, i) => loadImg(SRC(i
 loadImg('../assets/backside.jpg').then(im => { backTex = im; });
 
 let index = 0, flip = null, anim = null;
+
+// ---------- favorites(しおり) ----------
+const favBtn = document.getElementById('favBtn');
+const favListBtn = document.getElementById('favListBtn');
+const favPanel = document.getElementById('favPanel');
+const favGrid = document.getElementById('favGrid');
+const favEmpty = document.getElementById('favEmpty');
+let favs = [];
+try { favs = JSON.parse(localStorage.getItem('bookexp-favs')) || []; } catch (e) {}
+function saveFavs() { try { localStorage.setItem('bookexp-favs', JSON.stringify(favs)); } catch (e) {} }
+function updateFavUI() {
+  const on = favs.includes(index);
+  favBtn.textContent = on ? '♥' : '♡';
+  favBtn.classList.toggle('on', on);
+}
+favBtn.addEventListener('click', () => {
+  ensureAudio();
+  const i = favs.indexOf(index);
+  if (i >= 0) favs.splice(i, 1); else favs.push(index);
+  saveFavs(); updateFavUI();
+});
+function openFavPanel() {
+  favGrid.innerHTML = '';
+  const list = favs.slice().sort((a, b) => a - b);
+  favEmpty.style.display = list.length ? 'none' : 'block';
+  for (const i of list) {
+    const im = document.createElement('img');
+    im.src = SRC(i);
+    im.onclick = () => { index = i; flip = null; draw(); updateFavUI(); favPanel.style.display = 'none'; };
+    favGrid.appendChild(im);
+  }
+  favPanel.style.display = 'flex';
+}
+favListBtn.addEventListener('click', openFavPanel);
+document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
+function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
 function peel(t, pw, ph) {
@@ -306,7 +366,7 @@ function finishFlip(commitTo, withSound) {
     else {
       if (dir > 0 && commitTo === 1) index++;
       if (dir < 0 && commitTo === 0) index--;
-      flip = null; anim = null; draw();
+      flip = null; anim = null; draw(); updateFavUI();
     }
   })(t0);
 }
@@ -544,6 +604,7 @@ function startOpening() {
     cover.remove(); title.remove();
     pagesReady.then(() => { draw(); });
     cv.classList.add('in');
+    showFavButtons();
   }, 6600);
   setTimeout(() => {                                            // ぼっ。ろうそくが灯る
     rampGlow(0.45, 300);
@@ -563,6 +624,17 @@ function rampGlow(target, ms) {
     glowBase = from + (target - from) * (1 - Math.pow(1 - k, 2));
     if (k < 1) glowRaf = requestAnimationFrame(gstep); else glowRaf = null;
   })(t0);
+}
+
+// ---- スタート画面の「お気に入り」から直行 (#fav): 長い開幕演出を飛ばして栞一覧へ ----
+if (location.hash === '#fav') {
+  opening = true;
+  cover.remove(); title.remove();
+  cv.classList.add('in'); cv.classList.add('sway');
+  rampGlow(0.55, 900);
+  pagesReady.then(() => { draw(); updateFavUI(); });
+  showFavButtons();
+  openFavPanel();
 }
 })();
 </script>
