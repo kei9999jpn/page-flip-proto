@@ -220,22 +220,47 @@ function draw() {
 draw();
 
 // ---------- audio ----------
-let ac = null, flipBuf = null;
+let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
+// 共有設定(intro/ の設定画面と同じキー)
+const SND_DEFAULTS = { bgm:true, rain:true, insects:true, amb:0.6, flip:1.0 };
+let SND = SND_DEFAULTS;
+try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
+function startCrickets() {
+  if (!ac || cricketsOn) return;
+  cricketsOn = true;
+  (function loop() {
+    if (SND.insects) {
+      const t0 = ac.currentTime + 0.05, n = 3 + Math.floor(Math.random()*3);
+      for (let i = 0; i < n; i++) {
+        const t = t0 + i * 0.07;
+        const o = ac.createOscillator(); o.type = 'sine';
+        o.frequency.value = 4100 + Math.random()*400;
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.05 * SND.amb, t + 0.012);
+        g.gain.linearRampToValueAtTime(0, t + 0.045);
+        o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.06);
+      }
+    }
+    setTimeout(loop, 900 + Math.random()*2200);
+  })();
+}
 function ensureAudio() {
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
     if (ac) fetch('../assets/se/page-soft.mp3').then(r => r.arrayBuffer())
       .then(b => ac.decodeAudioData(b)).then(buf => { flipBuf = buf; }).catch(() => {});
+    startCrickets();
   }
-  if (bgm.paused) { bgm.volume = 0.22; bgm.play().catch(() => {}); }
-  if (rain.paused) { rain.volume = 0.16; rain.play().catch(() => {}); }
+  if (bgm.paused && SND.bgm) { bgm.volume = 0.22; bgm.play().catch(() => {}); }
+  if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
 }
 function pageSound(strength) {
   if (!ac || !flipBuf) return;
   const src = ac.createBufferSource(); src.buffer = flipBuf;
   src.playbackRate.value = 0.94 + Math.random() * 0.14;   // slight variation each turn
-  const g = ac.createGain(); g.gain.value = 0.75 * Math.min(1, strength + 0.35);
+  const g = ac.createGain(); g.gain.value = 1.1 * SND.flip * Math.min(1, strength + 0.35);
   src.connect(g); g.connect(ac.destination); src.start();
 }
 function thump() {
