@@ -40,6 +40,21 @@ front = make_box("Cover_Front", W + OVERHANG, H + OVERHANG*2, COVER_T,
 back  = make_box("Cover_Back",  W + OVERHANG, H + OVERHANG*2, COVER_T,
                  (OVERHANG/2, 0, -T/2 + COVER_T/2))
 
+# 使い古された反り: 小口側(+X)へ行くほど表紙がわずかに外へ反る(古書の風格)
+def warp_cover(obj, sign, bow=0.0045):
+    m = obj.data
+    bm = bmesh.new(); bm.from_mesh(m)
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=6, use_grid_fill=True)
+    xs = [v.co.x for v in bm.verts]; x0, x1 = min(xs), max(xs)
+    ys = [v.co.y for v in bm.verts]; yh = max(abs(min(ys)), abs(max(ys)))
+    for v in bm.verts:
+        t = (v.co.x - x0) / (x1 - x0)
+        corner = (abs(v.co.y) / yh) ** 2 if yh else 0
+        v.co.z += sign * bow * (t ** 2) * (0.55 + 0.45 * corner)
+    bm.to_mesh(m); bm.free()
+warp_cover(front, +1)
+warp_cover(back, -1)
+
 # ---- 背表紙 (丸背: 半円筒) ----
 sm = bpy.data.meshes.new("Spine")
 bm = bmesh.new()
@@ -100,15 +115,18 @@ m_cover = mat("M_Cover", (0.35, 0.27, 0.18, 1))   # 表紙: テクスチャ付�
 m_spine = mat("M_Spine", (0.20, 0.15, 0.10, 1))   # 背: 濃い無地革
 m_pages = mat("M_Pages", (0.87, 0.82, 0.70, 1))   # 古紙
 
-TEX = r"D:\kei-tools\page-flip-proto\assets\cover-texture.png"
 import os
-if os.path.exists(TEX):
-    img = bpy.data.images.load(TEX)
-    nt = m_cover.node_tree
+def hook_tex(material, path):
+    if not os.path.exists(path): return
+    img = bpy.data.images.load(path)
+    nt = material.node_tree
     tex_node = nt.nodes.new('ShaderNodeTexImage')
     tex_node.image = img
     bsdf = nt.nodes.get("Principled BSDF")
     nt.links.new(tex_node.outputs["Color"], bsdf.inputs["Base Color"])
+hook_tex(m_cover, r"D:\kei-tools\page-flip-proto\assets\cover-texture.png")
+hook_tex(m_spine, r"D:\kei-tools\page-flip-proto\assets\spine-texture.png")
+hook_tex(m_pages, r"D:\kei-tools\page-flip-proto\assets\pageedge-texture.png")
 
 for o in (front, back):
     o.data.materials.append(m_cover)
@@ -141,14 +159,41 @@ def uv_cover(obj, outer_z_positive):
 
 uv_cover(front, True)
 uv_cover(back, False)
-for o in (spine, pages):
-    bpy.context.view_layer.objects.active = o
-    o.select_set(True)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
-    bpy.ops.object.mode_set(mode='OBJECT')
-    o.select_set(False)
+
+# 背表紙: 円弧の角度→U, 高さ→V の正確マッピング(バンド模様がまっすぐ巻き付く)
+def uv_spine(obj):
+    me = obj.data
+    if not me.uv_layers: me.uv_layers.new(name="UVMap")
+    uv = me.uv_layers.active.data
+    ys = [v.co.y for v in me.vertices]; y0, y1 = min(ys), max(ys)
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            t = math.atan2(co.z, co.x)
+            if t < 0: t += 2 * math.pi
+            u = (t - math.pi / 2) / math.pi
+            uv[li].uv = (min(max(u, 0.0), 1.0), (co.y - y0) / (y1 - y0))
+uv_spine(spine)
+
+# ページブロック: 側面は「紙の積層線がZ(厚み)方向に走る」ようVをZへ割当
+def uv_pages(obj):
+    me = obj.data
+    if not me.uv_layers: me.uv_layers.new(name="UVMap")
+    uv = me.uv_layers.active.data
+    xs = [v.co.x for v in me.vertices]; x0, x1 = min(xs), max(xs)
+    ys = [v.co.y for v in me.vertices]; y0, y1 = min(ys), max(ys)
+    zs = [v.co.z for v in me.vertices]; z0, z1 = min(zs), max(zs)
+    for poly in me.polygons:
+        n = poly.normal
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            if abs(n.z) > 0.7:      # 上下面: ただの紙
+                uv[li].uv = ((co.x - x0) / (x1 - x0), (co.y - y0) / (y1 - y0))
+            elif abs(n.x) > 0.7:    # 小口: 横=高さ方向, 縦=積層
+                uv[li].uv = ((co.y - y0) / (y1 - y0), (co.z - z0) / (z1 - z0))
+            else:                   # 天地: 横=小口方向, 縦=積層
+                uv[li].uv = ((co.x - x0) / (x1 - x0), (co.z - z0) / (z1 - z0))
+uv_pages(pages)
 
 # ---- モディファイア適用 & 書き出し ----
 for o in (front, back, spine, pages):
@@ -162,7 +207,8 @@ for o in (front, back, spine, pages):
 import os
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=OUT, use_selection=True, export_format='GLB',
-                          export_yup=True, export_apply=True)
+                          export_yup=True, export_apply=True,
+                          export_image_format='JPEG', export_jpeg_quality=82)
 print("EXPORTED:", OUT)
 
 # 検品用レンダ(簡易): カメラとライトを置いて1枚PNG
