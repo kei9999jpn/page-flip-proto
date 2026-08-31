@@ -65,12 +65,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #lidT.hidden,#lidB.hidden{display:none}
 
 /* ---- favorites ---- */
-#favBtn,#favListBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:27;width:44px;height:44px;
-  display:flex;align-items:center;justify-content:center;font-size:22px;color:#d8cfbc;
-  background:rgba(20,14,8,.5);border:1px solid rgba(216,207,188,.3);border-radius:50%;
+#favBtn,#favListBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:27;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;color:#d8cfbc;
+  background:rgba(20,14,8,.45);border:1px solid rgba(216,207,188,.25);border-radius:50%;
   font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
 #favBtn{right:14px}
-#favListBtn{right:68px;font-size:15px}
+#favListBtn{right:58px;font-size:13px}
 #favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
 #favBtn.on{color:#e8b04b}
 #favPanel{position:fixed;inset:0;z-index:29;display:none;background:rgba(5,3,1,.85);
@@ -105,7 +105,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
 <script>
 (() => {
-const N = 5, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
+const N = 20, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
+// deck = いま本に綴じられているページ(実ページ番号の並び)。お気に入りモードで差し替わる
+const ALL_PAGES = Array.from({ length: N }, (_, i) => i);
+let deck = ALL_PAGES.slice();
+const pg = k => imgs[deck[k]];
 const cv = document.getElementById('book'), ctx = cv.getContext('2d');
 let W, H, DPR, TRAVEL;
 const EDGE = 8;
@@ -123,7 +127,7 @@ addEventListener('resize', () => { layout(); draw(); });
 // ---- lazy image loading (cover shows instantly; pages arrive in the background) ----
 const imgs = new Array(N); let backTex = null;
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-const pagesReady = Promise.all(Array.from({ length: N }, (_, i) => loadImg(SRC(i)).then(im => { imgs[i] = im; if (i === index) draw(); })));
+const pagesReady = Promise.all(Array.from({ length: N }, (_, i) => loadImg(SRC(i)).then(im => { imgs[i] = im; if (deck[index] === i) draw(); })));
 loadImg('../assets/backside.jpg').then(im => { backTex = im; });
 
 let index = 0, flip = null, anim = null;
@@ -138,29 +142,36 @@ let favs = [];
 try { favs = JSON.parse(localStorage.getItem('bookexp-favs')) || []; } catch (e) {}
 function saveFavs() { try { localStorage.setItem('bookexp-favs', JSON.stringify(favs)); } catch (e) {} }
 function updateFavUI() {
-  const on = favs.includes(index);
+  const on = favs.includes(deck[index]);
   favBtn.textContent = on ? '♥' : '♡';
   favBtn.classList.toggle('on', on);
+  favListBtn.textContent = deck === ALL_PAGES || deck.length === N ? '栞' : '全';
 }
 favBtn.addEventListener('click', () => {
   ensureAudio();
-  const i = favs.indexOf(index);
-  if (i >= 0) favs.splice(i, 1); else favs.push(index);
+  const p = deck[index];
+  const i = favs.indexOf(p);
+  if (i >= 0) favs.splice(i, 1); else favs.push(p);
   saveFavs(); updateFavUI();
 });
-function openFavPanel() {
+function openFavPanel() { // お気に入りが空の時の案内のみ
   favGrid.innerHTML = '';
-  const list = favs.slice().sort((a, b) => a - b);
-  favEmpty.style.display = list.length ? 'none' : 'block';
-  for (const i of list) {
-    const im = document.createElement('img');
-    im.src = SRC(i);
-    im.onclick = () => { index = i; flip = null; draw(); updateFavUI(); favPanel.style.display = 'none'; };
-    favGrid.appendChild(im);
-  }
+  favEmpty.style.display = 'block';
   favPanel.style.display = 'flex';
 }
-favListBtn.addEventListener('click', openFavPanel);
+// 栞 = お気に入りだけを綴じ直した「自分の本」に切り替え。もう一度で全ページに戻る
+let favMode = false;
+function enterFavBook() {
+  const list = favs.slice().sort((a, b) => a - b);
+  if (!list.length) { openFavPanel(); return; }
+  favMode = true; deck = list; index = 0; flip = null; anim = null;
+  draw(); updateFavUI(); pageSound(0.6);
+}
+function exitFavBook() {
+  favMode = false; deck = ALL_PAGES.slice(); index = 0; flip = null; anim = null;
+  draw(); updateFavUI(); pageSound(0.6);
+}
+favListBtn.addEventListener('click', () => { ensureAudio(); favMode ? exitFavBook() : enterFavBook(); });
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
 function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); updateFavUI(); }
 
@@ -205,7 +216,7 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
   const pw = W - EDGE, ph = H - EDGE;
 
-  const remain = Math.max(0, N - 1 - index - (flip && flip.dir > 0 ? 1 : 0));
+  const remain = Math.max(0, deck.length - 1 - index - (flip && flip.dir > 0 ? 1 : 0));
   for (let i = Math.min(3, remain); i >= 1; i--) {
     const o = i * 2.4;
     ctx.fillStyle = i % 2 ? '#cbbd9c' : '#bfb08d';
@@ -214,11 +225,11 @@ function draw() {
     ctx.fillRect(o, o + ph - 1, pw, 1); ctx.fillRect(o + pw - 1, o, 1, ph);
   }
 
-  if (!imgs[index]) { ctx.fillStyle = '#1a140c'; ctx.fillRect(0, 0, pw, ph); return; }
-  if (!flip) { ctx.drawImage(imgs[index], 0, 0, pw, ph); return; }
-  const under = flip.dir > 0 ? imgs[index + 1] : imgs[index];
-  const sheet = flip.dir > 0 ? imgs[index] : imgs[index - 1];
-  if (!under || !sheet) { ctx.drawImage(imgs[index], 0, 0, pw, ph); return; }
+  if (!pg(index)) { ctx.fillStyle = '#1a140c'; ctx.fillRect(0, 0, pw, ph); return; }
+  if (!flip) { ctx.drawImage(pg(index), 0, 0, pw, ph); return; }
+  const under = flip.dir > 0 ? pg(index + 1) : pg(index);
+  const sheet = flip.dir > 0 ? pg(index) : pg(index - 1);
+  if (!under || !sheet) { ctx.drawImage(pg(index), 0, 0, pw, ph); return; }
   const t = Math.min(Math.max(flip.t, 0.004), 0.996);
   const g = peel(t, pw, ph);
   const rect = [{ x: 0, y: 0 }, { x: pw, y: 0 }, { x: pw, y: ph }, { x: 0, y: ph }];
@@ -256,7 +267,11 @@ function draw() {
     // paper backside: KEI's parchment texture, pulled well down into shadow
     if (backTex) {
       ctx.drawImage(backTex, 0, 0, pw, ph);
-      ctx.fillStyle = 'rgba(18,12,5,0.60)'; ctx.fillRect(0, 0, pw, ph);
+      // Apple Books風: 表の文字が鏡文字でうっすら裏に透ける(反転座標系なのでそのまま描けば鏡像)
+      ctx.globalAlpha = 0.16;
+      ctx.drawImage(sheet, 0, 0, pw, ph);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(18,12,5,0.48)'; ctx.fillRect(0, 0, pw, ph);
     } else {
       ctx.fillStyle = '#5f4f38'; ctx.fillRect(0, 0, pw, ph);
     }
@@ -344,15 +359,15 @@ function thump() {
 
 // ---------- flip control ----------
 function beginFlip(dir) {
-  if (dir > 0 && index >= N - 1) return false;
+  if (dir > 0 && index >= deck.length - 1) return false;
   if (dir < 0 && index <= 0) return false;
-  if (!imgs[index + (dir > 0 ? 1 : -1)]) return false;
+  if (!pg(index + (dir > 0 ? 1 : -1))) return false;
   flip = { dir, t: dir > 0 ? 0 : 1 };
   return true;
 }
 function finishFlip(commitTo, withSound) {
   const from = flip.t, dir = flip.dir;
-  const dur = 220 + 760 * Math.abs(commitTo - from);   // 紙の重さを感じるゆっくりめの旅
+  const dur = 150 + 430 * Math.abs(commitTo - from);   // キビキビ、でも紙の重さは残す
   const t0 = performance.now();
   if (withSound && Math.abs(commitTo - from) > 0.05) pageSound(Math.abs(commitTo - from));
   anim = {};
@@ -401,7 +416,7 @@ function startFollow() {
   if (followRaf) return;
   (function fstep() {
     if (pd && pd.started && flip) {
-      flip.t += ((pd.tTarget != null ? pd.tTarget : flip.t) - flip.t) * 0.16;
+      flip.t += ((pd.tTarget != null ? pd.tTarget : flip.t) - flip.t) * 0.55; // 指にビタ付き(わずかな柔らかさだけ残す)
       draw();
       followRaf = requestAnimationFrame(fstep);
     } else { followRaf = null; }
@@ -626,15 +641,15 @@ function rampGlow(target, ms) {
   })(t0);
 }
 
-// ---- スタート画面の「お気に入り」から直行 (#fav): 長い開幕演出を飛ばして栞一覧へ ----
-if (location.hash === '#fav') {
+// ---- スタート画面から直行: #read=即めくり / #fav=お気に入りだけの本 (2D表紙シーンは飛ばす) ----
+if (location.hash === '#fav' || location.hash === '#read') {
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
   rampGlow(0.55, 900);
   pagesReady.then(() => { draw(); updateFavUI(); });
   showFavButtons();
-  openFavPanel();
+  if (location.hash === '#fav') enterFavBook();
 }
 })();
 </script>
