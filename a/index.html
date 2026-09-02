@@ -54,9 +54,19 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
 /* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
 #shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
-  background:radial-gradient(ellipse 60% 52% at 50% 44%,transparent 40%,rgba(0,0,0,.42) 78%,rgba(0,0,0,.72) 100%);
+  background:radial-gradient(ellipse 58% 50% at 56% 52%,transparent 30%,rgba(0,0,0,.5) 68%,rgba(0,0,0,.88) 100%);
   transition:transform .14s ease-out,opacity .14s ease-out}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
+/* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
+#flameWrap{position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
+#wick{position:absolute;left:50%;bottom:0;width:4px;height:14px;margin-left:-2px;background:linear-gradient(#1a120a,#3a2a18);border-radius:2px}
+#flame{position:absolute;left:50%;bottom:10px;width:22px;height:54px;margin-left:-11px;transform-origin:50% 100%;
+  border-radius:50% 50% 45% 45% / 70% 70% 30% 30%;
+  background:radial-gradient(ellipse at 50% 80%,#fff8dc 0%,#ffd16a 25%,#ff8a1e 55%,rgba(255,80,0,.55) 78%,transparent 100%);
+  filter:blur(.6px);box-shadow:0 0 18px 6px rgba(255,150,60,.55),0 0 60px 22px rgba(255,120,40,.28)}
+#flameCore{position:absolute;left:50%;bottom:12px;width:8px;height:20px;margin-left:-4px;border-radius:50%;background:radial-gradient(#5aa8ff55,transparent 70%)}
+#halo{position:fixed;right:0;bottom:0;width:120vmin;height:120vmin;pointer-events:none;z-index:7;mix-blend-mode:screen;
+  transform:translate(35%,40%);background:radial-gradient(circle at 50% 50%,rgba(255,170,80,.42),rgba(255,120,40,.12) 35%,transparent 62%)}
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
 #cover{perspective:900px}
 /* 目覚めのまばたき: 上下のまぶた */
@@ -95,6 +105,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="paperGlow"></div>
 <div id="candle"></div>
 <div id="shade"></div>
+<div id="halo"></div>
+<div id="flameWrap"><div id="wick"></div><div id="flame"></div><div id="flameCore"></div></div>
 <div id="veil"></div>
 <canvas id="dust"></canvas>
 <div id="cover"><div id="coverImg"></div><div id="coverVin"></div><div id="coverGlow"></div><img id="logoMark" src="../assets/logo-mark.png" alt=""></div>
@@ -305,9 +317,28 @@ draw();
 let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
 // 共有設定(intro/ の設定画面と同じキー)
-const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0 };
+const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0, rainKind:'std' };
+const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
+                   window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
+                   suno1:'../assets/rain/suno1.mp3' };
 let SND = SND_DEFAULTS;
 try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
+function applyRainSrc() {
+  const src = RAIN_SRC[SND.rainKind] || RAIN_SRC.std;
+  if (rain.getAttribute('src') === src) return;
+  const wasPlaying = !rain.paused;
+  rain.setAttribute('src', src); rain.load();
+  if (wasPlaying) { rain.volume = SND.rain ? 0.34 * SND.amb : 0; rain.play().catch(() => {}); }
+}
+applyRainSrc();
+// 別タブ(設定画面)で雨の種類が変わったら追従する
+addEventListener('storage', e => {
+  if (e.key !== 'bookexp-settings') return;
+  try { SND = { ...SND_DEFAULTS, ...(JSON.parse(e.newValue) || {}) }; } catch (err) { return; }
+  applyRainSrc();
+  rain.volume = SND.rain ? 0.34 * SND.amb : 0;
+  bgm.volume = SND.bgm ? 0.22 : 0;
+});
 function startCrickets() {
   if (!ac || cricketsOn) return;
   cricketsOn = true;
@@ -569,7 +600,7 @@ const paperGlow = document.getElementById('paperGlow');
 const veil = document.getElementById('veil');
 let veilTarget = 0;
 veil.style.transition = 'opacity 1.4s ease';
-const shade = document.getElementById('shade');
+const shade = document.getElementById('shade'), flame = document.getElementById('flame'), halo = document.getElementById('halo');
 (function flicker() {
   // 2026-09-02 KEI: ちらつきをはっきり。明るさの振れ幅を広げ、灯りの位置をずらして影を動かす
   const r = Math.random();
@@ -577,6 +608,12 @@ const shade = document.getElementById('shade');
   const dx = (Math.random() - 0.5) * 2.2, dy = (Math.random() - 0.5) * 1.6, sc = 1 + (Math.random() - 0.5) * 0.06;
   shade.style.transform = 'translate(' + dx.toFixed(2) + '%,' + dy.toFixed(2) + '%) scale(' + sc.toFixed(3) + ')';
   shade.style.opacity = (r < 0.12 ? 1 : 0.8 + Math.random() * 0.2).toFixed(3);
+  // 炎そのものの揺れ(灯りと同期): 背の高さ・傾き・明るさ
+  const fh = r < 0.12 ? 0.6 + Math.random() * 0.2 : 0.85 + Math.random() * 0.3, fk = (Math.random() - 0.5) * 14;
+  flame.style.transform = 'scaleY(' + fh.toFixed(3) + ') scaleX(' + (0.85 + Math.random() * 0.3).toFixed(3) + ') skewX(' + fk.toFixed(1) + 'deg)';
+  flame.style.opacity = (0.85 + Math.random() * 0.15).toFixed(3);
+  halo.style.opacity = (r < 0.12 ? 0.5 : 0.8 + Math.random() * 0.2).toFixed(3);
+  halo.style.transform = 'translate(' + (35 + dx).toFixed(1) + '%,' + (40 + dy).toFixed(1) + '%) scale(' + (0.96 + Math.random() * 0.08).toFixed(3) + ')';
   if (glowBase > 0) {
     paperGlow.style.opacity = (glowBase * (0.55 + Math.random() * 0.45)).toFixed(3);
     const s = 1 + (Math.random() - 0.5) * 0.05;

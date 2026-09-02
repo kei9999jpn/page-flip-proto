@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>異世界の叡智 — 書斎</title>
+<style>
+html,body{margin:0;height:100%;background:#0b0806;overflow:hidden;font-family:serif;
+  -webkit-tap-highlight-color:transparent}
+#c{display:block;width:100%;height:100%;touch-action:none}
+
+/* ---- 下部 UI ---- */
+#ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2.6vh);
+  display:flex;flex-direction:column;gap:10px;align-items:center;opacity:0;
+  transition:opacity 1.6s;pointer-events:none}
+#ui.show{opacity:1;pointer-events:auto}
+
+/* ---- 対話ボックス（ゲーム風・羊皮紙パネル） ---- */
+#talk{width:min(88vw,560px);min-height:74px;box-sizing:border-box;cursor:pointer;
+  background:linear-gradient(180deg,rgba(38,28,16,.88),rgba(20,14,8,.9));
+  border:1px solid rgba(216,207,188,.42);border-radius:3px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.5) inset,0 10px 34px rgba(0,0,0,.7);
+  padding:15px 20px 17px;color:#e6dcc5;font-family:serif;font-size:15px;line-height:1.9;
+  letter-spacing:.12em;backdrop-filter:blur(2px)}
+#talk .name{font-size:11px;letter-spacing:.42em;text-indent:.42em;color:#a9997a;margin-bottom:5px}
+#talk .txt{min-height:1.9em;white-space:pre-wrap}
+#talk .cur{opacity:.75;color:#c8a15a;animation:blink 1s steps(1) infinite;margin-left:.3em}
+@keyframes blink{50%{opacity:0}}
+
+/* ---- 話す/選ぶ ボタン ---- */
+#actWrap{display:flex;justify-content:center}
+#act{color:#e6dcc5;background:rgba(20,14,8,.62);border:1px solid rgba(216,207,188,.42);
+  padding:9px 34px;font-size:14px;letter-spacing:.4em;text-indent:.4em;font-family:serif;
+  cursor:pointer;backdrop-filter:blur(2px)}
+#act:active{background:rgba(216,207,188,.18)}
+#act.hide{display:none}
+
+/* ---- 選択肢 ---- */
+#choices{width:min(88vw,560px);display:none;flex-direction:column;gap:6px}
+#choices.show{display:flex}
+.ch{display:flex;align-items:center;gap:10px;color:#d8cfbc;font-family:serif;font-size:14px;
+  letter-spacing:.2em;background:rgba(20,14,8,.68);border:1px solid rgba(216,207,188,.3);
+  padding:9px 16px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;
+  backdrop-filter:blur(2px);opacity:0;transform:translateY(6px);
+  transition:opacity .38s ease,transform .38s ease}
+.ch.in{opacity:1;transform:none}
+.ch::before{content:"◆";font-size:9px;color:#c8a15a;opacity:.85}
+.ch:active{background:rgba(216,207,188,.16)}
+.ch.dim{color:#8b8271;border-color:rgba(216,207,188,.14);background:rgba(20,14,8,.45);cursor:default}
+.ch.dim::before{color:#6e6553}
+.ch .soon{margin-left:auto;font-size:10px;letter-spacing:.3em;color:#8b7f66;
+  border:1px solid rgba(216,207,188,.2);padding:2px 7px;transition:color .25s,border-color .25s}
+.ch .soon.flash{color:#e6dcc5;border-color:rgba(216,207,188,.6)}
+
+#hint{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 2.4vh);text-align:center;
+  color:#8e8368;font-family:serif;font-size:11px;letter-spacing:.3em;text-indent:.3em;
+  opacity:0;transition:opacity 1.2s;pointer-events:none}
+#hint.show{opacity:.85}
+
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .8s ease-in}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">ドラッグで見回す</div>
+<div id="ui">
+  <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
+  <div id="actWrap"><button id="act">話す/選ぶ</button></div>
+  <div id="choices">
+    <button class="ch" id="chRead">魔法の名言の書を読む</button>
+    <button class="ch dim">思考実験<span class="soon">準備中</span></button>
+    <button class="ch dim">占い<span class="soon">準備中</span></button>
+    <button class="ch dim">星座占い<span class="soon">準備中</span></button>
+    <button class="ch dim">エッセイ集<span class="soon">準備中</span></button>
+  </div>
+</div>
+<div id="fade"></div>
+<audio id="rain" loop preload="auto"></audio>
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const $ = id => document.getElementById(id);
+
+// ---------- 設定(intro/ a/ と共有) ----------
+const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0,
+                   rainKind:'std', mail:false, mailTo:'' };
+const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
+                   window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
+                   suno1:'../assets/rain/suno1.mp3' };
+let S = DEFAULTS;
+try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
+
+// ---------- 環境音(任意・失敗しても無視) ----------
+const rain = $('rain');
+rain.src = RAIN_SRC[S.rainKind] || RAIN_SRC.std;
+let audioOn = false;
+function ensureAudio(){
+  if (audioOn) return; audioOn = true;
+  if (S.rain) { rain.volume = 0.26 * S.amb; rain.play().catch(()=>{}); }
+}
+addEventListener('pointerdown', ensureAudio);
+
+// ---------- three.js ----------
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0806);
+scene.fog = new THREE.FogExp2(0x0b0806, 0.115);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 60);
+
+// 床
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color:0x2a2018, roughness:0.95, metalness:0.0 })
+);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// 光
+scene.add(new THREE.AmbientLight(0x241b14, 1.1));
+// 蝋燭 — 前方左
+const candle = new THREE.PointLight(0xffd9a8, 7.5, 11, 2.0);
+candle.position.set(-1.35, 1.45, 1.75);
+candle.castShadow = true;
+candle.shadow.mapSize.set(1024, 1024);
+candle.shadow.bias = -0.004;
+candle.shadow.camera.near = 0.2;
+candle.shadow.camera.far = 12;
+scene.add(candle);
+// 蝋燭の炎(見える点)
+const flame = new THREE.Mesh(
+  new THREE.SphereGeometry(0.035, 10, 10),
+  new THREE.MeshBasicMaterial({ color:0xffd79a, transparent:true, opacity:0.9 })
+);
+flame.position.copy(candle.position);
+scene.add(flame);
+// 冷たいリム(背面右)
+const rim = new THREE.DirectionalLight(0x8290b4, 0.75);
+rim.position.set(2.2, 2.4, -2.6);
+scene.add(rim);
+const fill = new THREE.PointLight(0xdfe6ff, 1.3, 8, 2.0);
+fill.position.set(1.7, 0.4, 1.2);
+scene.add(fill);
+
+// ---------- 人形 ----------
+const NODE = {};
+const BASE = {};
+let figure = null;
+new GLTFLoader().load('../assets/figure.glb', (g) => {
+  figure = g.scene;
+  figure.traverse(o => {
+    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true;
+      if (o.material) { o.material.roughness = 0.62; o.material.envMapIntensity = 0.3; } }
+    if (o.name) NODE[o.name] = o;
+  });
+  ['Torso','Head','ArmL','ArmR','HandL','HandR','LegL','LegR'].forEach(n => {
+    const o = NODE[n]; if (!o) return;
+    BASE[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+  });
+  scene.add(figure);
+  $('ui').classList.add('show');
+  $('hint').classList.add('show');
+  setTimeout(() => $('hint').classList.remove('show'), 6000);
+  setTimeout(startDialogue, 600);
+}, undefined, (e) => { console.error('figure.glb load failed', e); });
+
+// ---------- 塵 ----------
+const N = 260, dustGeo = new THREE.BufferGeometry();
+const dp = new Float32Array(N*3), dspd = [];
+for (let i=0;i<N;i++){
+  dp[i*3] = (Math.random()-0.5)*4.5;
+  dp[i*3+1] = Math.random()*2.6;
+  dp[i*3+2] = (Math.random()-0.5)*4.5;
+  dspd.push(0.02 + Math.random()*0.05);
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color:0xd8b878, size:0.012, transparent:true, opacity:0.5, depthWrite:false })));
+
+// ---------- カメラ操作(自作オービット) ----------
+const HOME = { th: 0, ph: 1.42, d: 4.4 };      // th=0 が正面
+const TARGET_Y = 0.55;
+let camTh = HOME.th, camPh = HOME.ph, camD = HOME.d;
+let idleT = 0, dragging = false, returning = false;
+const ptrs = new Map();
+let lastX = 0, lastY = 0, pinch0 = 0, d0 = 0, moved = 0;
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (ptrs.size === 1) { dragging = true; lastX = e.clientX; lastY = e.clientY; moved = 0; }
+  if (ptrs.size === 2) { pinch0 = pinchDist(); d0 = camD; }
+  idleT = 0; returning = false;
+});
+canvas.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  idleT = 0; returning = false;
+  if (ptrs.size >= 2) {
+    const d = pinchDist();
+    if (pinch0 > 0) camD = clamp(d0 * pinch0 / d, 2.2, 8.0);
+    return;
+  }
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  moved += Math.abs(dx) + Math.abs(dy);
+  camTh -= dx * 0.007;
+  camPh = clamp(camPh - dy * 0.0045, 0.62, 1.72);
+  lastX = e.clientX; lastY = e.clientY;
+});
+function endPtr(e){ ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (!ptrs.size) dragging = false; }
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => { e.preventDefault(); camD = clamp(camD + e.deltaY*0.0035, 2.2, 8.0); idleT = 0; returning = false; }, { passive:false });
+function pinchDist(){ const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y) || 1; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function wrapAngle(a){ while (a > Math.PI) a -= Math.PI*2; while (a < -Math.PI) a += Math.PI*2; return a; }
+
+// ---------- 首振り ----------
+let headYaw = 0, headPitch = 0, hyFrom = 0, hyTo = 0, hpFrom = 0, hpTo = 0;
+let headT = 0, headDur = 1.8, nextLook = 5;
+function scheduleLook(){
+  hyFrom = headYaw; hpFrom = headPitch;
+  const back = Math.random() < 0.45;
+  hyTo = back ? 0 : (Math.random()*2-1) * 0.46;
+  hpTo = back ? 0 : (Math.random()*2-1) * 0.10;
+  headT = 0; headDur = 1.5 + Math.random()*0.9;
+  nextLook = 6 + Math.random()*4;
+}
+
+// ---------- うなずき演出 ----------
+let nodT = -1;
+
+// ---------- 対話 ----------
+const talkTxt = $('talkTxt');
+let typing = null, typingDone = null, phase = 0, busy = false;
+function say(line, done){
+  if (typing) { clearInterval(typing); typing = null; }
+  talkTxt.textContent = '';
+  let i = 0;
+  typingDone = () => { talkTxt.textContent = line; typingDone = null; if (done) done(); };
+  typing = setInterval(() => {
+    talkTxt.textContent = line.slice(0, ++i);
+    if (i >= line.length) { clearInterval(typing); typing = null; typingDone = null; if (done) done(); }
+  }, 55);
+}
+function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const f = typingDone; typingDone = null; if (f) f(); return true; } return false; }
+
+function startDialogue(){
+  phase = 1;
+  say('書斎へようこそ。');
+}
+function advance(){
+  if (busy) return;
+  if (skipTyping()) return;
+  if (phase === 1) { phase = 2; say('今日は何を見に来た？'); return; }
+  if (phase === 2) { showChoices(); return; }
+}
+$('talk').onclick = advance;
+$('act').onclick = () => { if (busy) return; if (skipTyping()) { } if (phase < 2) { phase = 2; say('今日は何を見に来た？', showChoices); return; } showChoices(); };
+
+const choices = $('choices');
+function showChoices(){
+  if (choices.classList.contains('show')) return;
+  phase = 3;
+  $('act').classList.add('hide');
+  choices.classList.add('show');
+  [...choices.children].forEach((b,i) => setTimeout(() => b.classList.add('in'), 60*i));
+}
+choices.querySelectorAll('.ch.dim').forEach(b => {
+  b.onclick = () => {
+    const s = b.querySelector('.soon'); if (!s) return;
+    s.classList.add('flash');
+    setTimeout(() => s.classList.remove('flash'), 900);
+  };
+});
+$('chRead').onclick = () => {
+  if (busy) return;
+  busy = true;
+  choices.classList.remove('show');
+  nodT = 0;                       // うなずき + 手を上げる
+  say('じゃあ、これだね。', () => {
+    setTimeout(() => { $('fade').style.opacity = 1; }, 500);
+    setTimeout(() => { location.href = '../intro/?from=hall'; }, 1400);
+  });
+};
+
+// ---------- ループ ----------
+function resize(){
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const clock = new THREE.Clock();
+const frame = () => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // 蝋燭のゆらぎ
+  const fl = 1 + Math.sin(t*8.7)*0.07 + Math.sin(t*21.3)*0.04 + Math.sin(t*3.1)*0.03;
+  candle.intensity = 7.5 * fl;
+  candle.position.x = -1.35 + Math.sin(t*2.3)*0.02;
+  flame.position.copy(candle.position);
+  flame.scale.setScalar(0.9 + (fl-1)*1.6);
+  fill.intensity = 1.3 * (1 + Math.sin(t*7.3+1.2)*0.08);
+
+  if (figure) {
+    // --- 呼吸(約4秒周期) ---
+    const br = Math.sin(t * (Math.PI*2/4.0));
+    const T = NODE.Torso, bT = BASE.Torso;
+    T.scale.set(bT.s.x*(1+br*0.007), bT.s.y*(1+br*0.011), bT.s.z*(1+br*0.009));
+    T.position.set(bT.p.x, bT.p.y + br*0.009, bT.p.z);
+    T.rotation.set(0, 0, Math.sin(t*0.31)*0.012);
+
+    // --- 首振り ---
+    nextLook -= dt;
+    if (nextLook <= 0 && nodT < 0) scheduleLook();
+    if (headT < headDur) {
+      headT += dt;
+      const k = Math.min(headT/headDur, 1), e = k*k*(3-2*k);
+      headYaw = hyFrom + (hyTo-hyFrom)*e;
+      headPitch = hpFrom + (hpTo-hpFrom)*e;
+    }
+    // --- うなずき ---
+    let nod = 0, raise = 0;
+    if (nodT >= 0) {
+      nodT += dt;
+      nod = Math.sin(Math.min(nodT,1.1) * Math.PI / 1.1) * 0.26;
+      raise = Math.sin(Math.min(nodT,1.6) * Math.PI / 1.6);
+      if (nodT > 1.8) nodT = -1;
+    }
+    const H = NODE.Head, bH = BASE.Head;
+    H.rotation.set(headPitch - br*0.018 + nod, headYaw, Math.sin(t*0.27+2.0)*0.015);
+    H.position.set(bH.p.x, bH.p.y + br*0.004, bH.p.z);
+
+    // --- 腕(位相差つきのゆっくりした揺れ) ---
+    const aL = NODE.ArmL, aR = NODE.ArmR;
+    aL.quaternion.copy(BASE.ArmL.q);
+    aR.quaternion.copy(BASE.ArmR.q);
+    aL.rotateZ(-0.030 + Math.sin(t*0.62)*0.030 - raise*0.62);
+    aL.rotateX(Math.sin(t*0.47+0.6)*0.030 - raise*0.30);
+    aR.rotateZ( 0.030 - Math.sin(t*0.62+1.35)*0.030);
+    aR.rotateX(Math.sin(t*0.47+2.1)*0.030);
+
+    // --- 手首(腕とは独立の小さな回転) ---
+    const hL = NODE.HandL, hR = NODE.HandR;
+    hL.quaternion.copy(BASE.HandL.q);
+    hR.quaternion.copy(BASE.HandR.q);
+    hL.rotateZ(Math.sin(t*0.93+0.3)*0.075 - raise*0.35);
+    hL.rotateX(Math.sin(t*0.71+1.4)*0.055);
+    hR.rotateZ(-Math.sin(t*0.88+2.2)*0.075);
+    hR.rotateX(Math.sin(t*0.66+0.2)*0.055);
+  }
+
+  // --- カメラ: 5秒放置で正面へ戻る ---
+  if (!dragging) {
+    idleT += dt;
+    if (idleT > 5) returning = true;
+  } else idleT = 0;
+  if (returning) {
+    const k = 1 - Math.pow(0.001, dt);   // なめらかな指数イージング
+    camTh += wrapAngle(HOME.th - camTh) * k;
+    camPh += (HOME.ph - camPh) * k;
+    camD  += (HOME.d  - camD ) * k;
+    if (Math.abs(wrapAngle(HOME.th-camTh)) < 0.002 && Math.abs(HOME.ph-camPh) < 0.002 && Math.abs(HOME.d-camD) < 0.004) {
+      camTh = HOME.th; camPh = HOME.ph; camD = HOME.d; returning = false;
+    }
+  }
+  const cy = TARGET_Y + camD * Math.cos(camPh);
+  camera.position.set(
+    camD * Math.sin(camPh) * Math.sin(camTh),
+    Math.max(0.18, cy),
+    camD * Math.sin(camPh) * Math.cos(camTh)
+  );
+  camera.lookAt(0, TARGET_Y, 0);
+
+  // --- 塵 ---
+  const p = dustGeo.attributes.position.array;
+  for (let i=0;i<N;i++){
+    p[i*3+1] += dspd[i]*dt;
+    p[i*3] += Math.sin(t*0.5 + i)*0.0006;
+    if (p[i*3+1] > 2.8) p[i*3+1] = -0.1;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+
+  renderer.render(scene, camera);
+};
+renderer.setAnimationLoop(frame);
+
+// 検証用
+window.__hall = { THREE, scene, camera, renderer, frame, NODE, BASE,
+  state: () => ({
+    torsoY: NODE.Torso ? NODE.Torso.position.y : null,
+    torsoSY: NODE.Torso ? NODE.Torso.scale.y : null,
+    headYaw: NODE.Head ? NODE.Head.rotation.y : null,
+    armLZ: NODE.ArmL ? NODE.ArmL.rotation.z : null,
+    cam: [camTh, camPh, camD], phase, t: clock.elapsedTime
+  }) };
+</script>
+</body>
+</html>

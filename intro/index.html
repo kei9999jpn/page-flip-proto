@@ -9,12 +9,59 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 #c{display:block;width:100%;height:100%;touch-action:none}
 #logo{position:fixed;top:7vh;left:50%;transform:translateX(-50%);width:min(58vw,340px);
   opacity:0;transition:opacity 2.4s;pointer-events:none;filter:drop-shadow(0 0 18px rgba(0,0,0,.9))}
-#menu{position:fixed;left:0;right:0;bottom:6vh;display:flex;flex-direction:column;gap:14px;
-  align-items:center;opacity:0;transition:opacity 1.8s}
+#menu{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 3vh);
+  display:flex;flex-direction:column;gap:12px;align-items:center;opacity:0;transition:opacity 1.8s}
 .btn{color:#d8cfbc;background:rgba(20,14,8,.55);border:1px solid rgba(216,207,188,.35);
   padding:11px 42px;font-size:15px;letter-spacing:.45em;text-indent:.45em;cursor:pointer;
   font-family:serif;backdrop-filter:blur(2px)}
 .btn:active{background:rgba(216,207,188,.18)}
+
+/* ---- 対話ボックス（ゲーム風・羊皮紙パネル） ---- */
+#talk{width:min(88vw,560px);min-height:74px;box-sizing:border-box;
+  background:linear-gradient(180deg,rgba(38,28,16,.88),rgba(20,14,8,.9));
+  border:1px solid rgba(216,207,188,.42);border-radius:3px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.5) inset,0 10px 34px rgba(0,0,0,.7);
+  padding:16px 20px 18px;color:#e6dcc5;font-family:serif;font-size:15px;line-height:1.9;
+  letter-spacing:.12em;backdrop-filter:blur(2px)}
+#talk .name{font-size:11px;letter-spacing:.42em;text-indent:.42em;color:#a9997a;margin-bottom:6px}
+#talk .txt{min-height:1.9em;white-space:pre-wrap}
+#talk .cur{opacity:.75;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ---- 選択肢 ---- */
+#choices{width:min(88vw,560px);display:flex;flex-direction:column;gap:7px}
+.ch{display:flex;align-items:center;gap:10px;color:#d8cfbc;font-family:serif;font-size:14px;
+  letter-spacing:.2em;background:rgba(20,14,8,.6);border:1px solid rgba(216,207,188,.3);
+  padding:10px 16px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box}
+.ch::before{content:"◆";font-size:9px;color:#c8a15a;opacity:.85}
+.ch:active{background:rgba(216,207,188,.16)}
+.ch.dim{color:#8b8271;border-color:rgba(216,207,188,.14);background:rgba(20,14,8,.35);cursor:default}
+.ch.dim::before{color:#6e6553}
+.ch .soon{margin-left:auto;font-size:10px;letter-spacing:.3em;color:#8b7f66;
+  border:1px solid rgba(216,207,188,.2);padding:2px 7px}
+.ch .soon.flash{color:#d8cfbc;border-color:rgba(216,207,188,.55)}
+
+/* ---- 小アイコン行 ---- */
+#icons{display:flex;gap:9px;justify-content:center;margin-top:2px}
+.ico{color:#c3b9a2;background:rgba(20,14,8,.5);border:1px solid rgba(216,207,188,.24);
+  padding:7px 15px;font-size:12px;letter-spacing:.24em;text-indent:.24em;font-family:serif;cursor:pointer}
+.ico:active{background:rgba(216,207,188,.16)}
+
+/* ---- この本について ---- */
+#about{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(5,3,1,.72);z-index:5}
+#about .box{background:#161009;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;font-family:serif;
+  padding:28px 30px;width:min(86vw,420px);max-height:80vh;overflow:auto;box-sizing:border-box}
+#about h2{font-size:14px;letter-spacing:.4em;text-indent:.4em;margin:0 0 20px;font-weight:normal;text-align:center}
+#about p{font-size:14px;line-height:2.1;letter-spacing:.1em;margin:0 0 10px;color:#ded3ba}
+#about hr{border:none;border-top:1px solid rgba(216,207,188,.22);margin:22px 0 16px}
+#about label{display:flex;justify-content:space-between;align-items:center;margin:13px 0;font-size:13px;letter-spacing:.15em}
+#about input[type=checkbox]{accent-color:#c9bda2;transform:scale(1.2)}
+#about input[type=email]{width:100%;box-sizing:border-box;margin:6px 0 4px;background:rgba(0,0,0,.35);
+  border:1px solid rgba(216,207,188,.3);color:#e6dcc5;font-family:serif;font-size:13px;padding:8px 10px;letter-spacing:.08em}
+#about .note{font-size:11px;letter-spacing:.18em;color:#9a9078;margin:4px 0 0}
+#panel select,#about select{background:rgba(0,0,0,.35);border:1px solid rgba(216,207,188,.3);
+  color:#e6dcc5;font-family:serif;font-size:13px;padding:5px 8px;letter-spacing:.1em}
 #panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(5,3,1,.72)}
 #panel .box{background:#161009;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;
@@ -41,9 +88,19 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 <canvas id="c"></canvas>
 <img id="logo" src="../assets/logo-white.png" alt="">
 <div id="menu">
-  <button class="btn" id="btnRead">名言を見る</button>
-  <button class="btn" id="btnFav">お気に入り</button>
-  <button class="btn" id="btnSet">設　定</button>
+  <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
+  <div id="choices">
+    <button class="ch" id="chRead">魔法の名言の書を読む</button>
+    <button class="ch dim" data-soon="1">思考実験<span class="soon">準備中</span></button>
+    <button class="ch dim" data-soon="1">占い<span class="soon">準備中</span></button>
+    <button class="ch dim" data-soon="1">星座占い<span class="soon">準備中</span></button>
+    <button class="ch dim" data-soon="1">エッセイ集<span class="soon">準備中</span></button>
+  </div>
+  <div id="icons">
+    <button class="ico" id="btnFav">♡ お気に入り</button>
+    <button class="ico" id="btnSet">設定</button>
+    <button class="ico" id="btnAbout">この本について</button>
+  </div>
 </div>
 <div id="panel"><div class="box">
   <h2>設定</h2>
@@ -53,7 +110,26 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <label>蝋燭の音 <input type="checkbox" id="sCandle"></label>
   <label>環境音の大きさ <input type="range" id="sAmb" min="0" max="1" step="0.05"></label>
   <label>めくり音の大きさ <input type="range" id="sFlip" min="0" max="1.5" step="0.05"></label>
+  <label>雨の種類 <select id="sRainKind">
+    <option value="std">標準</option>
+    <option value="drizzle">小雨</option>
+    <option value="window">窓打ち</option>
+    <option value="storm">嵐</option>
+    <option value="suno1">Suno雨</option>
+  </select></label>
   <button id="closeBtn">閉じる</button>
+</div></div>
+<div id="about"><div class="box">
+  <h2>この本について</h2>
+  <p>これは魔法の書だ。</p>
+  <p>開くたび、千の頁は並びを変える。同じ本は二度と読めない。</p>
+  <p>心に残った一枚は ♡ で挟め。挟んだ頁は、お前だけの本として綴じられる。</p>
+  <p>栞を押せば、その一冊だけを読める。</p>
+  <hr>
+  <label>選んだ名言をメールで送る <input type="checkbox" id="aMail"></label>
+  <input type="email" id="aMailTo" placeholder="メールアドレス" autocomplete="email">
+  <p class="note">送信機能は準備中</p>
+  <button id="aboutClose" style="display:block;margin:24px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 30px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer">閉じる</button>
 </div></div>
 <div id="burst"></div>
 <div id="readTitle"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
@@ -71,7 +147,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ---------- 設定(共有: a/ 側も同じキーを読む) ----------
-const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0 };
+const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0,
+                   rainKind:'std', mail:false, mailTo:'' };
+const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
+                   window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
+                   suno1:'../assets/rain/suno1.mp3' };
 let S = DEFAULTS;
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); }
@@ -84,12 +164,30 @@ $('sInsects').onchange = e => { S.insects = e.target.checked; saveS(); };
 $('sCandle').onchange = e => { S.candle = e.target.checked; saveS(); };
 $('sAmb').oninput = e => { S.amb = +e.target.value; saveS(); };
 $('sFlip').oninput = e => { S.flip = +e.target.value; saveS(); };
+$('sRainKind').value = RAIN_SRC[S.rainKind] ? S.rainKind : 'std';
+$('sRainKind').onchange = e => { S.rainKind = e.target.value; applyRainSrc(); saveS(); };
 $('btnSet').onclick = () => { $('panel').style.display = 'flex'; };
 $('closeBtn').onclick = () => { $('panel').style.display = 'none'; };
+
+// ---------- この本について ----------
+$('aMail').checked = !!S.mail;
+$('aMailTo').value = S.mailTo || '';
+$('aMail').onchange = e => { S.mail = e.target.checked; saveS(); };
+$('aMailTo').oninput = e => { S.mailTo = e.target.value; saveS(); };
+$('btnAbout').onclick = () => { $('about').style.display = 'flex'; };
+$('aboutClose').onclick = () => { $('about').style.display = 'none'; };
 
 // ---------- 音 ----------
 const bgm = $('bgm'), rain = $('rain');
 let ac = null, cricketGain = null, audioOn = false;
+function applyRainSrc() {
+  const src = RAIN_SRC[S.rainKind] || RAIN_SRC.std;
+  if (rain.getAttribute('src') === src) return;
+  const wasPlaying = !rain.paused;
+  rain.setAttribute('src', src); rain.load();
+  if (wasPlaying || (audioOn && S.rain)) { rain.volume = S.rain ? 0.34 * S.amb : 0; rain.play().catch(()=>{}); }
+}
+applyRainSrc();
 function startCrickets() {
   if (!ac || cricketGain) return;
   cricketGain = ac.createGain(); cricketGain.connect(ac.destination);
@@ -165,6 +263,7 @@ new GLTFLoader().load('../assets/book.glb', (g) => {
   }
   $('logo').style.opacity = 1;
   $('menu').style.opacity = 1;
+  setTimeout(startDialogue, 700);
 });
 
 // 塵
@@ -205,8 +304,40 @@ function beginRead(to) {
   setTimeout(() => { $('fade').style.opacity = 1; }, 3050);
   setTimeout(() => location.href = dest, 4100);
 }
-$('btnRead').onclick = () => beginRead('../a/#read');
 $('btnFav').onclick = () => beginRead('../a/#fav');
+
+// ---------- 対話 + 選択肢 ----------
+const talkTxt = $('talkTxt'), choices = $('choices');
+let typing = null;
+function say(line, done) {
+  if (typing) clearInterval(typing);
+  talkTxt.textContent = '';
+  let i = 0;
+  typing = setInterval(() => {
+    talkTxt.textContent = line.slice(0, ++i);
+    if (i >= line.length) { clearInterval(typing); typing = null; if (done) done(); }
+  }, 52);
+}
+choices.style.visibility = 'hidden';
+function showChoices() { choices.style.visibility = 'visible'; }
+const fromHall = new URLSearchParams(location.search).get('from') === 'hall';
+function startDialogue() {
+  if (fromHall) { say('じゃあ、これだね。', () => setTimeout(showChoices, 600)); }
+  else { say('書斎へようこそ。今日は何を見に来た？', showChoices); }
+}
+$('chRead').onclick = () => {
+  if (opening || diving) return;
+  choices.style.visibility = 'hidden';
+  say('じゃあ、これだね。', () => setTimeout(() => beginRead('../a/#read'), 700));
+};
+choices.querySelectorAll('.ch.dim').forEach(b => {
+  b.onclick = () => {
+    const s = b.querySelector('.soon');
+    if (!s) return;
+    s.classList.add('flash');
+    setTimeout(() => s.classList.remove('flash'), 900);
+  };
+});
 // 本そのものをタップしても始まる
 let downXY = null;
 canvas.addEventListener('pointerdown', e => { downXY = [e.clientX, e.clientY]; });
