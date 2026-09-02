@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>異世界の叡智 — 書斎</title>
 <style>
-html,body{margin:0;height:100%;background:#0b0806;overflow:hidden;font-family:serif;
+html,body{margin:0;height:100%;background:#0b0806 url(../assets/hall-bg.jpg) center 22%/cover no-repeat;overflow:hidden;font-family:serif;
   -webkit-tap-highlight-color:transparent}
 #c{display:block;width:100%;height:100%;touch-action:none}
 
@@ -52,17 +52,20 @@ html,body{margin:0;height:100%;background:#0b0806;overflow:hidden;font-family:se
   border:1px solid rgba(216,207,188,.2);padding:2px 7px;transition:color .25s,border-color .25s}
 .ch .soon.flash{color:#e6dcc5;border-color:rgba(216,207,188,.6)}
 
+#crest{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 3.2vh);width:64px;margin-left:-32px;opacity:.9;pointer-events:none;filter:drop-shadow(0 2px 6px #000)}
 #hint{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 2.4vh);text-align:center;
   color:#8e8368;font-family:serif;font-size:11px;letter-spacing:.3em;text-indent:.3em;
   opacity:0;transition:opacity 1.2s;pointer-events:none}
 #hint.show{opacity:.85}
+#hint{top:calc(env(safe-area-inset-top,0px) + 3.2vh + 76px)}
 
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .8s ease-in}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">ドラッグで見回す</div>
+<img id="crest" src="../assets/logo-mark.png" alt="">
+<div id="hint" style="display:none">ドラッグで見回す</div>
 <div id="ui">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="actWrap"><button id="act">話す/選ぶ</button></div>
@@ -90,12 +93,13 @@ const $ = id => document.getElementById(id);
 
 // ---------- 設定(intro/ a/ と共有) ----------
 const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0,
-                   rainKind:'std', mail:false, mailTo:'' };
+                   rainKind:'study', bgmVol:0.5, mail:false, mailTo:'' };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
-                   suno1:'../assets/rain/suno1.mp3' };
+                   suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
 let S = DEFAULTS;
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
+if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} }
 
 // ---------- 環境音(任意・失敗しても無視) ----------
 const rain = $('rain');
@@ -109,7 +113,8 @@ addEventListener('pointerdown', ensureAudio);
 
 // ---------- three.js ----------
 const canvas = $('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -118,15 +123,15 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0806);
-scene.fog = new THREE.FogExp2(0x0b0806, 0.115);
+scene.background = null;   // 2026-09-03: 背景は body の書斎画像(ChatGPT生成)。人形は差し替え前提の仮置き
+
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 60);
 
 // 床
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(40, 40),
-  new THREE.MeshStandardMaterial({ color:0x2a2018, roughness:0.95, metalness:0.0 })
+  new THREE.ShadowMaterial({ opacity:0.55 })
 );
 floor.rotation.x = -Math.PI/2;
 floor.receiveShadow = true;
@@ -194,14 +199,16 @@ scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({
   color:0xd8b878, size:0.012, transparent:true, opacity:0.5, depthWrite:false })));
 
 // ---------- カメラ操作(自作オービット) ----------
-const HOME = { th: 0, ph: 1.42, d: 4.4 };      // th=0 が正面
-const TARGET_Y = 0.55;
+const HOME = { th: 0, ph: 1.50, d: 2.0 };   // 2026-09-03 KEI: 縦型なので上半身だけのドアップ(ゲームの会話画面風)      // th=0 が正面
+const TARGET_Y = 1.36;
 let camTh = HOME.th, camPh = HOME.ph, camD = HOME.d;
+const CAM_LOCK = true;   // 2026-09-03 KEI: カメラ移動なし(固定のドアップ)
 let idleT = 0, dragging = false, returning = false;
 const ptrs = new Map();
 let lastX = 0, lastY = 0, pinch0 = 0, d0 = 0, moved = 0;
 
 canvas.addEventListener('pointerdown', e => {
+  if (CAM_LOCK) return;
   canvas.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
   if (ptrs.size === 1) { dragging = true; lastX = e.clientX; lastY = e.clientY; moved = 0; }
@@ -209,6 +216,7 @@ canvas.addEventListener('pointerdown', e => {
   idleT = 0; returning = false;
 });
 canvas.addEventListener('pointermove', e => {
+  if (CAM_LOCK) return;
   if (!ptrs.has(e.pointerId)) return;
   ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
   idleT = 0; returning = false;
@@ -227,7 +235,7 @@ canvas.addEventListener('pointermove', e => {
 function endPtr(e){ ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (!ptrs.size) dragging = false; }
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', e => { e.preventDefault(); camD = clamp(camD + e.deltaY*0.0035, 2.2, 8.0); idleT = 0; returning = false; }, { passive:false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (CAM_LOCK) return; camD = clamp(camD + e.deltaY*0.0035, 2.2, 8.0); idleT = 0; returning = false; }, { passive:false });
 function pinchDist(){ const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y) || 1; }
 function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 function wrapAngle(a){ while (a > Math.PI) a -= Math.PI*2; while (a < -Math.PI) a += Math.PI*2; return a; }
@@ -245,7 +253,7 @@ function scheduleLook(){
 }
 
 // ---------- うなずき演出 ----------
-let nodT = -1;
+let nodT = -1, nextGesture = 3.5;
 
 // ---------- 対話 ----------
 const talkTxt = $('talkTxt');
@@ -264,7 +272,7 @@ function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const
 
 function startDialogue(){
   phase = 1;
-  say('書斎へようこそ。');
+  say('よく来たね。');
 }
 function advance(){
   if (busy) return;
@@ -273,7 +281,7 @@ function advance(){
   if (phase === 2) { showChoices(); return; }
 }
 $('talk').onclick = advance;
-$('act').onclick = () => { if (busy) return; if (skipTyping()) { } if (phase < 2) { phase = 2; say('今日は何を見に来た？', showChoices); return; } showChoices(); };
+$('act').onclick = () => { if (busy || phase >= 3) return; if (skipTyping()) { } if (phase < 2) { phase = 2; say('今日は何を見に来た？', showChoices); return; } showChoices(); };
 
 const choices = $('choices');
 function showChoices(){
@@ -294,10 +302,19 @@ $('chRead').onclick = () => {
   if (busy) return;
   busy = true;
   choices.classList.remove('show');
-  nodT = 0;                       // うなずき + 手を上げる
-  say('じゃあ、これだね。', () => {
-    setTimeout(() => { $('fade').style.opacity = 1; }, 500);
-    setTimeout(() => { location.href = '../intro/?from=hall'; }, 1400);
+  nodT = 0;                       // うなずき
+  // 2026-09-03 KEI: 選んだら「本を見に行く」ボタンを出し、押したら本の3D画面へ
+  say('じゃあ、本のところへ案内しよう。', () => {
+    const act = $('act');
+    act.textContent = '本を見に行く';
+    act.classList.remove('hide');
+    act.onclick = () => {
+      act.classList.add('hide');
+      nodT = 0;                   // 手を上げて案内
+      $('fade').style.opacity = 1;
+      setTimeout(() => { location.href = '../intro/?from=hall'; }, 900);
+    };
+    busy = false;
   });
 };
 
@@ -339,6 +356,9 @@ const frame = () => {
       headYaw = hyFrom + (hyTo-hyFrom)*e;
       headPitch = hpFrom + (hpTo-hpFrom)*e;
     }
+    // --- 喋ってる感: 5〜10秒ごとに、うなずき+手を上げる(2026-09-03 KEI) ---
+    nextGesture -= dt;
+    if (nextGesture <= 0 && nodT < 0) { nodT = 0; nextGesture = 5 + Math.random() * 5; }
     // --- うなずき ---
     let nod = 0, raise = 0;
     if (nodT >= 0) {

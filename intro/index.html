@@ -90,9 +90,9 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 <div id="menu">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="choices">
-    <button class="ch" id="chRead">魔法の書を読む</button>
-    <button class="ch" id="btnFav">お気に入りの本を開く</button>
-    <button class="ch" id="btnAbout">置き手紙を読む</button>
+    <button class="ch" id="chRead">この本を読む</button>
+    <button class="ch" id="btnFav">お気に入りを見る</button>
+    <button class="ch" id="btnAbout">置き手紙を読む（この本の説明）</button>
   </div>
   <div id="icons">
     <button class="ico" id="btnSet">設定</button>
@@ -101,12 +101,14 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 <div id="panel"><div class="box">
   <h2>設定</h2>
   <label>BGM <input type="checkbox" id="sBgm"></label>
+  <label>BGMの大きさ <input type="range" id="sBgmVol" min="0" max="1" step="0.05"></label>
   <label>雨の音 <input type="checkbox" id="sRain"></label>
   <label>虫の声 <input type="checkbox" id="sInsects"></label>
   <label>蝋燭の音 <input type="checkbox" id="sCandle"></label>
   <label>環境音の大きさ <input type="range" id="sAmb" min="0" max="1" step="0.05"></label>
   <label>めくり音の大きさ <input type="range" id="sFlip" min="0" max="1.5" step="0.05"></label>
   <label>雨の種類 <select id="sRainKind">
+    <option value="study">書斎の雨(暖炉・雷)</option>
     <option value="std">標準</option>
     <option value="drizzle">小雨</option>
     <option value="window">窓打ち</option>
@@ -117,10 +119,13 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 </div></div>
 <div id="about"><div class="box">
   <h2>尽きぬ書</h2>
-  <p>この本は、開くたびに中身が入れ替わる。</p>
+  <p>これは、私が集めてきた言葉を全部綴じた本だ。</p>
+  <p>開くたびに、頁の並びが入れ替わる。</p>
   <p>昨日の一頁目は、今日はもうどこにもない。</p>
-  <p>めくってもめくっても、終わりが来ない。</p>
-  <p>私は、そういう本が欲しくて、これを作った。</p>
+  <p>集めた言葉が増えるたび、この本は日に日に分厚くなっていく。</p>
+  <hr>
+  <p>私自身、暇なときにはいつもこれを開いて眺めている。</p>
+  <p>それを、あなたにも見せたくなった。</p>
   <hr>
   <p>使い方は簡単だ。</p>
   <p>暇な時に開く。一枚めくる。言葉を浴びる。</p>
@@ -130,7 +135,6 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <p>答えは書いていない。問いだけを置いてある。</p>
   <p>どこで閉じてもいい。</p>
   <p>次に開いた時、この本はもう、別の本だ。</p>
-  <p style="text-align:right;margin-top:18px;letter-spacing:.2em">—— 異世界の叡智</p>
   <button id="aboutClose" style="display:block;margin:24px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 30px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer">閉じる</button>
 </div></div>
 <div id="burst"></div>
@@ -150,16 +154,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ---------- 設定(共有: a/ 側も同じキーを読む) ----------
 const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0,
-                   rainKind:'std', mail:false, mailTo:'' };
+                   rainKind:'study', bgmVol:0.5, mail:false, mailTo:'' };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
-                   suno1:'../assets/rain/suno1.mp3' };
+                   suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
 let S = DEFAULTS;
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
+// 2026-09-03: 既存ユーザーも一度だけ「書斎の雨」+BGM半分へ移行
+if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} }
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); }
 const $ = id => document.getElementById(id);
 $('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sInsects').checked = S.insects; $('sCandle').checked = S.candle;
-$('sAmb').value = S.amb; $('sFlip').value = S.flip;
+$('sAmb').value = S.amb; $('sFlip').value = S.flip; $('sBgmVol').value = S.bgmVol;
+$('sBgmVol').oninput = e => { S.bgmVol = +e.target.value; saveS(); };
 $('sBgm').onchange = e => { S.bgm = e.target.checked; saveS(); };
 $('sRain').onchange = e => { S.rain = e.target.checked; saveS(); };
 $('sInsects').onchange = e => { S.insects = e.target.checked; saveS(); };
@@ -209,7 +216,7 @@ function startCrickets() {
 }
 function applyAudio() {
   if (!audioOn) return;
-  bgm.volume = S.bgm ? 0.22 : 0; if (S.bgm && bgm.paused) bgm.play().catch(()=>{});
+  bgm.volume = S.bgm ? 0.22 * S.bgmVol : 0; if (S.bgm && bgm.paused) bgm.play().catch(()=>{});
   rain.volume = S.rain ? 0.34 * S.amb : 0; if (S.rain && rain.paused) rain.play().catch(()=>{});
 }
 function ensureAudio() {
@@ -226,18 +233,18 @@ const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.05;   // v3 2026-09-03: 革を黒に近く
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0d0a07);
-scene.fog = new THREE.FogExp2(0x0d0a07, 1.4);
+scene.fog = new THREE.FogExp2(0x0d0a07, 0.95);   // v3: カメラを引いた分だけ霧を薄く(1.4のままだと真っ暗)
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
-const CAM_R = 0.88;
+const CAM_R = 1.22;   // v3: 分厚い本が画面からはみ出していたので引く
 let camTheta = 0.35, camPhi = 1.02;
 
-scene.add(new THREE.AmbientLight(0x2a2018, 2.2));
-const candle = new THREE.PointLight(0xffb45e, 5.2, 2.5, 2.0);
+scene.add(new THREE.AmbientLight(0x2a2018, 2.0));
+const candle = new THREE.PointLight(0xffcf9a, 6.5, 2.5, 2.0);
 candle.position.set(0.28, 0.34, 0.30);
 scene.add(candle);
 const rimL = new THREE.DirectionalLight(0x7a86a8, 0.9);
@@ -247,7 +254,12 @@ scene.add(rimL);
 const pivot = new THREE.Group();
 scene.add(pivot);
 let book = null, hinge = null;
-new GLTFLoader().load('../assets/book.glb', (g) => {
+// ?glb=... で差し替え可(モデル検証用。既定は従来どおり ../assets/book.glb)
+const _glbOverride = new URLSearchParams(location.search).get('glb');
+const MODEL_URL = _glbOverride
+  ? '../' + _glbOverride + '?_=' + Date.now()   // 検証用: キャッシュを避ける
+  : '../assets/book.glb';
+new GLTFLoader().load(MODEL_URL, (g) => {
   book = g.scene;
   book.rotation.z = 0.06;
   pivot.add(book);
@@ -321,7 +333,7 @@ choices.style.visibility = 'hidden';
 function showChoices() { choices.style.visibility = 'visible'; }
 const fromHall = new URLSearchParams(location.search).get('from') === 'hall';
 function startDialogue() {
-  if (fromHall) { say('じゃあ、これだね。', () => setTimeout(showChoices, 600)); }
+  if (fromHall) { say('これがその本だ。どうする？', () => setTimeout(showChoices, 500)); }
   else { say('書斎へようこそ。今日は何を見に来た？', showChoices); }
 }
 $('chRead').onclick = () => {
@@ -359,7 +371,8 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   idleT += dt;
-  candle.intensity = 5.2 + Math.sin(t*9.1)*0.7 + Math.sin(t*23.7)*0.4;
+  // 2026-09-03 KEI: ピカピカでなく、ゆっくり滑らかにぼやーっと変わる灯り
+  candle.intensity = 6.5 + Math.sin(t*0.71)*0.7 + Math.sin(t*1.63+1.1)*0.4 + Math.sin(t*0.29+2.4)*0.5;
   if (book) {
     pivot.position.y = Math.sin(t*0.9) * 0.008;
     if (!dragging && idleT > 2.5 && !opening && !diving) camTheta += dt * 0.12;

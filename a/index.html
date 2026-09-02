@@ -50,15 +50,16 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:15;transition:opacity 1.2s ease}
 
 /* ---- ambience overlays ---- */
-#candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;z-index:5;
+/* 2026-09-03: overlay合成が黒く潰れる不具合(Chrome)のため無効化。灯りは #halo(screen) と #shade で出す */
+#candle{display:none;position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;z-index:5;
   background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
 /* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
 #shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
-  background:radial-gradient(ellipse 58% 50% at 56% 52%,transparent 30%,rgba(0,0,0,.5) 68%,rgba(0,0,0,.88) 100%);
-  transition:transform .14s ease-out,opacity .14s ease-out}
+  background:radial-gradient(ellipse 62% 54% at 56% 50%,transparent 34%,rgba(0,0,0,.34) 68%,rgba(0,0,0,.78) 100%);
+  transition:none}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 /* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
-#flameWrap{position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
+#flameWrap{display:none;position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
 #wick{position:absolute;left:50%;bottom:0;width:4px;height:14px;margin-left:-2px;background:linear-gradient(#1a120a,#3a2a18);border-radius:2px}
 #flame{position:absolute;left:50%;bottom:10px;width:22px;height:54px;margin-left:-11px;transform-origin:50% 100%;
   border-radius:50% 50% 45% 45% / 70% 70% 30% 30%;
@@ -122,7 +123,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
 <script>
 (() => {
-const N = 20, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
+const N = 790, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
 // deck = いま本に綴じられているページ(実ページ番号の並び)。お気に入りモードで差し替わる
 const ALL_PAGES = Array.from({ length: N }, (_, i) => i);
 // 開くたびに並びをシャッフル(魔法の本)。お気に入りは実ページ番号で保存するので影響なし
@@ -146,10 +147,32 @@ addEventListener('resize', () => { layout(); draw(); });
 // ---- lazy image loading (cover shows instantly; pages arrive in the background) ----
 const imgs = new Array(N); let backTex = null;
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-const pagesReady = Promise.all(Array.from({ length: N }, (_, i) => loadImg(SRC(i)).then(im => { imgs[i] = im; if (deck[index] === i) draw(); })));
+let index = 0, flip = null, anim = null;
+// 2026-09-03: 数百枚対応。全部先読みせず「いま開いている頁の前後だけ」を読み、めくるたびに先へ足していく(漫画アプリ式)
+const AHEAD = 8, BEHIND = 2, MAX_PAR = 4;
+const loading = new Set();
+let _firstReady = null;
+const pagesReady = new Promise(res => { _firstReady = res; });
+function ensure(i, prio) {
+  if (i < 0 || i >= N || imgs[i] || loading.has(i)) return;
+  if (!prio && loading.size >= MAX_PAR) return;
+  loading.add(i);
+  loadImg(SRC(i)).then(im => {
+    imgs[i] = im; loading.delete(i);
+    const k = deck.indexOf(i);
+    if (k >= index - 1 && k <= index + 1) draw();
+    if (i === deck[0] || i === deck[index]) _firstReady();
+    pump();
+  });
+}
+function pump() {
+  for (let d = 0; d <= AHEAD; d++) { const k = index + d; if (k >= 0 && k < deck.length) ensure(deck[k], d <= 1); }
+  for (let d = 1; d <= BEHIND; d++) { const k = index - d; if (k >= 0) ensure(deck[k], false); }
+}
+pump();
+setTimeout(() => { if (!imgs[deck[index]]) _firstReady(); }, 6000);   // 読めなくても暗い頁を出して先へ進める
 loadImg('../assets/backside.jpg').then(im => { backTex = im; });
 
-let index = 0, flip = null, anim = null;
 
 // ---------- favorites(しおり) ----------
 const favBtn = document.getElementById('favBtn');
@@ -231,7 +254,10 @@ function pathPoly(poly) {
 
 // ---------- render ----------
 function draw() {
+  pump();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // 2026-09-03: 初回描画が暗く出る不具合対策(前フレームの alpha/合成/影の状態が残らないよう毎回リセット)
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none'; ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
   ctx.clearRect(0, 0, W, H);
   const pw = W - EDGE, ph = H - EDGE;
 
@@ -317,10 +343,10 @@ draw();
 let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
 // 共有設定(intro/ の設定画面と同じキー)
-const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0, rainKind:'std' };
+const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
-                   suno1:'../assets/rain/suno1.mp3' };
+                   suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
 let SND = SND_DEFAULTS;
 try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
 function applyRainSrc() {
@@ -337,7 +363,7 @@ addEventListener('storage', e => {
   try { SND = { ...SND_DEFAULTS, ...(JSON.parse(e.newValue) || {}) }; } catch (err) { return; }
   applyRainSrc();
   rain.volume = SND.rain ? 0.34 * SND.amb : 0;
-  bgm.volume = SND.bgm ? 0.22 : 0;
+  bgm.volume = SND.bgm ? 0.22 * SND.bgmVol : 0;
 });
 function startCrickets() {
   if (!ac || cricketsOn) return;
@@ -387,7 +413,7 @@ function ensureAudio() {
     startCrickets();
     startCrackle();
   }
-  if (bgm.paused && SND.bgm) { bgm.volume = 0.22; bgm.play().catch(() => {}); }
+  if (bgm.paused && SND.bgm) { bgm.volume = 0.22 * SND.bgmVol; bgm.play().catch(() => {}); }
   if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
 }
 function pageSound(strength) {
@@ -601,28 +627,34 @@ const veil = document.getElementById('veil');
 let veilTarget = 0;
 veil.style.transition = 'opacity 1.4s ease';
 const shade = document.getElementById('shade'), flame = document.getElementById('flame'), halo = document.getElementById('halo');
-(function flicker() {
-  // 2026-09-02 KEI: ちらつきをはっきり。明るさの振れ幅を広げ、灯りの位置をずらして影を動かす
-  const r = Math.random();
-  candle.style.opacity = (r < 0.12 ? 0.35 + Math.random() * 0.2 : 0.7 + Math.random() * 0.3).toFixed(3);
-  const dx = (Math.random() - 0.5) * 2.2, dy = (Math.random() - 0.5) * 1.6, sc = 1 + (Math.random() - 0.5) * 0.06;
+// 2026-09-03 KEI: ピカピカ→「ゆっくり滑らかに、ぼやーっと変わる」灯り。乱数の飛びをやめ、遅い正弦の重ね合わせ+ゆるい目標追従
+let _fl = { t: 0, tgt: 0, cur: 0, next: 0 };
+function _smoothNoise(t) {
+  return Math.sin(t * 0.61) * 0.5 + Math.sin(t * 1.37 + 1.3) * 0.3 + Math.sin(t * 0.23 + 2.1) * 0.2;
+}
+let _flPrev = performance.now();
+(function flicker(now) {
+  const dt = Math.min((now - _flPrev) / 1000, 0.1); _flPrev = now; _fl.t += dt;
+  // たまに(8〜20秒に1回)ゆっくり暗くなる「息」。目標値へ時定数~1.2秒で寄る
+  if (_fl.t > _fl.next) { _fl.tgt = Math.random() < 0.45 ? -0.35 - Math.random() * 0.25 : 0; _fl.next = _fl.t + 8 + Math.random() * 12; }
+  _fl.cur += (_fl.tgt - _fl.cur) * (1 - Math.exp(-dt / 1.2));
+  if (_fl.tgt !== 0 && Math.abs(_fl.cur - _fl.tgt) < 0.03) _fl.tgt = 0;
+  const n = _smoothNoise(_fl.t);                         // -1..1 ゆっくり
+  const lvl = 0.86 + n * 0.10 + _fl.cur * 0.5;           // 全体の明るさ 0.5〜0.98
+  candle.style.opacity = lvl.toFixed(3);
+  const dx = _smoothNoise(_fl.t * 0.8 + 5) * 0.9, dy = _smoothNoise(_fl.t * 0.7 + 9) * 0.6, sc = 1 + n * 0.02;
   shade.style.transform = 'translate(' + dx.toFixed(2) + '%,' + dy.toFixed(2) + '%) scale(' + sc.toFixed(3) + ')';
-  shade.style.opacity = (r < 0.12 ? 1 : 0.8 + Math.random() * 0.2).toFixed(3);
-  // 炎そのものの揺れ(灯りと同期): 背の高さ・傾き・明るさ
-  const fh = r < 0.12 ? 0.6 + Math.random() * 0.2 : 0.85 + Math.random() * 0.3, fk = (Math.random() - 0.5) * 14;
-  flame.style.transform = 'scaleY(' + fh.toFixed(3) + ') scaleX(' + (0.85 + Math.random() * 0.3).toFixed(3) + ') skewX(' + fk.toFixed(1) + 'deg)';
-  flame.style.opacity = (0.85 + Math.random() * 0.15).toFixed(3);
-  halo.style.opacity = (r < 0.12 ? 0.5 : 0.8 + Math.random() * 0.2).toFixed(3);
-  halo.style.transform = 'translate(' + (35 + dx).toFixed(1) + '%,' + (40 + dy).toFixed(1) + '%) scale(' + (0.96 + Math.random() * 0.08).toFixed(3) + ')';
+  shade.style.opacity = (0.86 - _fl.cur * 0.3).toFixed(3);
+  halo.style.opacity = (0.78 + n * 0.12 + _fl.cur * 0.4).toFixed(3);
+  halo.style.transform = 'translate(' + (35 + dx).toFixed(1) + '%,' + (40 + dy).toFixed(1) + '%) scale(' + (1 + n * 0.03).toFixed(3) + ')';
   if (glowBase > 0) {
-    paperGlow.style.opacity = (glowBase * (0.55 + Math.random() * 0.45)).toFixed(3);
-    const s = 1 + (Math.random() - 0.5) * 0.05;
-    paperGlow.style.transform = 'translate(-50%,-50%) scale(' + s.toFixed(3) + ')';
-    // 部屋の暗さが呼吸するように揺らぐ(蝋燭が揺れて暗くなる瞬間)
-    if (Math.random() < 0.3) { veilTarget = Math.random() < 0.4 ? 0.12 + Math.random() * 0.1 : 0.02; veil.style.opacity = veilTarget.toFixed(3); }
+    paperGlow.style.opacity = (glowBase * (0.72 + n * 0.16 + _fl.cur * 0.3)).toFixed(3);
+    paperGlow.style.transform = 'translate(-50%,-50%) scale(' + (1 + n * 0.02).toFixed(3) + ')';
+    const vt = _fl.cur < -0.15 ? 0.10 : 0.02;
+    if (vt !== veilTarget) { veilTarget = vt; veil.style.opacity = vt.toFixed(3); }
   }
-  setTimeout(flicker, 60 + Math.random() * 180);
-})();
+  requestAnimationFrame(flicker);
+})(performance.now());
 
 // ---------- opening sequence: tap -> souls title -> zoom into the book -> pages ----------
 const cover = document.getElementById('cover');
@@ -718,7 +750,10 @@ if (location.hash === '#fav' || location.hash === '#read') {
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
   rampGlow(0.55, 900);
-  pagesReady.then(() => { draw(); updateFavUI(); });
+  pagesReady.then(() => { draw(); updateFavUI();
+    // 2026-09-03: 初回表示が暗いまま固まる(Chromeの合成キャッシュ)→ 少し後に layout+draw をやり直すと直る
+    [300, 1200, 2600].forEach(ms => setTimeout(() => { dispatchEvent(new Event('resize')); }, ms));
+  });
   showFavButtons();
   if (location.hash === '#fav') enterFavBook();
 }
