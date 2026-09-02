@@ -50,8 +50,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:15;transition:opacity 1.2s ease}
 
 /* ---- ambience overlays ---- */
-#candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:soft-light;z-index:5;
-  background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(255,180,95,.5),transparent 70%)}
+#candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;z-index:5;
+  background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
+/* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
+#shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
+  background:radial-gradient(ellipse 60% 52% at 50% 44%,transparent 40%,rgba(0,0,0,.42) 78%,rgba(0,0,0,.72) 100%);
+  transition:transform .14s ease-out,opacity .14s ease-out}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
 #cover{perspective:900px}
@@ -90,6 +94,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <canvas id="book"></canvas>
 <div id="paperGlow"></div>
 <div id="candle"></div>
+<div id="shade"></div>
 <div id="veil"></div>
 <canvas id="dust"></canvas>
 <div id="cover"><div id="coverImg"></div><div id="coverVin"></div><div id="coverGlow"></div><img id="logoMark" src="../assets/logo-mark.png" alt=""></div>
@@ -108,7 +113,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 const N = 20, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
 // deck = いま本に綴じられているページ(実ページ番号の並び)。お気に入りモードで差し替わる
 const ALL_PAGES = Array.from({ length: N }, (_, i) => i);
-let deck = ALL_PAGES.slice();
+// 開くたびに並びをシャッフル(魔法の本)。お気に入りは実ページ番号で保存するので影響なし
+function shuffled(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+let deck = shuffled(ALL_PAGES);
 const pg = k => imgs[deck[k]];
 const cv = document.getElementById('book'), ctx = cv.getContext('2d');
 let W, H, DPR, TRAVEL;
@@ -145,7 +152,7 @@ function updateFavUI() {
   const on = favs.includes(deck[index]);
   favBtn.textContent = on ? '♥' : '♡';
   favBtn.classList.toggle('on', on);
-  favListBtn.textContent = deck === ALL_PAGES || deck.length === N ? '栞' : '全';
+  favListBtn.textContent = !favMode ? '栞' : '全';
 }
 favBtn.addEventListener('click', () => {
   ensureAudio();
@@ -168,7 +175,7 @@ function enterFavBook() {
   draw(); updateFavUI(); pageSound(0.6);
 }
 function exitFavBook() {
-  favMode = false; deck = ALL_PAGES.slice(); index = 0; flip = null; anim = null;
+  favMode = false; deck = shuffled(ALL_PAGES); index = 0; flip = null; anim = null;
   draw(); updateFavUI(); pageSound(0.6);
 }
 favListBtn.addEventListener('click', () => { ensureAudio(); favMode ? exitFavBook() : enterFavBook(); });
@@ -298,7 +305,7 @@ draw();
 let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
 // 共有設定(intro/ の設定画面と同じキー)
-const SND_DEFAULTS = { bgm:true, rain:true, insects:true, amb:0.6, flip:1.0 };
+const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0 };
 let SND = SND_DEFAULTS;
 try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
 function startCrickets() {
@@ -321,12 +328,33 @@ function startCrickets() {
     setTimeout(loop, 900 + Math.random()*2200);
   })();
 }
+// 蝋燭の芯が爆ぜる音(ファイル無し・ノイズ合成)
+let crackleOn = false;
+function startCrackle() {
+  if (!ac || crackleOn) return;
+  crackleOn = true;
+  const len = Math.floor(ac.sampleRate * 0.05), noise = ac.createBuffer(1, len, ac.sampleRate), d = noise.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  (function loop() {
+    if (SND.candle) {
+      const n = 1 + Math.floor(Math.random() * 3), t0 = ac.currentTime + 0.02;
+      for (let i = 0; i < n; i++) {
+        const src = ac.createBufferSource(); src.buffer = noise; src.playbackRate.value = 0.6 + Math.random() * 0.9;
+        const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 2600; f.Q.value = 0.8;
+        const g = ac.createGain(); g.gain.value = (0.05 + Math.random() * 0.09) * SND.amb;
+        src.connect(f); f.connect(g); g.connect(ac.destination); src.start(t0 + i * (0.03 + Math.random() * 0.08));
+      }
+    }
+    setTimeout(loop, 400 + Math.random() * 2600);
+  })();
+}
 function ensureAudio() {
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
     if (ac) fetch('../assets/se/page-soft.mp3').then(r => r.arrayBuffer())
       .then(b => ac.decodeAudioData(b)).then(buf => { flipBuf = buf; }).catch(() => {});
     startCrickets();
+    startCrackle();
   }
   if (bgm.paused && SND.bgm) { bgm.volume = 0.22; bgm.play().catch(() => {}); }
   if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
@@ -335,7 +363,7 @@ function pageSound(strength) {
   if (!ac || !flipBuf) return;
   const src = ac.createBufferSource(); src.buffer = flipBuf;
   src.playbackRate.value = 0.94 + Math.random() * 0.14;   // slight variation each turn
-  const g = ac.createGain(); g.gain.value = 1.1 * SND.flip * Math.min(1, strength + 0.35);
+  const g = ac.createGain(); g.gain.value = 2.2 * SND.flip * Math.min(1, strength + 0.35);   // 2026-09-02 KEI: めくり音2倍
   src.connect(g); g.connect(ac.destination); src.start();
 }
 function thump() {
@@ -541,16 +569,22 @@ const paperGlow = document.getElementById('paperGlow');
 const veil = document.getElementById('veil');
 let veilTarget = 0;
 veil.style.transition = 'opacity 1.4s ease';
+const shade = document.getElementById('shade');
 (function flicker() {
-  candle.style.opacity = (0.75 + Math.random() * 0.25).toFixed(3);
+  // 2026-09-02 KEI: ちらつきをはっきり。明るさの振れ幅を広げ、灯りの位置をずらして影を動かす
+  const r = Math.random();
+  candle.style.opacity = (r < 0.12 ? 0.35 + Math.random() * 0.2 : 0.7 + Math.random() * 0.3).toFixed(3);
+  const dx = (Math.random() - 0.5) * 2.2, dy = (Math.random() - 0.5) * 1.6, sc = 1 + (Math.random() - 0.5) * 0.06;
+  shade.style.transform = 'translate(' + dx.toFixed(2) + '%,' + dy.toFixed(2) + '%) scale(' + sc.toFixed(3) + ')';
+  shade.style.opacity = (r < 0.12 ? 1 : 0.8 + Math.random() * 0.2).toFixed(3);
   if (glowBase > 0) {
     paperGlow.style.opacity = (glowBase * (0.55 + Math.random() * 0.45)).toFixed(3);
     const s = 1 + (Math.random() - 0.5) * 0.05;
     paperGlow.style.transform = 'translate(-50%,-50%) scale(' + s.toFixed(3) + ')';
     // 部屋の暗さが呼吸するように揺らぐ(蝋燭が揺れて暗くなる瞬間)
-    if (Math.random() < 0.18) { veilTarget = Math.random() < 0.35 ? 0.10 + Math.random() * 0.08 : 0.02; veil.style.opacity = veilTarget.toFixed(3); }
+    if (Math.random() < 0.3) { veilTarget = Math.random() < 0.4 ? 0.12 + Math.random() * 0.1 : 0.02; veil.style.opacity = veilTarget.toFixed(3); }
   }
-  setTimeout(flicker, 90 + Math.random() * 240);
+  setTimeout(flicker, 60 + Math.random() * 180);
 })();
 
 // ---------- opening sequence: tap -> souls title -> zoom into the book -> pages ----------

@@ -50,6 +50,7 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <label>BGM <input type="checkbox" id="sBgm"></label>
   <label>雨の音 <input type="checkbox" id="sRain"></label>
   <label>虫の声 <input type="checkbox" id="sInsects"></label>
+  <label>蝋燭の音 <input type="checkbox" id="sCandle"></label>
   <label>環境音の大きさ <input type="range" id="sAmb" min="0" max="1" step="0.05"></label>
   <label>めくり音の大きさ <input type="range" id="sFlip" min="0" max="1.5" step="0.05"></label>
   <button id="closeBtn">閉じる</button>
@@ -70,16 +71,17 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ---------- 設定(共有: a/ 側も同じキーを読む) ----------
-const DEFAULTS = { bgm:true, rain:true, insects:true, amb:0.6, flip:1.0 };
+const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0 };
 let S = DEFAULTS;
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); }
 const $ = id => document.getElementById(id);
-$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sInsects').checked = S.insects;
+$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sInsects').checked = S.insects; $('sCandle').checked = S.candle;
 $('sAmb').value = S.amb; $('sFlip').value = S.flip;
 $('sBgm').onchange = e => { S.bgm = e.target.checked; saveS(); };
 $('sRain').onchange = e => { S.rain = e.target.checked; saveS(); };
 $('sInsects').onchange = e => { S.insects = e.target.checked; saveS(); };
+$('sCandle').onchange = e => { S.candle = e.target.checked; saveS(); };
 $('sAmb').oninput = e => { S.amb = +e.target.value; saveS(); };
 $('sFlip').oninput = e => { S.flip = +e.target.value; saveS(); };
 $('btnSet').onclick = () => { $('panel').style.display = 'flex'; };
