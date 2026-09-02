@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>異世界の叡智 — 書</title>
 <style>
-html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:serif}
+html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) center 30%/cover no-repeat;overflow:hidden;font-family:serif}
 #c{display:block;width:100%;height:100%;touch-action:none}
 #logo{position:fixed;top:7vh;left:50%;transform:translateX(-50%);width:min(58vw,340px);
   opacity:0;transition:opacity 2.4s;pointer-events:none;filter:drop-shadow(0 0 18px rgba(0,0,0,.9))}
@@ -17,22 +17,26 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 .btn:active{background:rgba(216,207,188,.18)}
 
 /* ---- 対話ボックス（ゲーム風・羊皮紙パネル） ---- */
-#talk{width:min(88vw,560px);min-height:74px;box-sizing:border-box;
-  background:linear-gradient(180deg,rgba(38,28,16,.88),rgba(20,14,8,.9));
-  border:1px solid rgba(216,207,188,.42);border-radius:3px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.5) inset,0 10px 34px rgba(0,0,0,.7);
-  padding:16px 20px 18px;color:#e6dcc5;font-family:serif;font-size:15px;line-height:1.9;
-  letter-spacing:.12em;backdrop-filter:blur(2px)}
-#talk .name{font-size:11px;letter-spacing:.42em;text-indent:.42em;color:#a9997a;margin-bottom:6px}
+#talk{width:min(92vw,600px);min-height:118px;box-sizing:border-box;cursor:pointer;position:relative;
+  background:linear-gradient(180deg,rgba(46,33,18,.94),rgba(22,15,8,.96));
+  border:2px solid rgba(201,181,138,.55);border-radius:4px;
+  box-shadow:0 0 0 5px rgba(20,14,8,.9),0 0 0 6px rgba(201,181,138,.28),0 14px 40px rgba(0,0,0,.8);
+  padding:16px 24px 20px;color:#efe6d0;font-family:serif;font-size:17px;line-height:1.95;
+  letter-spacing:.12em;backdrop-filter:blur(3px)}
+#talk::before,#talk::after{content:"";position:absolute;width:10px;height:10px;border:2px solid rgba(201,181,138,.8);pointer-events:none}
+#talk::before{left:6px;top:6px;border-right:none;border-bottom:none}
+#talk::after{right:6px;bottom:6px;border-left:none;border-top:none}
+#talk .name{font-size:12px;letter-spacing:.45em;text-indent:.45em;color:#c9b58a;margin-bottom:6px}
 #talk .txt{min-height:1.9em;white-space:pre-wrap}
 #talk .cur{opacity:.75;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 
 /* ---- 選択肢 ---- */
-#choices{width:min(88vw,560px);display:flex;flex-direction:column;gap:7px}
-.ch{display:flex;align-items:center;gap:10px;color:#d8cfbc;font-family:serif;font-size:14px;
-  letter-spacing:.2em;background:rgba(20,14,8,.6);border:1px solid rgba(216,207,188,.3);
-  padding:10px 16px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box}
+#choices{width:min(92vw,600px);display:flex;flex-direction:column;gap:9px}
+.ch{display:flex;align-items:center;gap:12px;color:#efe6d0;font-family:serif;font-size:16px;
+  letter-spacing:.22em;background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));
+  border:1px solid rgba(201,181,138,.45);box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 8px 22px rgba(0,0,0,.6);
+  padding:14px 20px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;backdrop-filter:blur(3px)}
 .ch::before{content:"◆";font-size:9px;color:#c8a15a;opacity:.85}
 .ch:active{background:rgba(216,207,188,.16)}
 .ch.dim{color:#8b8271;border-color:rgba(216,207,188,.14);background:rgba(20,14,8,.35);cursor:default}
@@ -92,7 +96,7 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <div id="choices">
     <button class="ch" id="chRead">この本を読む</button>
     <button class="ch" id="btnFav">お気に入りを見る</button>
-    <button class="ch" id="btnAbout">置き手紙を読む（この本の説明）</button>
+    <button class="ch" id="btnAbout">この本の説明</button>
   </div>
   <div id="icons">
     <button class="ico" id="btnSet">設定</button>
@@ -118,23 +122,23 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <button id="closeBtn">閉じる</button>
 </div></div>
 <div id="about"><div class="box">
-  <h2>尽きぬ書</h2>
-  <p>これは、私が集めてきた言葉を全部綴じた本だ。</p>
-  <p>開くたびに、頁の並びが入れ替わる。</p>
-  <p>昨日の一頁目は、今日はもうどこにもない。</p>
-  <p>集めた言葉が増えるたび、この本は日に日に分厚くなっていく。</p>
+  <h2>この本の説明</h2>
+  <p>■ どんな本か</p>
+  <p>私が集めてきた言葉を、全部まとめて綴じた本です。</p>
+  <p>開くたびに頁の順番が入れ替わります。同じ順番で読めることは二度とありません。</p>
+  <p>言葉が増えるたびに、この本は日に日に分厚くなっていきます。</p>
+  <p>私自身、暇なときにいつも開いて眺めています。それを、あなたにも見せたくなりました。</p>
   <hr>
-  <p>私自身、暇なときにはいつもこれを開いて眺めている。</p>
-  <p>それを、あなたにも見せたくなった。</p>
+  <p>■ 読み方</p>
+  <p>頁の右上をつまんでめくります。左へ引くと次の頁、右へ引くと前の頁に戻ります。</p>
+  <p>右上の数字は、あなたが今までに見た枚数です。</p>
   <hr>
-  <p>使い方は簡単だ。</p>
-  <p>暇な時に開く。一枚めくる。言葉を浴びる。</p>
-  <p>気に入った頁があれば、♡ で挟んでおけ。</p>
-  <p>挟んだ頁だけを綴じた、あなただけの一冊が育っていく。</p>
+  <p>■ お気に入り</p>
+  <p>気に入った頁で「お気に入りに登録」を押すと、その頁を挟んでおけます。</p>
+  <p>入口の「お気に入りを見る」から、挟んだ頁だけを綴じ直した、あなただけの一冊を開けます。</p>
   <hr>
-  <p>答えは書いていない。問いだけを置いてある。</p>
-  <p>どこで閉じてもいい。</p>
-  <p>次に開いた時、この本はもう、別の本だ。</p>
+  <p>■ 音</p>
+  <p>雨と暖炉の音、BGMが流れます。音量や種類は「設定」で変えられます。</p>
   <button id="aboutClose" style="display:block;margin:24px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 30px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer">閉じる</button>
 </div></div>
 <div id="burst"></div>
@@ -230,22 +234,23 @@ addEventListener('pointerdown', ensureAudio, { once:false });
 
 // ---------- three.js ----------
 const canvas = $('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;   // v3 2026-09-03: 革を黒に近く
+renderer.toneMappingExposure = 0.9;   // v3 2026-09-03: 革を黒に近く
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0a07);
-scene.fog = new THREE.FogExp2(0x0d0a07, 0.95);   // v3: カメラを引いた分だけ霧を薄く(1.4のままだと真っ暗)
+scene.background = null;   // 2026-09-03 KEI: 背景は書斎の画像(body)。本は空中に浮く
+// 霧は無し(背景画像に合わせる)
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
 const CAM_R = 1.22;   // v3: 分厚い本が画面からはみ出していたので引く
 let camTheta = 0.35, camPhi = 1.02;
 
-scene.add(new THREE.AmbientLight(0x2a2018, 2.0));
-const candle = new THREE.PointLight(0xffcf9a, 6.5, 2.5, 2.0);
+scene.add(new THREE.AmbientLight(0x2a2018, 1.4));
+const candle = new THREE.PointLight(0xffcf9a, 3.6, 2.5, 2.0);
 candle.position.set(0.28, 0.34, 0.30);
 scene.add(candle);
 const rimL = new THREE.DirectionalLight(0x7a86a8, 0.9);
@@ -373,7 +378,7 @@ renderer.setAnimationLoop(() => {
   const t = clock.elapsedTime;
   idleT += dt;
   // 2026-09-03 KEI: ピカピカでなく、ゆっくり滑らかにぼやーっと変わる灯り
-  candle.intensity = 6.5 + Math.sin(t*0.71)*0.7 + Math.sin(t*1.63+1.1)*0.4 + Math.sin(t*0.29+2.4)*0.5;
+  candle.intensity = 3.6 + Math.sin(t*0.71)*0.4 + Math.sin(t*1.63+1.1)*0.25 + Math.sin(t*0.29+2.4)*0.3;
   if (book) {
     pivot.position.y = Math.sin(t*0.9) * 0.008;
     if (!dragging && idleT > 2.5 && !opening && !diving) camTheta += dt * 0.12;

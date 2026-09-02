@@ -16,33 +16,37 @@ html,body{margin:0;height:100%;background:#0b0806 url(../assets/hall-bg.jpg) cen
 #ui.show{opacity:1;pointer-events:auto}
 
 /* ---- 対話ボックス（ゲーム風・羊皮紙パネル） ---- */
-#talk{width:min(88vw,560px);min-height:74px;box-sizing:border-box;cursor:pointer;
-  background:linear-gradient(180deg,rgba(38,28,16,.88),rgba(20,14,8,.9));
-  border:1px solid rgba(216,207,188,.42);border-radius:3px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.5) inset,0 10px 34px rgba(0,0,0,.7);
-  padding:15px 20px 17px;color:#e6dcc5;font-family:serif;font-size:15px;line-height:1.9;
-  letter-spacing:.12em;backdrop-filter:blur(2px)}
-#talk .name{font-size:11px;letter-spacing:.42em;text-indent:.42em;color:#a9997a;margin-bottom:5px}
+#talk{width:min(92vw,600px);min-height:118px;box-sizing:border-box;cursor:pointer;position:relative;
+  background:linear-gradient(180deg,rgba(46,33,18,.94),rgba(22,15,8,.96));
+  border:2px solid rgba(201,181,138,.55);border-radius:4px;
+  box-shadow:0 0 0 5px rgba(20,14,8,.9),0 0 0 6px rgba(201,181,138,.28),0 14px 40px rgba(0,0,0,.8);
+  padding:16px 24px 20px;color:#efe6d0;font-family:serif;font-size:17px;line-height:1.95;
+  letter-spacing:.12em;backdrop-filter:blur(3px)}
+#talk::before,#talk::after{content:"";position:absolute;width:10px;height:10px;border:2px solid rgba(201,181,138,.8);pointer-events:none}
+#talk::before{left:6px;top:6px;border-right:none;border-bottom:none}
+#talk::after{right:6px;bottom:6px;border-left:none;border-top:none}
+#talk .name{font-size:12px;letter-spacing:.45em;text-indent:.45em;color:#c9b58a;margin-bottom:6px}
 #talk .txt{min-height:1.9em;white-space:pre-wrap}
 #talk .cur{opacity:.75;color:#c8a15a;animation:blink 1s steps(1) infinite;margin-left:.3em}
 @keyframes blink{50%{opacity:0}}
 
 /* ---- 話す/選ぶ ボタン ---- */
 #actWrap{display:flex;justify-content:center}
-#act{color:#e6dcc5;background:rgba(20,14,8,.62);border:1px solid rgba(216,207,188,.42);
-  padding:9px 34px;font-size:14px;letter-spacing:.4em;text-indent:.4em;font-family:serif;
-  cursor:pointer;backdrop-filter:blur(2px)}
+#act{color:#efe6d0;background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));
+  border:1px solid rgba(201,181,138,.45);box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 8px 22px rgba(0,0,0,.6);
+  padding:13px 44px;font-size:16px;letter-spacing:.4em;text-indent:.4em;font-family:serif;
+  cursor:pointer;backdrop-filter:blur(3px)}
 #act:active{background:rgba(216,207,188,.18)}
 #act.hide{display:none}
 
 /* ---- 選択肢 ---- */
-#choices{width:min(88vw,560px);display:none;flex-direction:column;gap:6px}
+#choices{width:min(92vw,600px);display:none;flex-direction:column;gap:9px}
 #choices.show{display:flex}
-.ch{display:flex;align-items:center;gap:10px;color:#d8cfbc;font-family:serif;font-size:14px;
-  letter-spacing:.2em;background:rgba(20,14,8,.68);border:1px solid rgba(216,207,188,.3);
-  padding:9px 16px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;
-  backdrop-filter:blur(2px);opacity:0;transform:translateY(6px);
-  transition:opacity .38s ease,transform .38s ease}
+.ch{display:flex;align-items:center;gap:12px;color:#efe6d0;font-family:serif;font-size:16px;
+  letter-spacing:.22em;background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));
+  border:1px solid rgba(201,181,138,.45);box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 8px 22px rgba(0,0,0,.6);
+  padding:14px 20px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;backdrop-filter:blur(3px);
+  opacity:0;transform:translateY(6px);transition:opacity .38s ease,transform .38s ease}
 .ch.in{opacity:1;transform:none}
 .ch::before{content:"◆";font-size:9px;color:#c8a15a;opacity:.85}
 .ch:active{background:rgba(216,207,188,.16)}
@@ -200,8 +204,8 @@ scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({
   color:0xd8b878, size:0.012, transparent:true, opacity:0.5, depthWrite:false })));
 
 // ---------- カメラ操作(自作オービット) ----------
-const HOME = { th: 0, ph: 1.50, d: 2.0 };   // 2026-09-03 KEI: 縦型なので上半身だけのドアップ(ゲームの会話画面風)      // th=0 が正面
-const TARGET_Y = 1.36;
+const HOME = { th: 0, ph: 1.50, d: 1.25 };   // 2026-09-03 KEI: 縦型なので上半身だけのドアップ(ゲームの会話画面風)      // th=0 が正面
+const TARGET_Y = 1.52;   // 2026-09-03 KEI: 顔のドアップ
 let camTh = HOME.th, camPh = HOME.ph, camD = HOME.d;
 const CAM_LOCK = true;   // 2026-09-03 KEI: カメラ移動なし(固定のドアップ)
 let idleT = 0, dragging = false, returning = false;
