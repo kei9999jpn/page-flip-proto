@@ -90,16 +90,12 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
 <div id="menu">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="choices">
-    <button class="ch" id="chRead">魔法の名言の書を読む</button>
-    <button class="ch dim" data-soon="1">思考実験<span class="soon">準備中</span></button>
-    <button class="ch dim" data-soon="1">占い<span class="soon">準備中</span></button>
-    <button class="ch dim" data-soon="1">星座占い<span class="soon">準備中</span></button>
-    <button class="ch dim" data-soon="1">エッセイ集<span class="soon">準備中</span></button>
+    <button class="ch" id="chRead">魔法の書を読む</button>
+    <button class="ch" id="btnFav">お気に入りの本を開く</button>
+    <button class="ch" id="btnAbout">置き手紙を読む</button>
   </div>
   <div id="icons">
-    <button class="ico" id="btnFav">♡ お気に入り</button>
     <button class="ico" id="btnSet">設定</button>
-    <button class="ico" id="btnAbout">この本について</button>
   </div>
 </div>
 <div id="panel"><div class="box">
@@ -120,15 +116,21 @@ html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden;font-family:se
   <button id="closeBtn">閉じる</button>
 </div></div>
 <div id="about"><div class="box">
-  <h2>この本について</h2>
-  <p>これは魔法の書だ。</p>
-  <p>開くたび、千の頁は並びを変える。同じ本は二度と読めない。</p>
-  <p>心に残った一枚は ♡ で挟め。挟んだ頁は、お前だけの本として綴じられる。</p>
-  <p>栞を押せば、その一冊だけを読める。</p>
+  <h2>尽きぬ書</h2>
+  <p>この本は、開くたびに中身が入れ替わる。</p>
+  <p>昨日の一頁目は、今日はもうどこにもない。</p>
+  <p>めくってもめくっても、終わりが来ない。</p>
+  <p>私は、そういう本が欲しくて、これを作った。</p>
   <hr>
-  <label>選んだ名言をメールで送る <input type="checkbox" id="aMail"></label>
-  <input type="email" id="aMailTo" placeholder="メールアドレス" autocomplete="email">
-  <p class="note">送信機能は準備中</p>
+  <p>使い方は簡単だ。</p>
+  <p>暇な時に開く。一枚めくる。言葉を浴びる。</p>
+  <p>気に入った頁があれば、♡ で挟んでおけ。</p>
+  <p>挟んだ頁だけを綴じた、あなただけの一冊が育っていく。</p>
+  <hr>
+  <p>答えは書いていない。問いだけを置いてある。</p>
+  <p>どこで閉じてもいい。</p>
+  <p>次に開いた時、この本はもう、別の本だ。</p>
+  <p style="text-align:right;margin-top:18px;letter-spacing:.2em">—— 異世界の叡智</p>
   <button id="aboutClose" style="display:block;margin:24px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 30px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer">閉じる</button>
 </div></div>
 <div id="burst"></div>
@@ -170,11 +172,8 @@ $('btnSet').onclick = () => { $('panel').style.display = 'flex'; };
 $('closeBtn').onclick = () => { $('panel').style.display = 'none'; };
 
 // ---------- この本について ----------
-$('aMail').checked = !!S.mail;
-$('aMailTo').value = S.mailTo || '';
-$('aMail').onchange = e => { S.mail = e.target.checked; saveS(); };
-$('aMailTo').oninput = e => { S.mailTo = e.target.value; saveS(); };
 $('btnAbout').onclick = () => { $('about').style.display = 'flex'; };
+$('about').addEventListener('click', e => { if (e.target === $('about')) $('about').style.display = 'none'; });
 $('aboutClose').onclick = () => { $('about').style.display = 'none'; };
 
 // ---------- 音 ----------
@@ -304,7 +303,7 @@ function beginRead(to) {
   setTimeout(() => { $('fade').style.opacity = 1; }, 3050);
   setTimeout(() => location.href = dest, 4100);
 }
-$('btnFav').onclick = () => beginRead('../a/#fav');
+$('btnFav').onclick = () => { if (opening || diving) return; choices.style.visibility = 'hidden'; say('挟んだ頁だけの一冊だな。', () => setTimeout(() => beginRead('../a/#fav'), 600)); };
 
 // ---------- 対話 + 選択肢 ----------
 const talkTxt = $('talkTxt'), choices = $('choices');
