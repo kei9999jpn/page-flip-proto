@@ -84,6 +84,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   display:flex;align-items:center;justify-content:center;font-size:17px;color:#d8cfbc;
   background:rgba(20,14,8,.45);border:1px solid rgba(216,207,188,.25);border-radius:50%;
   font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
+/* 2026-09-03 KEI: 読んだ枚数(何枚目か)だけを右上に。総数は出さない(無限に続く本に見せる) */
+#seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#d8cfbc;
+  font-family:serif;font-size:13px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;
+  text-shadow:0 1px 3px #000}
+#seen.show{opacity:.8}
+#seen b{font-weight:normal;font-size:19px;letter-spacing:.05em;margin-right:.25em}
 #favBtn{right:14px}
 #favListBtn{right:58px;font-size:13px}
 #favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
@@ -114,6 +120,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="dim"></div>
 <div id="title"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
 <div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
+<div id="seen"></div>
 <div id="favBtn">♡</div>
 <div id="favListBtn">栞</div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
@@ -183,7 +190,13 @@ const favEmpty = document.getElementById('favEmpty');
 let favs = [];
 try { favs = JSON.parse(localStorage.getItem('bookexp-favs')) || []; } catch (e) {}
 function saveFavs() { try { localStorage.setItem('bookexp-favs', JSON.stringify(favs)); } catch (e) {} }
+const seenEl = document.getElementById('seen'); const seenSet = new Set();
+function updateSeen() {
+  if (deck[index] != null) seenSet.add(deck[index]);
+  seenEl.innerHTML = '<b>' + seenSet.size + '</b>枚目';
+}
 function updateFavUI() {
+  updateSeen();
   const on = favs.includes(deck[index]);
   favBtn.textContent = on ? '♥' : '♡';
   favBtn.classList.toggle('on', on);
@@ -215,7 +228,7 @@ function exitFavBook() {
 }
 favListBtn.addEventListener('click', () => { ensureAudio(); favMode ? exitFavBook() : enterFavBook(); });
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
-function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); updateFavUI(); }
+function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
 function peel(t, pw, ph) {
@@ -343,7 +356,7 @@ draw();
 let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
 // 共有設定(intro/ の設定画面と同じキー)
-const SND_DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
+const SND_DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
                    suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };

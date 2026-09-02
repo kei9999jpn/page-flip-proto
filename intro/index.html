@@ -153,7 +153,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ---------- 設定(共有: a/ 側も同じキーを読む) ----------
-const DEFAULTS = { bgm:true, rain:true, insects:true, candle:true, amb:0.6, flip:1.0,
+const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0,
                    rainKind:'study', bgmVol:0.5, mail:false, mailTo:'' };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
@@ -162,6 +162,7 @@ let S = DEFAULTS;
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
 // 2026-09-03: 既存ユーザーも一度だけ「書斎の雨」+BGM半分へ移行
 if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} }
+if (!S.v4) { S.insects = false; S.candle = false; S.v4 = 1; try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} }   // 2026-09-03 KEI: 効果音はYouTubeの音だけ
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); }
 const $ = id => document.getElementById(id);
 $('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sInsects').checked = S.insects; $('sCandle').checked = S.candle;
