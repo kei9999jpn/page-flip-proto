@@ -34,8 +34,8 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 @keyframes blink{50%{opacity:0}}
 
 /* ---- 選択肢 ---- */
-#choices{width:auto;max-width:96vw;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:8px}
-#choices .ch{width:auto;font-size:13px;letter-spacing:.14em;padding:10px 14px;gap:8px}
+#choices{width:auto;max-width:96vw;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:center;gap:6px}
+#choices .ch{width:auto;font-size:12px;letter-spacing:.08em;padding:9px 11px;gap:6px;white-space:nowrap}
 .ch{display:flex;align-items:center;gap:12px;color:#efe6d0;font-family:serif;font-size:16px;
   letter-spacing:.22em;background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));
   border:1px solid rgba(201,181,138,.45);box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 8px 22px rgba(0,0,0,.6);
@@ -97,9 +97,9 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 <div id="menu">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="choices">
-    <button class="ch" id="chRead">この本を読む</button>
-    <button class="ch" id="btnFav">お気に入りを見る</button>
-    <button class="ch" id="btnAbout">この本の説明</button>
+    <button class="ch" id="chRead">本を読む</button>
+    <button class="ch" id="btnFav">お気に入り</button>
+    <button class="ch" id="btnAbout">説明</button>
   </div>
   <div id="icons">
     <button class="ico" id="btnSet">設定</button>
