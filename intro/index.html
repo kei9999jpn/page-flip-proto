@@ -11,7 +11,7 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   opacity:0;transition:opacity 2.4s;pointer-events:none;filter:drop-shadow(0 0 18px rgba(0,0,0,.9))}
 /* 2026-09-03朝 KEI: 本の3D画面はセリフ枠なし・小さいボタンだけ(本が読めるように) */
 #talk{display:none !important}
-#menu{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2.4vh);
+#menu{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 7vh);
   display:flex;flex-direction:column;gap:12px;align-items:center;opacity:0;transition:opacity 1.8s}
 .btn{color:#d8cfbc;background:rgba(20,14,8,.55);border:1px solid rgba(216,207,188,.35);
   padding:11px 42px;font-size:15px;letter-spacing:.45em;text-indent:.45em;cursor:pointer;
@@ -34,8 +34,10 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 @keyframes blink{50%{opacity:0}}
 
 /* ---- 選択肢 ---- */
-#choices{width:auto;max-width:96vw;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:center;gap:6px}
-#choices .ch{width:auto;font-size:12px;letter-spacing:.08em;padding:9px 11px;gap:6px;white-space:nowrap}
+/* 2026-09-04 KEI: 縦に3つ・大きめ・少し上 */
+#choices{width:min(78vw,340px);display:flex;flex-direction:column;gap:12px}
+#choices .ch{width:100%;font-size:16px;letter-spacing:.3em;text-indent:.3em;padding:15px 20px;justify-content:center;white-space:nowrap}
+#choices .ch::before{display:none}
 .ch{display:flex;align-items:center;gap:12px;color:#efe6d0;font-family:serif;font-size:16px;
   letter-spacing:.22em;background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));
   border:1px solid rgba(201,181,138,.45);box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 8px 22px rgba(0,0,0,.6);
@@ -108,11 +110,11 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 <div id="menu">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="choices">
-    <button class="ch" id="chRead">読み方を選ぶ</button>
-    <button class="ch" id="btnAbout">説明</button>
+    <button class="ch" id="chRead">本を開く</button>
+    <button class="ch" id="btnAbout">本の説明</button>
+    <button class="ch" id="btnSet">設定</button>
   </div>
-  <div id="icons">
-    <button class="ico" id="btnSet">設定</button>
+  <div id="icons" style="display:none">
   </div>
 </div>
 <div id="panel"><div class="box">
@@ -165,10 +167,12 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   <hr>
   <p>■ 音</p>
   <p>雨と暖炉の音、BGMが流れます。音量や種類は「設定」で変えられます。</p>
+  <hr>
+  <p style="text-align:center"><button id="aboutModes" style="background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 18px;letter-spacing:.2em;font-family:serif;cursor:pointer">読み方を選ぶ（お気に入りだけ／新しく開き直す）</button></p>
   <button id="aboutClose" style="display:block;margin:24px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:8px 30px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer">閉じる</button>
 </div></div>
 <div id="burst"></div>
-<div id="readTitle"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
+<div id="readTitle"><div class="rule"></div><div class="main">名言の書</div><div class="rule"></div></div>
 <div id="fade"></div>
 <audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
 <audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
@@ -273,7 +277,7 @@ scene.background = null;   // 2026-09-03 KEI: 背景は書斎の画像(body)。�
 // 霧は無し(背景画像に合わせる)
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
-const CAM_R = 1.22;   // v3: 分厚い本が画面からはみ出していたので引く
+const CAM_R = 1.55;   // 2026-09-04 KEI: 本を少し小さく
 let camTheta = 0.35, camPhi = 1.02;
 
 scene.add(new THREE.AmbientLight(0x2a2018, 1.4));
@@ -333,7 +337,7 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', () => { dragging = false; });
 
 // ---------- 演出: 表紙が開く → 吸い込まれ → 遷移 ----------
-let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903e#read';
+let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260904a#read';
 function beginRead(to) {
   if (opening || diving) return;
   ensureAudio(); dest = to;
@@ -368,18 +372,19 @@ const fromHall = new URLSearchParams(location.search).get('from') === 'hall';
 function startDialogue() {
   showChoices();   // セリフは出さない(KEI 2026-09-03)
 }
-$('chRead').onclick = () => { if (opening || diving) return; ensureAudio(); openModes(); };
+$('chRead').onclick = () => { if (opening || diving) return; ensureAudio(); go('#read'); };
 function hasBookmark() { try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch (e) { return false; } }
 function openModes() {
   const hb = hasBookmark();
   $('mResumeNote').textContent = hb ? '栞の続きから（並びはそのまま）' : '栞なし。開くたびに並びが変わる';
   $('modes').style.display = 'flex';
 }
-function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903e' + hash); }
+function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260904a' + hash); }
 $('mRandom').onclick = () => go('#fresh');
 $('mResume').onclick = () => go('#read');
 $('mFav').onclick = () => go('#fav');
 $('modesClose').onclick = () => { $('modes').style.display = 'none'; };
+$('aboutModes').onclick = () => { $('about').style.display = 'none'; openModes(); };
 $('modes').addEventListener('click', e => { if (e.target === $('modes')) $('modes').style.display = 'none'; });
 choices.querySelectorAll('.ch.dim').forEach(b => {
   b.onclick = () => {
@@ -396,7 +401,7 @@ canvas.addEventListener('pointerup', e => {
   if (!downXY) return;
   const d = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
   downXY = null;
-  if (d < 8 && book) beginRead('../a/?b=20260903e#read');
+  if (d < 8 && book) beginRead('../a/?b=20260904a#read');
 });
 
 function resize() {
