@@ -59,7 +59,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   transition:none}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 /* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
-#flameWrap{position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
+#flameWrap{display:none;position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
 #wick{position:absolute;left:50%;bottom:0;width:4px;height:14px;margin-left:-2px;background:linear-gradient(#1a120a,#3a2a18);border-radius:2px}
 #flame{position:absolute;left:50%;bottom:10px;width:22px;height:54px;margin-left:-11px;transform-origin:50% 100%;
   border-radius:50% 50% 45% 45% / 70% 70% 30% 30%;
@@ -761,7 +761,7 @@ if (location.hash === '#fav' || location.hash === '#read') {
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
-  rampGlow(0.55, 900);
+  rampGlow(0.75, 900);   // 2026-09-03朝 KEI: 炎は出さず、灯りのぼやぼやを本の上に強めに
   pagesReady.then(() => { draw(); updateFavUI();
     // 2026-09-03: 初回表示が暗いまま固まる(Chromeの合成キャッシュ)→ 少し後に layout+draw をやり直すと直る
     [300, 1200, 2600].forEach(ms => setTimeout(() => { dispatchEvent(new Event('resize')); }, ms));
