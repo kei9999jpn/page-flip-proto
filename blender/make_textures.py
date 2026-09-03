@@ -109,6 +109,11 @@ fy = np.clip(np.minimum(np.arange(hgt), hgt - 1 - np.arange(hgt)) / (hgt * 0.18)
 fx = np.clip(np.minimum(np.arange(wid), wid - 1 - np.arange(wid)) / (wid * 0.18), 0, 1)
 mask = (fy[:, None] * fx[None, :])[:, :, None]
 a[ey0:ey1, ex0:ex1] = patch * (1 - mask) + boost * mask
+# v5 (2026-09-03 KEI): 紋章だけ金箔押しに。空押しのエッジ(hiL)が明るい所を金色へ寄せる
+GOLD = np.array([214.0, 172.0, 70.0], np.float32)
+edge = np.clip((hiL[:, :, 0] - 4.0) / 18.0, 0, 1)[:, :, None] * mask
+gold_layer = GOLD[None, None, :] * (0.55 + 0.45 * np.clip(patch.mean(axis=2, keepdims=True) / 60.0, 0, 1))
+a[ey0:ey1, ex0:ex1] = a[ey0:ey1, ex0:ex1] * (1 - edge * 0.85) + gold_layer * (edge * 0.85)
 
 # ハイライトを軟らかく圧縮(白飛びした粒がオレンジに光るのを抑える)
 x = np.clip(a, 0, 255) / 255.0

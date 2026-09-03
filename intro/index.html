@@ -247,7 +247,8 @@ function startCrickets() {
 }
 function applyAudio() {
   if (!audioOn) return;
-  bgm.volume = S.bgm ? 0.22 * S.bgmVol : 0; if (S.bgm && bgm.paused) bgm.play().catch(()=>{});
+  // 2026-09-03 KEI: 人間・本の3D画面ではBGMを鳴らさない(環境音だけ)。BGMは本を読む画面の最初のタッチから
+  bgm.volume = 0; if (!bgm.paused) bgm.pause();
   rain.volume = S.rain ? 0.34 * S.amb : 0; if (S.rain && rain.paused) rain.play().catch(()=>{});
 }
 function ensureAudio() {
@@ -332,7 +333,7 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', () => { dragging = false; });
 
 // ---------- 演出: 表紙が開く → 吸い込まれ → 遷移 ----------
-let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903d#read';
+let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903e#read';
 function beginRead(to) {
   if (opening || diving) return;
   ensureAudio(); dest = to;
@@ -374,7 +375,7 @@ function openModes() {
   $('mResumeNote').textContent = hb ? '栞の続きから（並びはそのまま）' : '栞なし。開くたびに並びが変わる';
   $('modes').style.display = 'flex';
 }
-function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903d' + hash); }
+function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903e' + hash); }
 $('mRandom').onclick = () => go('#fresh');
 $('mResume').onclick = () => go('#read');
 $('mFav').onclick = () => go('#fav');
@@ -395,7 +396,7 @@ canvas.addEventListener('pointerup', e => {
   if (!downXY) return;
   const d = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
   downXY = null;
-  if (d < 8 && book) beginRead('../a/?b=20260903d#read');
+  if (d < 8 && book) beginRead('../a/?b=20260903e#read');
 });
 
 function resize() {

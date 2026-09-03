@@ -16,18 +16,16 @@ html,body{margin:0;height:100%;background:#0b0806 url(../assets/hall-bg.jpg) cen
 #ui.show{opacity:1;pointer-events:auto}
 
 /* ---- 対話ボックス（ゲーム風・羊皮紙パネル） ---- */
-#talk{width:min(92vw,600px);min-height:118px;box-sizing:border-box;cursor:pointer;position:relative;
-  background:linear-gradient(180deg,rgba(46,33,18,.94),rgba(22,15,8,.96));
-  border:2px solid rgba(201,181,138,.55);border-radius:4px;
-  box-shadow:0 0 0 5px rgba(20,14,8,.9),0 0 0 6px rgba(201,181,138,.28),0 14px 40px rgba(0,0,0,.8);
-  padding:16px 24px 20px;color:#efe6d0;font-family:serif;font-size:17px;line-height:1.95;
-  letter-spacing:.12em;backdrop-filter:blur(3px)}
-#talk::before,#talk::after{content:"";position:absolute;width:10px;height:10px;border:2px solid rgba(201,181,138,.8);pointer-events:none}
-#talk::before{left:6px;top:6px;border-right:none;border-bottom:none}
-#talk::after{right:6px;bottom:6px;border-left:none;border-top:none}
-#talk .name{font-size:12px;letter-spacing:.45em;text-indent:.45em;color:#c9b58a;margin-bottom:6px}
-#talk .txt{min-height:1.9em;white-space:pre-wrap}
-#talk .cur{opacity:.75;color:#c8a15a;animation:blink 1s steps(1) infinite;margin-left:.3em}
+/* 2026-09-03 KEI: セリフは枠なし。装甲明朝で金×黒のショート動画字幕風。画面を縦4分割した下から2番目の高さ */
+@font-face{font-family:"Soukou Mincho";src:url(../assets/fonts/SoukouMincho.ttf) format("truetype");font-display:swap}
+#talk{width:min(94vw,640px);min-height:0;box-sizing:border-box;cursor:pointer;background:none;border:none;box-shadow:none;padding:0;
+  position:fixed;left:50%;top:62%;transform:translate(-50%,-50%);text-align:center;font-family:"Soukou Mincho","Shippori Mincho","Hiragino Mincho ProN",serif}
+#talk::before,#talk::after{display:none}
+#talk .name{font-size:12px;letter-spacing:.5em;text-indent:.5em;color:#c9b58a;margin-bottom:8px;text-shadow:0 1px 3px #000,0 0 8px #000}
+#talk .txt{min-height:1.6em;white-space:pre-wrap;font-size:clamp(22px,6.2vw,34px);line-height:1.55;letter-spacing:.06em;font-weight:700;
+  color:#f3d77a;background:linear-gradient(180deg,#fff2b8 0%,#f0c95a 45%,#c9952a 60%,#ffe08a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 2px 2px #000) drop-shadow(0 0 14px rgba(0,0,0,.9))}
+#talk .cur{opacity:.75;color:#e8c46a;-webkit-text-fill-color:#e8c46a;animation:blink 1s steps(1) infinite;margin-left:.2em}
 @keyframes blink{50%{opacity:0}}
 
 /* ---- 話す/選ぶ ボタン ---- */
@@ -282,11 +280,11 @@ function startDialogue(){
 function advance(){
   if (busy) return;
   if (skipTyping()) return;
-  if (phase === 1) { phase = 2; say('今日は何を見に来た？'); return; }
+  if (phase === 1) { phase = 2; say('今日はどうしたんだい？'); return; }
   if (phase === 2) { showChoices(); return; }
 }
 $('talk').onclick = advance;
-$('act').onclick = () => { if (busy || phase >= 3) return; if (skipTyping()) { } if (phase < 2) { phase = 2; say('今日は何を見に来た？', showChoices); return; } showChoices(); };
+$('act').onclick = () => { if (busy || phase >= 3) return; if (skipTyping()) { } if (phase < 2) { phase = 2; say('今日はどうしたんだい？', showChoices); return; } showChoices(); };
 
 const choices = $('choices');
 function showChoices(){
@@ -317,7 +315,7 @@ $('chRead').onclick = () => {
       act.classList.add('hide');
       nodT = 0;                   // 手を上げて案内
       $('fade').style.opacity = 1;
-      setTimeout(() => { location.href = '../intro/?b=20260903d&from=hall'; }, 900);
+      setTimeout(() => { location.href = '../intro/?b=20260903e&from=hall'; }, 900);
     };
     busy = false;
   });
