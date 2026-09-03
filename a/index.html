@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&display=swap">
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavior:none}
-#bg{position:fixed;inset:0;background:url(../assets/hall-bg.jpg) center 45%/cover no-repeat;filter:brightness(.42) saturate(.85)}   /* 2026-09-03 KEI: 書斎の背景で読む */
+#bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.6) saturate(.9)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
 #book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 18px 50px rgba(0,0,0,.75);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
@@ -86,7 +86,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));border:1px solid rgba(201,181,138,.45);
   box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 6px 16px rgba(0,0,0,.6);
   padding:0 18px;font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
-#favBtn{right:14px}
+#favBtn,#favListBtn,#setBtn{width:118px;padding:0;text-align:center;left:auto;right:auto}
+#favListBtn{left:calc(50% - 186px)}
+#setBtn{left:calc(50% - 59px)}
+#favBtn{left:calc(50% + 68px)}
 /* 見た枚数(右上)。総数は出さない(KEI) */
 #seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#d8cfbc;font-family:serif;font-size:13px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
 #seen.show{opacity:.8}
@@ -95,7 +98,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #backBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;z-index:27;display:none;color:#e8ca72;font-family:serif;font-size:13px;letter-spacing:.2em;
   padding:7px 14px;background:linear-gradient(180deg,#2a1d10,#150e07);border:1px solid #b08a3c;box-shadow:0 0 0 2px #0a0704,0 0 0 3px #7a5f2a,0 6px 14px rgba(0,0,0,.7);cursor:pointer;opacity:0;transition:opacity 1s}
 #backBtn.show{display:block;opacity:.9}
-#favListBtn{right:auto;left:14px}
+#setBtn{display:none}
+#setBtn.show{display:flex}
 #favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
 #favBtn.on,#favListBtn.on{color:#e8b04b;border-color:rgba(232,176,75,.6)}
 #favPanel{position:fixed;inset:0;z-index:29;display:none;background:rgba(5,3,1,.85);
@@ -128,6 +132,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="backBtn">‹ 戻る</div>
 <div id="favBtn">♡</div>
 <div id="favListBtn">栞を挟む</div>
+<div id="setBtn">設定</div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
@@ -203,7 +208,7 @@ function updateSeen() {
 function updateFavUI() {
   updateSeen();
   const on = favs.includes(deck[index]);
-  favBtn.textContent = on ? '✓ お気に入り済み' : 'お気に入りに登録';
+  favBtn.textContent = on ? '✓ お気に入り' : 'お気に入り';
   favBtn.classList.toggle('on', on);
 }
 favBtn.addEventListener('click', () => {
@@ -244,7 +249,7 @@ function loadBookmark() {
   return null;
 }
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
-function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
+function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const sb = document.getElementById('setBtn'); sb.classList.add('show'); sb.onclick = () => { try { parent.postMessage({ type: 'reader-settings' }, '*'); } catch (e) {} }; const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
 function peel(t, pw, ph) {
@@ -283,6 +288,37 @@ function pathPoly(poly) {
 
 // ---------- render ----------
 function draw() {
+  drawInner();
+  lampOverlay();
+}
+let lampLevel = 0;   // 0..1 灯りの強さ(rampGlow と連動)
+function lampOverlay() {
+  if (lampLevel <= 0.001) return;
+  const pw = W - EDGE, ph = H - EDGE;
+  const n = _fl ? _smoothNoise(_fl.t) : 0, cur = _fl ? _fl.cur : 0;
+  const lv = Math.max(0, Math.min(1, lampLevel * (0.85 + n * 0.12 + cur * 0.35)));
+  const cx = pw * (0.56 + n * 0.02), cy = ph * (0.52 + n * 0.015), r = Math.max(pw, ph) * (0.78 + n * 0.05);
+  ctx.save();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // 縁を闇に沈める(乗算)
+  ctx.globalCompositeOperation = 'multiply';
+  let g = ctx.createRadialGradient(cx, cy, r * 0.18, cx, cy, r);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.55, 'rgba(214,188,150,1)');
+  g.addColorStop(1, 'rgba(70,48,28,1)');
+  ctx.globalAlpha = lv * 0.9;
+  ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
+  // 中心に暖色の灯り(オーバーレイ)
+  ctx.globalCompositeOperation = 'overlay';
+  g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.75);
+  g.addColorStop(0, 'rgba(255,190,110,0.55)');
+  g.addColorStop(0.5, 'rgba(255,150,70,0.18)');
+  g.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.globalAlpha = lv;
+  ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
+  ctx.restore();
+}
+function drawInner() {
   pump();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   // 2026-09-03: 初回描画が暗く出る不具合対策(前フレームの alpha/合成/影の状態が残らないよう毎回リセット)
@@ -451,12 +487,18 @@ function ensureAudio() {
   if (bgm.paused && SND.bgm) { bgm.volume = 0.22 * SND.bgmVol; bgm.play().catch(() => {}); }
   if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
 }
+let _lastVar = -1;
 function pageSound(strength) {
   if (!ac || !flipBuf) return;
   const src = ac.createBufferSource(); src.buffer = flipBuf;
-  src.playbackRate.value = 0.94 + Math.random() * 0.14;   // slight variation each turn
-  const g = ac.createGain(); g.gain.value = 2.2 * SND.flip * Math.min(1, strength + 0.35);   // 2026-09-02 KEI: めくり音2倍
-  src.connect(g); g.connect(ac.destination); src.start();
+  // 2026-09-04 KEI: めくり音を5種類。1つの録音を5通りの声色(速さ×こもり×減衰)で回し、同じ音が続かないようにする
+  const VAR = [ [1.00, 9000, 1.0], [0.88, 5200, 1.05], [1.12, 12000, 0.9], [0.80, 3800, 1.15], [1.06, 7000, 0.95] ];
+  let vi = Math.floor(Math.random() * VAR.length); if (vi === _lastVar) vi = (vi + 1) % VAR.length; _lastVar = vi;
+  const V = VAR[vi];
+  src.playbackRate.value = V[0] * (0.97 + Math.random() * 0.06);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = V[2] > 1 ? V[1] : V[1] * 1.2; lp.Q.value = 0.4;
+  const g = ac.createGain(); g.gain.value = 2.2 * SND.flip * Math.min(1, strength + 0.35) * V[2];
+  src.connect(lp); lp.connect(g); g.connect(ac.destination); src.start();
 }
 function thump() {
   if (!ac) return;
@@ -703,8 +745,10 @@ let _flPrev = performance.now();
     const vt = _fl.cur < -0.15 ? 0.10 : 0.02;
     if (vt !== veilTarget) { veilTarget = vt; veil.style.opacity = vt.toFixed(3); }
   }
+  if (lampLevel > 0.001 && !flip && (++_lampTick % 3 === 0)) draw();
   requestAnimationFrame(flicker);
 })(performance.now());
+let _lampTick = 0;
 
 // ---------- opening sequence: tap -> souls title -> zoom into the book -> pages ----------
 const cover = document.getElementById('cover');
@@ -789,7 +833,7 @@ function rampGlow(target, ms) {
   const from = glowBase, t0 = performance.now();
   (function gstep(now) {
     const k = Math.min(1, (now - t0) / ms);
-    glowBase = from + (target - from) * (1 - Math.pow(1 - k, 2));
+    glowBase = from + (target - from) * (1 - Math.pow(1 - k, 2)); lampLevel = glowBase; draw();
     if (k < 1) glowRaf = requestAnimationFrame(gstep); else glowRaf = null;
   })(t0);
 }
@@ -799,7 +843,7 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
-  rampGlow(1.0, 900);    // v5: 灯りのぼやぼやは最大
+  rampGlow(1.0, EMBED ? 2800 : 900);    // 埋め込み時は暗い所から徐々に灯る(KEI 2026-09-04)
   pagesReady.then(() => { draw(); updateFavUI(); if (EMBED) { try { parent.postMessage({ type: 'reader-ready' }, '*'); } catch (e) {} }
     // 2026-09-03: 初回表示が暗いまま固まる(Chromeの合成キャッシュ)→ 少し後に layout+draw をやり直すと直る
     [300, 1200, 2600].forEach(ms => setTimeout(() => { dispatchEvent(new Event('resize')); }, ms));
