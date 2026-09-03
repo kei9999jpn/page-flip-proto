@@ -586,7 +586,8 @@ function spawnEmber() {
     x: dc.width * (0.62 + Math.random() * 0.36), y: dc.height * (0.78 + Math.random() * 0.22),
     r: 0.9 + Math.random() * 1.9, a: 0.55 + Math.random() * 0.4,
     vx: (Math.random() - 0.5) * 0.25, vy: -(0.35 + Math.random() * 0.65), sway: 14 + Math.random() * 26,
-    ph: Math.random() * Math.PI * 2, life: 0.8 + Math.random() * 0.5, px: 0, py: 0
+    ph: Math.random() * Math.PI * 2, life: 0.8 + Math.random() * 0.5, px: 0, py: 0,
+    hot: Math.random() < 0.22   // 一部は白熱した「火の粉」、残りは赤みの燃えかす
   });
 }
 let glowFl = 0.8, glowTarget = 0.8;
@@ -615,7 +616,7 @@ let glowFl = 0.8, glowTarget = 0.8;
     dctx.beginPath(); dctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); dctx.fill();
   }
   // 火の粉 v5 (2026-09-03 KEI「HTMLっぽい」): 蝋燭の位置(右下)から立ち上る。加算合成の柔らかい光球+短い尾+個別のまたたき+風の揺らぎ
-  if (embers.length < 14 && Math.random() < 0.06) spawnEmber();
+  if (embers.length < 18 && Math.random() < 0.07) spawnEmber();
   dctx.save();
   dctx.globalCompositeOperation = 'lighter';
   for (let i = embers.length - 1; i >= 0; i--) {
@@ -635,13 +636,13 @@ let glowFl = 0.8, glowTarget = 0.8;
     dctx.beginPath(); dctx.moveTo(e.px - e.vx * 3, e.py - e.vy * 3); dctx.lineTo(e.x, e.y); dctx.stroke();
     // 光球(ハロ)
     const gr = dctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, rr * 5);
-    gr.addColorStop(0, 'rgba(255,220,150,' + (al * 0.9).toFixed(3) + ')');
-    gr.addColorStop(0.25, 'rgba(255,160,60,' + (al * 0.45).toFixed(3) + ')');
+    gr.addColorStop(0, (e.hot ? 'rgba(255,236,190,' : 'rgba(255,190,110,') + (al * 0.9).toFixed(3) + ')');
+    gr.addColorStop(0.25, (e.hot ? 'rgba(255,180,80,' : 'rgba(230,110,40,') + (al * 0.45).toFixed(3) + ')');
     gr.addColorStop(1, 'rgba(255,110,30,0)');
     dctx.fillStyle = gr;
     dctx.beginPath(); dctx.arc(e.x, e.y, rr * 5, 0, Math.PI * 2); dctx.fill();
     // 芯
-    dctx.fillStyle = 'rgba(255,240,200,' + Math.min(0.95, al * 1.2).toFixed(3) + ')';
+    dctx.fillStyle = (e.hot ? 'rgba(255,246,220,' : 'rgba(255,200,130,') + Math.min(0.95, al * (e.hot ? 1.3 : 0.9)).toFixed(3) + ')';
     dctx.beginPath(); dctx.arc(e.x, e.y, rr * 0.55, 0, Math.PI * 2); dctx.fill();
   }
   dctx.restore();
