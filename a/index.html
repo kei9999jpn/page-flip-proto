@@ -55,11 +55,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
 /* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
 #shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
-  background:radial-gradient(ellipse 62% 54% at 56% 50%,transparent 34%,rgba(0,0,0,.34) 68%,rgba(0,0,0,.78) 100%);
+  background:radial-gradient(ellipse 56% 48% at 56% 50%,transparent 26%,rgba(0,0,0,.55) 66%,rgba(0,0,0,.93) 100%);   /* 2026-09-03朝 KEI: もう少し暗く、炎で見せる */
   transition:none}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 /* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
-#flameWrap{display:none;position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
+#flameWrap{position:fixed;right:9%;bottom:6%;width:22px;height:120px;pointer-events:none;z-index:27;transform-origin:50% 100%}
 #wick{position:absolute;left:50%;bottom:0;width:4px;height:14px;margin-left:-2px;background:linear-gradient(#1a120a,#3a2a18);border-radius:2px}
 #flame{position:absolute;left:50%;bottom:10px;width:22px;height:54px;margin-left:-11px;transform-origin:50% 100%;
   border-radius:50% 50% 45% 45% / 70% 70% 30% 30%;
@@ -655,6 +655,9 @@ let _flPrev = performance.now();
   shade.style.transform = 'translate(' + dx.toFixed(2) + '%,' + dy.toFixed(2) + '%) scale(' + sc.toFixed(3) + ')';
   shade.style.opacity = (0.86 - _fl.cur * 0.3).toFixed(3);
   halo.style.opacity = (0.78 + n * 0.12 + _fl.cur * 0.4).toFixed(3);
+  // 炎そのもの(ゆっくり): 背の高さ・傾き・明るさを灯りと同期
+  flame.style.transform = 'scaleY(' + (0.92 + n * 0.10 + _fl.cur * 0.25).toFixed(3) + ') scaleX(' + (0.96 + n * 0.05).toFixed(3) + ') skewX(' + (dx * 4).toFixed(1) + 'deg)';
+  flame.style.opacity = (0.9 + n * 0.08 + _fl.cur * 0.2).toFixed(3);
   halo.style.transform = 'translate(' + (35 + dx).toFixed(1) + '%,' + (40 + dy).toFixed(1) + '%) scale(' + (1 + n * 0.03).toFixed(3) + ')';
   if (glowBase > 0) {
     paperGlow.style.opacity = (glowBase * (0.72 + n * 0.16 + _fl.cur * 0.3)).toFixed(3);
