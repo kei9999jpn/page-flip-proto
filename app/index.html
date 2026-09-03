@@ -158,7 +158,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:serif;-webkit-tap-hig
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904c';
+const BUILD = '20260904d';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
@@ -308,7 +308,7 @@ const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
 const CAM_R = 1.55;   // KEI: 本を少し小さく
 let camTheta = 0.35, camPhi = 1.02;
 sceneB.add(new THREE.AmbientLight(0x2a2018, 1.0));
-const candleB = new THREE.PointLight(0xffcf9a, 2.6, 2.5, 2.0); candleB.position.set(0.28, 0.34, 0.30); sceneB.add(candleB);
+const candleB = new THREE.PointLight(0xffd9b0, 1.9, 2.5, 2.0); candleB.position.set(0.28, 0.34, 0.30); sceneB.add(candleB);
 const rimB = new THREE.DirectionalLight(0x7a86a8, 0.9); rimB.position.set(-0.5, 0.4, -0.6); sceneB.add(rimB);
 const pivot = new THREE.Group(); sceneB.add(pivot);
 let book = null, hinge = null, bookScale = 0, bookTarget = 0;
@@ -426,7 +426,7 @@ renderer.setAnimationLoop(() => {
     idleT += dt;
     if (!dragging && idleT > 1.2 && !opening && !diving && stage === 'book') camTheta += dt * 0.14;
     if (opening && hinge) { openT = Math.min(openT + dt/1.1, 1); const k = openT*openT*(3-2*openT); hinge.rotation.z = k * 2.5; }
-    candleB.intensity = 2.6 + Math.sin(t*0.71)*0.3 + Math.sin(t*1.63+1.1)*0.18 + Math.sin(t*0.29+2.4)*0.22;
+    candleB.intensity = 1.9 + Math.sin(t*0.71)*0.22 + Math.sin(t*1.63+1.1)*0.13 + Math.sin(t*0.29+2.4)*0.16;
     const p = dustGeo.attributes.position.array;
     for (let i = 0; i < ND; i++) { p[i*3+1] += dspd[i]*dt; if (p[i*3+1] > 0.55) p[i*3+1] = -0.55; }
     dustGeo.attributes.position.needsUpdate = true;
