@@ -87,6 +87,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 6px 16px rgba(0,0,0,.6);
   padding:0 18px;font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
 #favBtn{right:14px}
+/* 見た枚数(右上)。総数は出さない(KEI) */
+#seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#d8cfbc;font-family:serif;font-size:13px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
+#seen.show{opacity:.8}
+#seen b{font-weight:normal;font-size:19px;letter-spacing:.05em;margin-right:.25em}
+/* 埋め込み時の戻る(左上) */
+#backBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;z-index:27;display:none;color:#e8ca72;font-family:serif;font-size:13px;letter-spacing:.2em;
+  padding:7px 14px;background:linear-gradient(180deg,#2a1d10,#150e07);border:1px solid #b08a3c;box-shadow:0 0 0 2px #0a0704,0 0 0 3px #7a5f2a,0 6px 14px rgba(0,0,0,.7);cursor:pointer;opacity:0;transition:opacity 1s}
+#backBtn.show{display:block;opacity:.9}
 #favListBtn{right:auto;left:14px}
 #favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
 #favBtn.on,#favListBtn.on{color:#e8b04b;border-color:rgba(232,176,75,.6)}
@@ -117,6 +125,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="title"><div class="rule"></div><div class="main">名言集 1000枚</div><div class="rule"></div></div>
 <div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
 <div id="seen"></div>
+<div id="backBtn">‹ 戻る</div>
 <div id="favBtn">♡</div>
 <div id="favListBtn">栞を挟む</div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
@@ -151,7 +160,7 @@ addEventListener('resize', () => { layout(); draw(); });
 const imgs = new Array(N); let backTex = null;
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 let index = 0, flip = null, anim = null;
-// 2026-09-03: 数百枚対応。全部先読みせず「いま開いている頁の前後だけ」を読み、めくるたびに先へ足していく(漫画アプリ式)
+// 2026-09-03: 数百枚対応。全部先読みせず「いま開いているページの前後だけ」を読み、めくるたびに先へ足していく(漫画アプリ式)
 const AHEAD = 8, BEHIND = 2, MAX_PAR = 4;
 const loading = new Set();
 let _firstReady = null;
@@ -173,7 +182,7 @@ function pump() {
   for (let d = 1; d <= BEHIND; d++) { const k = index - d; if (k >= 0) ensure(deck[k], false); }
 }
 pump();
-setTimeout(() => { if (!imgs[deck[index]]) _firstReady(); }, 6000);   // 読めなくても暗い頁を出して先へ進める
+setTimeout(() => { if (!imgs[deck[index]]) _firstReady(); }, 6000);   // 読めなくても暗いページを出して先へ進める
 loadImg('../assets/backside.jpg').then(im => { backTex = im; });
 
 
@@ -221,7 +230,7 @@ function exitFavBook() {
   favMode = false; deck = shuffled(ALL_PAGES); index = 0; flip = null; anim = null;
   draw(); updateFavUI(); pageSound(0.6);
 }
-// 2026-09-03 KEI: 栞=「ここまで読んだ」を1か所だけ覚える(このブラウザ内)。次回「栞の続きから」で同じ並び・同じ頁から再開
+// 2026-09-03 KEI: 栞=「ここまで読んだ」を1か所だけ覚える(このブラウザ内)。次回「栞の続きから」で同じ並び・同じページから再開
 function saveBookmark() {
   try { localStorage.setItem('bookexp-bookmark', JSON.stringify({ deck: deck, index: index, ts: Date.now(), fav: favMode })); } catch (e) {}
 }
@@ -235,7 +244,7 @@ function loadBookmark() {
   return null;
 }
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
-function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); updateFavUI(); }
+function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
 function peel(t, pw, ph) {
@@ -369,6 +378,10 @@ const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3
                    suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
 let SND = SND_DEFAULTS;
 try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
+// 2026-09-04: 埋め込みモード(app/ の中)。音楽と環境音は親(シェル)が鳴らすので、ここでは鳴らさない
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+let _touched = false;
+if (EMBED) { SND.bgm = false; SND.rain = false; }
 function applyRainSrc() {
   const src = RAIN_SRC[SND.rainKind] || RAIN_SRC.std;
   if (rain.getAttribute('src') === src) return;
@@ -381,6 +394,7 @@ applyRainSrc();
 addEventListener('storage', e => {
   if (e.key !== 'bookexp-settings') return;
   try { SND = { ...SND_DEFAULTS, ...(JSON.parse(e.newValue) || {}) }; } catch (err) { return; }
+  if (EMBED) { SND.bgm = false; SND.rain = false; }
   applyRainSrc();
   rain.volume = SND.rain ? 0.34 * SND.amb : 0;
   bgm.volume = SND.bgm ? 0.22 * SND.bgmVol : 0;
@@ -426,6 +440,7 @@ function startCrackle() {
   })();
 }
 function ensureAudio() {
+  if (EMBED && !_touched) { _touched = true; try { parent.postMessage({ type: 'reader-touch' }, '*'); } catch (e) {} }
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
     if (ac) fetch('../assets/se/page-soft.mp3').then(r => r.arrayBuffer())
@@ -784,13 +799,13 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
   rampGlow(1.0, 900);    // v5: 灯りのぼやぼやは最大
-  pagesReady.then(() => { draw(); updateFavUI();
+  pagesReady.then(() => { draw(); updateFavUI(); if (EMBED) { try { parent.postMessage({ type: 'reader-ready' }, '*'); } catch (e) {} }
     // 2026-09-03: 初回表示が暗いまま固まる(Chromeの合成キャッシュ)→ 少し後に layout+draw をやり直すと直る
     [300, 1200, 2600].forEach(ms => setTimeout(() => { dispatchEvent(new Event('resize')); }, ms));
   });
   showFavButtons();
   if (location.hash === '#fav') enterFavBook();
-  // 2026-09-03 KEI: 栞を挟んであれば、普通に開いても(#read)その並び・その頁のまま固定。栞が無ければ開くたびランダム。
+  // 2026-09-03 KEI: 栞を挟んであれば、普通に開いても(#read)その並び・そのページのまま固定。栞が無ければ開くたびランダム。
   // #fresh = 並びを新しくシャッフルし直し、栞は外す
   if (location.hash === '#fresh') { try { localStorage.removeItem('bookexp-bookmark'); } catch (e) {} }
   if (location.hash === '#resume' || location.hash === '#read') {
