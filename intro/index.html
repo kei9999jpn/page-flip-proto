@@ -136,8 +136,8 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 </div></div>
 <div id="modes"><div class="box">
   <h2>読み方を選ぶ</h2>
-  <button class="mode" id="mRandom">ランダムに読む<span>開くたびに並びが変わる</span></button>
-  <button class="mode" id="mResume">栞の続きから<span id="mResumeNote">挟んだところから再開</span></button>
+  <button class="mode" id="mResume">読む<span id="mResumeNote">栞があればその続きから</span></button>
+  <button class="mode" id="mRandom">新しく開き直す<span>並びをシャッフルし直す。挟んだ栞は外れる</span></button>
   <button class="mode" id="mFav">お気に入りだけ<span>登録した頁だけの一冊</span></button>
   <button class="mode dim" id="mTheme">テーマで読む<span>準備中</span></button>
   <button id="modesClose">閉じる</button>
@@ -160,7 +160,8 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   <hr>
   <p>■ 栞</p>
   <p>読んでいる途中で「栞を挟む」を押すと、その場所を覚えておけます。</p>
-  <p>次に来たとき「栞の続きから」を選ぶと、同じ並びの同じ頁から再開できます（栞は1つだけ。このスマホのブラウザに保存されます）。</p>
+  <p>栞を挟んでおくと、次に開いたときも同じ並びの同じ頁から続きます。栞が無いときは、開くたびに並びが変わります。</p>
+  <p>「新しく開き直す」を選ぶと並びをシャッフルし直し、栞は外れます（栞は1つだけ。このスマホのブラウザに保存されます）。</p>
   <hr>
   <p>■ 音</p>
   <p>雨と暖炉の音、BGMが流れます。音量や種類は「設定」で変えられます。</p>
@@ -331,7 +332,7 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', () => { dragging = false; });
 
 // ---------- 演出: 表紙が開く → 吸い込まれ → 遷移 ----------
-let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903c#read';
+let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903d#read';
 function beginRead(to) {
   if (opening || diving) return;
   ensureAudio(); dest = to;
@@ -370,13 +371,12 @@ $('chRead').onclick = () => { if (opening || diving) return; ensureAudio(); open
 function hasBookmark() { try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch (e) { return false; } }
 function openModes() {
   const hb = hasBookmark();
-  $('mResume').classList.toggle('dim', !hb);
-  $('mResumeNote').textContent = hb ? '挟んだところから再開' : 'まだ栞は挟まれていない';
+  $('mResumeNote').textContent = hb ? '栞の続きから（並びはそのまま）' : '栞なし。開くたびに並びが変わる';
   $('modes').style.display = 'flex';
 }
-function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903c' + hash); }
-$('mRandom').onclick = () => go('#read');
-$('mResume').onclick = () => { if (hasBookmark()) go('#resume'); };
+function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903d' + hash); }
+$('mRandom').onclick = () => go('#fresh');
+$('mResume').onclick = () => go('#read');
 $('mFav').onclick = () => go('#fav');
 $('modesClose').onclick = () => { $('modes').style.display = 'none'; };
 $('modes').addEventListener('click', e => { if (e.target === $('modes')) $('modes').style.display = 'none'; });
@@ -395,7 +395,7 @@ canvas.addEventListener('pointerup', e => {
   if (!downXY) return;
   const d = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
   downXY = null;
-  if (d < 8 && book) beginRead('../a/?b=20260903c#read');
+  if (d < 8 && book) beginRead('../a/?b=20260903d#read');
 });
 
 function resize() {

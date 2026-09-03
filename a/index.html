@@ -768,7 +768,7 @@ function rampGlow(target, ms) {
 }
 
 // ---- スタート画面から直行: #read=即めくり / #fav=お気に入りだけの本 (2D表紙シーンは飛ばす) ----
-if (location.hash === '#fav' || location.hash === '#read' || location.hash === '#resume') {
+if (location.hash === '#fav' || location.hash === '#read' || location.hash === '#resume' || location.hash === '#fresh') {
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
@@ -779,7 +779,10 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
   });
   showFavButtons();
   if (location.hash === '#fav') enterFavBook();
-  if (location.hash === '#resume') {
+  // 2026-09-03 KEI: 栞を挟んであれば、普通に開いても(#read)その並び・その頁のまま固定。栞が無ければ開くたびランダム。
+  // #fresh = 並びを新しくシャッフルし直し、栞は外す
+  if (location.hash === '#fresh') { try { localStorage.removeItem('bookexp-bookmark'); } catch (e) {} }
+  if (location.hash === '#resume' || location.hash === '#read') {
     const b = loadBookmark();
     if (b) { const ok = b.deck.every(n => n >= 0 && n < N); if (ok) { deck = b.deck; index = Math.min(b.index, deck.length - 1); favMode = !!b.fav; draw(); updateFavUI(); } }
   }
