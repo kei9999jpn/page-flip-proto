@@ -309,7 +309,7 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', () => { dragging = false; });
 
 // ---------- 演出: 表紙が開く → 吸い込まれ → 遷移 ----------
-let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/#read';
+let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903b#read';
 function beginRead(to) {
   if (opening || diving) return;
   ensureAudio(); dest = to;
@@ -324,7 +324,7 @@ function beginRead(to) {
   setTimeout(() => { $('fade').style.opacity = 1; }, 3050);
   setTimeout(() => location.href = dest, 4100);
 }
-$('btnFav').onclick = () => { if (opening || diving) return; choices.style.visibility = 'hidden'; say('挟んだ頁だけの一冊だな。', () => setTimeout(() => beginRead('../a/#fav'), 600)); };
+$('btnFav').onclick = () => { if (opening || diving) return; choices.style.visibility = 'hidden'; say('挟んだ頁だけの一冊だな。', () => setTimeout(() => beginRead('../a/?b=20260903b#fav'), 600)); };
 
 // ---------- 対話 + 選択肢 ----------
 const talkTxt = $('talkTxt'), choices = $('choices');
@@ -347,7 +347,7 @@ function startDialogue() {
 $('chRead').onclick = () => {
   if (opening || diving) return;
   choices.style.visibility = 'hidden';
-  say('じゃあ、これだね。', () => setTimeout(() => beginRead('../a/#read'), 700));
+  say('じゃあ、これだね。', () => setTimeout(() => beginRead('../a/?b=20260903b#read'), 700));
 };
 choices.querySelectorAll('.ch.dim').forEach(b => {
   b.onclick = () => {
@@ -364,7 +364,7 @@ canvas.addEventListener('pointerup', e => {
   if (!downXY) return;
   const d = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
   downXY = null;
-  if (d < 8 && book) beginRead('../a/#read');
+  if (d < 8 && book) beginRead('../a/?b=20260903b#read');
 });
 
 function resize() {

@@ -317,7 +317,7 @@ $('chRead').onclick = () => {
       act.classList.add('hide');
       nodT = 0;                   // 手を上げて案内
       $('fade').style.opacity = 1;
-      setTimeout(() => { location.href = '../intro/?from=hall'; }, 900);
+      setTimeout(() => { location.href = '../intro/?b=20260903b&from=hall';   // ?b= はキャッシュ避け(更新のたびに変える) }, 900);
     };
     busy = false;
   });
