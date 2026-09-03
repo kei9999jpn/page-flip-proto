@@ -3,140 +3,157 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>書斎 作り直し計画書</title>
+<title>尽きぬ書 本番仕様</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 :root{
-  --ground:#15100b; --paper:#1d1710; --paper2:#241c13; --ink:#e9dfc8; --ink2:#b9ac92; --mute:#857860;
-  --gold:#c9a24a; --gold2:#e6c76e; --line:#3a2f20; --ok:#8fae6b; --wait:#b98a3f; --hold:#8a6f66;
+  --ground:#120d09; --paper:#1b150e; --paper2:#231b12; --ink:#eadfc7; --ink2:#bcae94; --mute:#877a62;
+  --gold:#c9a24a; --gold2:#e8ca72; --line:#3b3021; --ok:#8fae6b; --wait:#b98a3f; --hold:#8a6f66;
   --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
   --sans:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
 }
 html{color-scheme:dark}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.85;-webkit-font-smoothing:antialiased}
-.wrap{max-width:720px;margin:0 auto;padding:40px 20px 80px}
-header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:34px}
-.eyebrow{font-family:var(--sans);font-size:11.5px;letter-spacing:.32em;color:var(--gold);text-transform:uppercase;margin:0 0 10px}
-h1{font-family:var(--serif);font-weight:700;font-size:clamp(26px,6vw,36px);line-height:1.3;margin:0 0 12px;letter-spacing:.04em;text-wrap:balance}
-.lede{color:var(--ink2);margin:0;font-size:15px}
-h2{font-family:var(--serif);font-weight:700;font-size:21px;letter-spacing:.06em;margin:46px 0 14px;padding-left:12px;border-left:3px solid var(--gold);line-height:1.4}
-h3{font-family:var(--serif);font-size:16.5px;font-weight:700;margin:26px 0 8px;color:var(--gold2);letter-spacing:.04em}
+.hero{background:radial-gradient(ellipse 80% 60% at 50% 0%,#3a2a14 0%,var(--ground) 70%);border-bottom:1px solid var(--line)}
+.hero .in{max-width:760px;margin:0 auto;padding:56px 20px 34px;text-align:center}
+.eyebrow{font-size:11.5px;letter-spacing:.34em;color:var(--gold);margin:0 0 14px}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(30px,7vw,44px);line-height:1.25;margin:0 0 14px;letter-spacing:.06em;text-wrap:balance}
+.lede{color:var(--ink2);margin:0 auto;font-size:15px;max-width:34em}
+.wrap{max-width:760px;margin:0 auto;padding:10px 20px 80px}
+h2{font-family:var(--serif);font-weight:700;font-size:22px;letter-spacing:.08em;margin:50px 0 16px;padding-left:12px;border-left:3px solid var(--gold);line-height:1.4}
+h3{font-family:var(--serif);font-size:16.5px;font-weight:700;margin:24px 0 8px;color:var(--gold2);letter-spacing:.04em}
 p{margin:0 0 12px}
 ul,ol{margin:0 0 14px;padding-left:1.4em}
 li{margin:4px 0}
 strong{color:var(--gold2);font-weight:700}
-.flow{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0 6px}
-.step{background:var(--paper);border:1px solid var(--line);padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
-.step .n{font-family:var(--serif);color:var(--gold);font-size:22px;line-height:1;padding-top:3px;min-width:1.2em}
-.step b{display:block;font-family:var(--serif);font-size:16px;margin-bottom:3px}
-.step span{color:var(--ink2);font-size:14px}
+.flow{display:grid;gap:0;margin:14px 0 6px;position:relative}
+.step{background:var(--paper);border:1px solid var(--line);padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;position:relative}
+.step+.step{border-top:none}
+.step .n{font-family:var(--serif);color:var(--gold);font-size:24px;line-height:1;padding-top:3px;min-width:1.2em}
+.step b{display:block;font-family:var(--serif);font-size:17px;margin-bottom:4px}
+.step span{color:var(--ink2);font-size:14px;display:block}
+.step .tag{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.16em;color:var(--gold);border:1px solid rgba(201,162,74,.4);padding:2px 8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--paper);border:1px solid var(--line);padding:14px 16px}
+.card b{font-family:var(--serif);color:var(--gold2);display:block;margin-bottom:4px}
+.card p{font-size:14px;color:var(--ink2);margin:0}
 .tablewrap{overflow-x:auto;margin:10px 0 6px;border:1px solid var(--line)}
-table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
 th,td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
 th{background:var(--paper2);font-weight:500;color:var(--ink2);font-size:12.5px;letter-spacing:.12em;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 td.k{font-family:var(--serif);font-weight:700;white-space:nowrap;color:var(--gold2)}
 .pill{display:inline-block;font-size:11.5px;letter-spacing:.1em;padding:2px 8px;border:1px solid currentColor;border-radius:2px;white-space:nowrap}
 .p-ok{color:var(--ok)} .p-wait{color:var(--wait)} .p-hold{color:var(--hold)} .p-kei{color:var(--gold)}
-.check{list-style:none;padding:0;margin:8px 0 10px}
-.check li{padding:9px 12px 9px 38px;position:relative;background:var(--paper);border:1px solid var(--line);margin:0 0 6px}
-.check li::before{content:"";position:absolute;left:12px;top:13px;width:14px;height:14px;border:1.5px solid var(--gold);border-radius:2px}
-.check li small{display:block;color:var(--mute);font-size:12.5px;margin-top:2px}
+.lines{list-style:none;padding:0;margin:8px 0}
+.lines li{font-family:var(--serif);font-size:16px;padding:10px 14px;border-left:2px solid var(--gold);background:var(--paper);margin:0 0 6px;color:var(--ink)}
+.lines li small{display:block;font-family:var(--sans);font-size:12px;color:var(--mute);margin-top:2px}
+.desc{background:var(--paper2);border:1px solid var(--line);padding:16px 18px;font-size:14.5px}
+.desc b{font-family:var(--serif);color:var(--gold2)}
 .note{background:var(--paper2);border-left:3px solid var(--gold);padding:12px 16px;margin:14px 0;color:var(--ink2);font-size:14px}
 .decide{background:var(--paper);border:1px solid var(--gold);padding:16px 18px;margin:12px 0}
 .decide b{font-family:var(--serif);color:var(--gold2)}
-footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px;letter-spacing:.06em}
-.three{margin-top:40px;background:var(--paper2);border:1px solid var(--line);padding:16px 18px}
+.three{margin-top:44px;background:var(--paper2);border:1px solid var(--line);padding:16px 18px}
 .three .t{font-size:11.5px;letter-spacing:.3em;color:var(--gold);margin-bottom:8px}
 .three ol{margin:0;padding-left:1.4em}
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px;letter-spacing:.06em}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
+<div class="hero"><div class="in">
+  <p class="eyebrow">異世界の叡智 / 書斎</p>
+  <h1>尽きぬ書 本番仕様</h1>
+  <p class="lede">ここまでで決まったことと、体験の流れ。第2稿 2026-09-03 夜。今夜の一から作り直し（売り物レベル）の設計図として使う。</p>
+</div></div>
 <div class="wrap">
-<header>
-  <p class="eyebrow">Wisdom Leaf / 書斎</p>
-  <h1>書斎 作り直し計画書</h1>
-  <p class="lede">初稿 2026-09-03 アラレ。今のプロトタイプ（v5）を土台に、素材を先に揃えてから Fable 5.1 で一から組み直すための地図。KEIと一緒に書き換えていく。</p>
-</header>
 
-<h2>1. 何を作るか</h2>
-<p>KEIが集めた言葉を全部綴じた<strong>「尽きぬ書」</strong>を、暖炉のある賢者の書斎で読む縦型Web体験。栞を挟まなければ開くたび並びが変わり、栞を挟めば固まる。言葉が増えるほど本は分厚くなる。</p>
-<p>目標との接続：TikTokのフォロワー（50万人目標）を「本」に流し、書斎という場所を持つ。収益化は保留だが、会員制にできる構造は最初から残す。</p>
-
-<h2>2. 体験の流れ（確定）</h2>
-<div class="flow">
-  <div class="step"><div class="n">一</div><div><b>書斎の主に会う</b><span>顔のドアップ。字幕風のセリフ「よく来たね。」「今日はどうしたんだい？」→ 選ぶ →「本を見に行く」。BGMなし、雨と暖炉の音だけ。</span></div></div>
-  <div class="step"><div class="n">二</div><div><b>本と向き合う</b><span>同じ書斎の中に3Dの本が浮く。回して眺める。下に小さなボタン「読み方を選ぶ／説明／設定」。BGMなし。</span></div></div>
-  <div class="step"><div class="n">三</div><div><b>本の中に入る</b><span>表紙が開いて光に吸い込まれる（この演出は必ず残す）。書斎は暗く沈み、蝋燭の灯りの中で頁をめくる。最初のタッチから音楽。</span></div></div>
+<h2>1. 決まったこと（確定）</h2>
+<div class="grid2">
+  <div class="card"><b>本のコンセプト</b><p>集めた言葉を全部綴じた本。栞がなければ開くたび並びが変わり、栞を挟めば固定。言葉が増えるほど分厚くなる。総数は見せず「何枚目」だけ見せる。</p></div>
+  <div class="card"><b>背景</b><p>最初に作った書斎の絵（暗い線画調）を使う。油彩調はやめ。時間帯で変わる仕掛けは作らない。読む時だけ暗く沈む。</p></div>
+  <div class="card"><b>書斎の主</b><p>KEI制作の人物モデルを待つ（今は白い素体）。顔のドアップ・呼吸・頷き・手上げ。セリフは枠なしの金の字幕（装甲明朝は必須ではない）。</p></div>
+  <div class="card"><b>本の3D</b><p>開閉と「開いて吸い込まれる」演出はそのまま継承。革・金箔紋章・古び・擦れは<strong>テクスチャで描く</strong>（3Dで作り込まない）。分厚く古びた古代の書、重厚感。</p></div>
+  <div class="card"><b>音</b><p>人間と本の画面はBGMなし、雨と暖炉の環境音だけ。読む画面の最初のタッチから音楽。虫の声・爆ぜ音は使わない。</p></div>
+  <div class="card"><b>読み方</b><p>ランダム／栞の続き（挟んだら固定）／お気に入りだけ／新しく開き直す。テーマ読みは保留。</p></div>
+  <div class="card"><b>UI</b><p>今のは安っぽい。差の大きい3案を作ってKEIが選ぶ。ロゴマーク（葉と眼）は常にどこかに。</p></div>
+  <div class="card"><b>お金・分類・人物</b><p>お金は保留（構造だけ残す）。テーマ分けは保留。人物モデルはKEIが制作中。</p></div>
 </div>
 
-<h2>3. 品質を最大まで上げる項目</h2>
-<p>「今」→「目指す姿」。素材が要るものは先に作る。</p>
+<h2>2. 体験の流れ（新）</h2>
+<p>画面を3つに分けない。<strong>1つの画面の中で、人間 → 本 → 本の中、へ切れ目なく進む。</strong>参考はバイオハザードのアイテム取得画面。</p>
+<div class="flow">
+  <div class="step"><div class="n">一</div><div><b>書斎の主が迎える</b><span>顔のドアップ。字幕「よく来たね。」「今日はどうしたんだい？」→ 選択肢（魔法の名言の書／思考実験・占い・星座占い・エッセイ集＝準備中）。</span><span class="tag">環境音のみ</span></div></div>
+  <div class="step"><div class="n">二</div><div><b>主がフェードで消え、本が現れる</b><span>「魔法の書」を選んだ瞬間、主が薄れて消える。同じ書斎の中央に、本が0%から100%へふわっと拡大して現れ、ゆっくり回り続ける（アイテム取得の見せ方）。主は画面外から一言だけボソッと言う（下の10パターンからランダム）。</span><span class="tag">環境音のみ</span></div></div>
+  <div class="step"><div class="n">三</div><div><b>本の下にボタン</b><span>「読む」「詳細を読む」「お気に入りを見る」「設定」。「詳細を読む」はゲームのアイテム説明のような、分かりやすい解説パネル。閉じれば本に戻る。</span></div></div>
+  <div class="step"><div class="n">四</div><div><b>読む → 表紙が開いて吸い込まれる</b><span>今の演出をそのまま。書斎が暗く沈み、蝋燭の灯りの中で頁をめくる。右上に「◯枚目」。右下「お気に入りに登録」、左下「栞を挟む」。</span><span class="tag">最初のタッチから音楽</span></div></div>
+</div>
+<div class="note">本を選ぶたびに長いセリフを聞かされない。説明は「詳細を読む」に隔離し、主の一言は短くランダム。</div>
+
+<h2>3. 書斎の主の一言（本が出た時・ランダム・下書き）</h2>
+<p>「だ・である」の短い断定。教えない、押しつけない。KEIが直してよい。</p>
+<ul class="lines">
+  <li>ああ、その本か。私も暇なときによく開いている。</li>
+  <li>不思議な本でね。開くたびに、中の順番が変わる。</li>
+  <li>それは、私が今まで集めてきた言葉を全部綴じたものだ。</li>
+  <li>悩みがあるなら、めくってみるといい。答えに近いものが、必ず一つは挟まっている。</li>
+  <li>昨日の一頁目は、今日はもうどこにもない。<small>本の説明文と同じ一文。声として繰り返す</small></li>
+  <li>気に入った頁があれば、挟んでおくといい。あとで、それだけの一冊になる。</li>
+  <li>栞を挟むと、この本は姿を変えなくなる。挟まなければ、毎回別の本だ。</li>
+  <li>終わりはない。ただ、日に日に分厚くなっていく。</li>
+  <li>読んでも、賢くはならない。見え方が、少し変わるだけだ。</li>
+  <li>どこで閉じてもいい。次に開いたときには、もう別の本だから。</li>
+</ul>
+
+<h2>4. 「詳細を読む」の文面（アイテム解説・下書き）</h2>
+<div class="desc">
+  <p><b>尽きぬ書</b></p>
+  <p>書斎の主が集めてきた言葉を、全部まとめて綴じた本。</p>
+  <p>開くたびに頁の順番が入れ替わる。同じ順番で読めることは二度とない。言葉が増えるたびに、日に日に分厚くなっていく。</p>
+  <p><b>読み方</b>　頁の右上をつまんでめくる。左へ引くと次の頁、右へ引くと前の頁。右上の数字は、今までに見た枚数。</p>
+  <p><b>お気に入り</b>　気に入った頁で「お気に入りに登録」。登録した頁だけを綴じ直した、自分だけの一冊を「お気に入りを見る」で開ける。</p>
+  <p><b>栞</b>　「栞を挟む」を押すと、その並びとその頁を覚える。以後は同じ並びの続きから読める。「新しく開き直す」で並びを変えると、栞は外れる。栞は一つだけ。この端末に保存される。</p>
+  <p><b>音</b>　雨と暖炉の音、本を開いてからは音楽。「設定」で変えられる。</p>
+</div>
+
+<h2>5. 見た目の基準</h2>
 <div class="tablewrap"><table>
-<tr><th>領域</th><th>今</th><th>目指す姿</th><th>先に要る素材</th><th>状態</th></tr>
-<tr><td class="k">背景</td><td>ChatGPT1枚。AI感が強い</td><td>油彩の質感。人間〜本まで同じ画、読む時は暗い版。時間帯で灯りが変わる差分も</td><td>MJ3案＋ChatGPT3案から選ぶ→選んだ1枚を高解像度化＋暗い版</td><td><span class="pill p-wait">候補生成中</span></td></tr>
-<tr><td class="k">書斎の主</td><td>白い素体の仮置き</td><td>KEI制作の人物モデル。呼吸・瞬き・口の動き・手のジェスチャー。顔のドアップに耐える質感</td><td>人物モデル（glb）。骨の名前を今と合わせる</td><td><span class="pill p-kei">KEI制作中</span></td></tr>
-<tr><td class="k">本の3D</td><td>Blender自作。革・金箔紋章・背表紙埋め済み</td><td>牛革の質感（法線マップ・粗さマップ）・小口の金付け・革の擦れ・角の丸み。開閉は今の仕組みを継承</td><td>表紙テクスチャ一式（色・法線・粗さ）を写真かChatGPTで作り直し</td><td><span class="pill p-wait">次</span></td></tr>
-<tr><td class="k">開く演出</td><td>表紙が開き光に吸い込まれる</td><td>そのまま採用。光の粒と音を作り込む</td><td>吸い込みSE 1本</td><td><span class="pill p-ok">確定</span></td></tr>
-<tr><td class="k">めくり</td><td>自作canvas。裏透け・追従</td><td>紙の厚み・端の擦れ・影の落ち方を詰める。790枚を軽く（先読み済み）</td><td>なし（実装）</td><td><span class="pill p-ok">継承</span></td></tr>
-<tr><td class="k">灯りと火の粉</td><td>暖色の光・加算合成の粒</td><td>灯りは「一番良かった時」を基準に固定。火の粒は実写素材の合成に切替も検討</td><td>火の粉の実写ループ動画（無料素材サイト・透過WebM）候補2〜3本</td><td><span class="pill p-wait">素材探し</span></td></tr>
-<tr><td class="k">音</td><td>YouTube抽出の雨＋暖炉／BGM半分</td><td>場面ごとに層を分ける。人間＝雨・暖炉／本＝＋紙の擦れ／読書＝＋BGM。めくり音を数種類ランダム</td><td>めくり音3〜5種、吸い込みSE、BGM1〜2曲（Suno）</td><td><span class="pill p-wait">素材作り</span></td></tr>
-<tr><td class="k">文字・UI</td><td>装甲明朝の金字幕／茶の板ボタン</td><td>字幕は装甲明朝で統一。ボタン・パネルは3案作ってKEIが選ぶ。ロゴマークは常にどこかに</td><td>UIパターン3案（画像で提示）</td><td><span class="pill p-kei">KEIが選ぶ</span></td></tr>
-<tr><td class="k">言葉</td><td>790枚の画像</td><td>全部入り。テーマ分けは保留。増える前提でコピー1本で追加できる導線</td><td>追加手順書（済）</td><td><span class="pill p-ok">済</span></td></tr>
-<tr><td class="k">読み方</td><td>ランダム／栞／お気に入り</td><td>そのまま。栞は1つ。テーマ読みは保留</td><td>なし</td><td><span class="pill p-ok">確定</span></td></tr>
-<tr><td class="k">軽さ</td><td>先読み8枚・画像290KB</td><td>初回3秒以内。3Dは軽量化（テクスチャ圧縮）。古いスマホでも落ちない</td><td>なし（実装）</td><td><span class="pill p-wait">組み直し時</span></td></tr>
-<tr><td class="k">土台</td><td>3つのHTMLが別々。設定は共有</td><td>1つのアプリとして組む（画面切替で音が途切れない・キャッシュ問題が消える）</td><td>なし（実装）</td><td><span class="pill p-wait">組み直し時</span></td></tr>
-<tr><td class="k">お金</td><td>なし</td><td>保留。会員ページを後から差し込める構造だけ残す</td><td>—</td><td><span class="pill p-hold">保留</span></td></tr>
+<tr><th>要素</th><th>基準</th><th>状態</th></tr>
+<tr><td class="k">背景</td><td>最初の書斎の絵。人間〜本まで同じ。読む時は暗い版</td><td><span class="pill p-ok">確定</span></td></tr>
+<tr><td class="k">本の表紙</td><td>黒に近い牛革・葉と眼の金箔紋章・古び・擦れ・角の丸み、全部テクスチャで。分厚く重厚</td><td><span class="pill p-wait">テクスチャ作り直し</span></td></tr>
+<tr><td class="k">灯り</td><td>ゆっくり滑らかに、ぼやーっと。本の上だけ明るく、縁は闇。火の粉は蝋燭から</td><td><span class="pill p-ok">基準決定</span></td></tr>
+<tr><td class="k">字幕</td><td>枠なし・金×黒・画面の下から2番目の高さ。書体は装甲明朝または今の雰囲気</td><td><span class="pill p-ok">確定</span></td></tr>
+<tr><td class="k">ボタン・パネル</td><td>差の大きい3案 → KEIが選ぶ。安っぽさを消す（革・真鍮・古紙・彫刻の質感を候補に）</td><td><span class="pill p-kei">3案を作る</span></td></tr>
+<tr><td class="k">本の出現</td><td>0→100%の拡大＋回転。バイオハザードのアイテム取得</td><td><span class="pill p-ok">確定</span></td></tr>
 </table></div>
 
-<h2>4. 先に揃える素材（順番どおり）</h2>
-<ul class="check">
-  <li>書斎の背景 1枚を決める<small>MJ3案＋ChatGPT3案 → KEIが選ぶ → 高解像度化 → 暗い版を作る</small></li>
-  <li>本の表紙テクスチャ一式<small>色・法線・粗さ。牛革＋金箔紋章。今の参照画像を元に</small></li>
-  <li>人物モデル<small>KEI制作。骨の名前は Torso / Head / ArmL / ArmR / HandL / HandR に合わせると今の動きがそのまま効く</small></li>
-  <li>UIパターン3案<small>ボタン・パネル・設定画面。画像で並べてKEIが選ぶ</small></li>
-  <li>音<small>めくり音3〜5種／吸い込みSE／BGM（Suno）／雨・暖炉は今のを継続</small></li>
-  <li>火の粉の実写素材（任意）<small>透過WebM。合わなければ今の描画を磨く</small></li>
-  <li>説明文・セリフの原稿<small>「この本の説明」と書斎の主のセリフ集。KEIの声で</small></li>
-</ul>
-
-<h2>5. 作り直しの段取り</h2>
+<h2>6. 今夜の作り直し（段取り）</h2>
 <ol>
-  <li><strong>素材（1〜2週間）</strong> 上の7つを揃える。KEIの選択が要るのは背景・UI・人物。</li>
-  <li><strong>骨組み（2日）</strong> 1つのアプリとして、画面の切替・音の層・設定・栞・お気に入りを先に組む。見た目は後。</li>
-  <li><strong>画面（3日）</strong> 書斎の主 → 本 → 読書、の順に見た目を入れる。1画面ずつKEI確認。</li>
-  <li><strong>演出（2日）</strong> 開く演出・灯り・火の粉・めくりの質感。ここで一番時間を使う。</li>
-  <li><strong>検証（1日）</strong> KEIのiPhone・古い端末・回線が弱い時。落ちない・重くない・音が途切れない。</li>
+  <li><strong>先に素材</strong>：本の表紙テクスチャ一式（ChatGPT／MJ）・UI3案（画像で提示）・主の一言10本と詳細文（上の下書き）。</li>
+  <li><strong>1つのアプリとして組む</strong>：画面遷移なし。人間→本→本の中を同じページ内で切り替える。音は途切れない。キャッシュ問題も消える。</li>
+  <li><strong>継承するもの</strong>：開いて吸い込まれる演出・めくり（コーナーピール・裏透け）・栞とお気に入りの保存形式・790枚の遅延読込・設定。</li>
+  <li><strong>捨てるもの</strong>：3つに分かれたHTML・Wisdom Leafのロゴ表示・虫の声と爆ぜ音・羊皮紙UI・時間帯の仕掛け。</li>
+  <li><strong>検証</strong>：KEIのiPhoneで、人間→本→読む→栞→戻る、を一周。</li>
 </ol>
-<div class="note">今のプロトタイプは「答え合わせ用」として残す。作り直しは別フォルダで進め、揃ってから差し替える。</div>
 
-<h2>6. KEIに決めてほしいこと</h2>
+<h2>7. まだ決めてほしいこと</h2>
 <div class="decide">
-  <p><b>1. 背景</b>：MJ3案とChatGPT3案のどれか。または「もう1周」。</p>
-  <p><b>2. UI</b>：3案を出すので選ぶ（金×黒の字幕は確定として）。</p>
-  <p><b>3. 人物</b>：いつ頃できそうか。仮の素体のまま進めてよいか。</p>
-  <p><b>4. 音</b>：BGMはSunoで新しく作るか、今の曲を続けるか。</p>
-  <p><b>5. 段取り</b>：上の順番でよいか。先に見たい画面があるか。</p>
+  <p><b>1. UI</b>：3案を作るので、見て選ぶ（今夜中に用意）。</p>
+  <p><b>2. 主の一言と詳細文</b>：上の下書きで進めてよいか。直したい所があれば一言。</p>
+  <p><b>3. 本の表紙</b>：テクスチャを作り直したら1枚だけ見せる。金箔紋章の位置（中央）と大きさはこのままでよいか。</p>
 </div>
-
-<h2>7. 保留にしたもの</h2>
-<ul>
-  <li>お金の受け取り方（FANBOX/note → Stripe の2段階案は出してある）</li>
-  <li>テーマで読む（790枚の分類）</li>
-  <li>思考実験・占い・星座占い・エッセイ集の中身</li>
-</ul>
 
 <div class="three">
   <div class="t">── 3行まとめ ──</div>
   <ol>
-    <li>今の試作を土台に、素材を先に揃えてから一から組み直す計画。</li>
-    <li>上げられる所を全部書き出した。背景・人物・本の質感・音・UI・軽さ・土台。</li>
-    <li>KEIは6番の5つを決めて。背景とUIの候補はこれから届く。</li>
+    <li>決まったことを全部1枚にした。今夜はこれを設計図に一から組み直す。</li>
+    <li>流れは「人間が消えて本が中央に出て回る→下のボタン→読むと吸い込まれる」の一続き。</li>
+    <li>KEIはUI3案を待って選ぶだけ。セリフと説明文は上の下書きでよければそのまま使う。</li>
   </ol>
 </div>
 
-<footer>D:\kei-vault\30_manuals\meigen_book_project.md（手順の正）／この計画書は D:\kei-vault\90_ideas\meigen_book_rebuild_plan.md にも保存</footer>
+<footer>手順の正: D:\kei-vault\30_manuals\meigen_book_project.md ／ この仕様は 90_ideas\meigen_book_rebuild_plan.md にも保存</footer>
 </div>
 
 </body>
