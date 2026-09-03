@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>書斎 作り直し計画書</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ground:#15100b; --paper:#1d1710; --paper2:#241c13; --ink:#e9dfc8; --ink2:#b9ac92; --mute:#857860;
+  --gold:#c9a24a; --gold2:#e6c76e; --line:#3a2f20; --ok:#8fae6b; --wait:#b98a3f; --hold:#8a6f66;
+  --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --sans:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+}
+html{color-scheme:dark}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.85;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:40px 20px 80px}
+header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:34px}
+.eyebrow{font-family:var(--sans);font-size:11.5px;letter-spacing:.32em;color:var(--gold);text-transform:uppercase;margin:0 0 10px}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(26px,6vw,36px);line-height:1.3;margin:0 0 12px;letter-spacing:.04em;text-wrap:balance}
+.lede{color:var(--ink2);margin:0;font-size:15px}
+h2{font-family:var(--serif);font-weight:700;font-size:21px;letter-spacing:.06em;margin:46px 0 14px;padding-left:12px;border-left:3px solid var(--gold);line-height:1.4}
+h3{font-family:var(--serif);font-size:16.5px;font-weight:700;margin:26px 0 8px;color:var(--gold2);letter-spacing:.04em}
+p{margin:0 0 12px}
+ul,ol{margin:0 0 14px;padding-left:1.4em}
+li{margin:4px 0}
+strong{color:var(--gold2);font-weight:700}
+.flow{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0 6px}
+.step{background:var(--paper);border:1px solid var(--line);padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.step .n{font-family:var(--serif);color:var(--gold);font-size:22px;line-height:1;padding-top:3px;min-width:1.2em}
+.step b{display:block;font-family:var(--serif);font-size:16px;margin-bottom:3px}
+.step span{color:var(--ink2);font-size:14px}
+.tablewrap{overflow-x:auto;margin:10px 0 6px;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:var(--paper2);font-weight:500;color:var(--ink2);font-size:12.5px;letter-spacing:.12em;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.k{font-family:var(--serif);font-weight:700;white-space:nowrap;color:var(--gold2)}
+.pill{display:inline-block;font-size:11.5px;letter-spacing:.1em;padding:2px 8px;border:1px solid currentColor;border-radius:2px;white-space:nowrap}
+.p-ok{color:var(--ok)} .p-wait{color:var(--wait)} .p-hold{color:var(--hold)} .p-kei{color:var(--gold)}
+.check{list-style:none;padding:0;margin:8px 0 10px}
+.check li{padding:9px 12px 9px 38px;position:relative;background:var(--paper);border:1px solid var(--line);margin:0 0 6px}
+.check li::before{content:"";position:absolute;left:12px;top:13px;width:14px;height:14px;border:1.5px solid var(--gold);border-radius:2px}
+.check li small{display:block;color:var(--mute);font-size:12.5px;margin-top:2px}
+.note{background:var(--paper2);border-left:3px solid var(--gold);padding:12px 16px;margin:14px 0;color:var(--ink2);font-size:14px}
+.decide{background:var(--paper);border:1px solid var(--gold);padding:16px 18px;margin:12px 0}
+.decide b{font-family:var(--serif);color:var(--gold2)}
+footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px;letter-spacing:.06em}
+.three{margin-top:40px;background:var(--paper2);border:1px solid var(--line);padding:16px 18px}
+.three .t{font-size:11.5px;letter-spacing:.3em;color:var(--gold);margin-bottom:8px}
+.three ol{margin:0;padding-left:1.4em}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Wisdom Leaf / 書斎</p>
+  <h1>書斎 作り直し計画書</h1>
+  <p class="lede">初稿 2026-09-03 アラレ。今のプロトタイプ（v5）を土台に、素材を先に揃えてから Fable 5.1 で一から組み直すための地図。KEIと一緒に書き換えていく。</p>
+</header>
+
+<h2>1. 何を作るか</h2>
+<p>KEIが集めた言葉を全部綴じた<strong>「尽きぬ書」</strong>を、暖炉のある賢者の書斎で読む縦型Web体験。栞を挟まなければ開くたび並びが変わり、栞を挟めば固まる。言葉が増えるほど本は分厚くなる。</p>
+<p>目標との接続：TikTokのフォロワー（50万人目標）を「本」に流し、書斎という場所を持つ。収益化は保留だが、会員制にできる構造は最初から残す。</p>
+
+<h2>2. 体験の流れ（確定）</h2>
+<div class="flow">
+  <div class="step"><div class="n">一</div><div><b>書斎の主に会う</b><span>顔のドアップ。字幕風のセリフ「よく来たね。」「今日はどうしたんだい？」→ 選ぶ →「本を見に行く」。BGMなし、雨と暖炉の音だけ。</span></div></div>
+  <div class="step"><div class="n">二</div><div><b>本と向き合う</b><span>同じ書斎の中に3Dの本が浮く。回して眺める。下に小さなボタン「読み方を選ぶ／説明／設定」。BGMなし。</span></div></div>
+  <div class="step"><div class="n">三</div><div><b>本の中に入る</b><span>表紙が開いて光に吸い込まれる（この演出は必ず残す）。書斎は暗く沈み、蝋燭の灯りの中で頁をめくる。最初のタッチから音楽。</span></div></div>
+</div>
+
+<h2>3. 品質を最大まで上げる項目</h2>
+<p>「今」→「目指す姿」。素材が要るものは先に作る。</p>
+<div class="tablewrap"><table>
+<tr><th>領域</th><th>今</th><th>目指す姿</th><th>先に要る素材</th><th>状態</th></tr>
+<tr><td class="k">背景</td><td>ChatGPT1枚。AI感が強い</td><td>油彩の質感。人間〜本まで同じ画、読む時は暗い版。時間帯で灯りが変わる差分も</td><td>MJ3案＋ChatGPT3案から選ぶ→選んだ1枚を高解像度化＋暗い版</td><td><span class="pill p-wait">候補生成中</span></td></tr>
+<tr><td class="k">書斎の主</td><td>白い素体の仮置き</td><td>KEI制作の人物モデル。呼吸・瞬き・口の動き・手のジェスチャー。顔のドアップに耐える質感</td><td>人物モデル（glb）。骨の名前を今と合わせる</td><td><span class="pill p-kei">KEI制作中</span></td></tr>
+<tr><td class="k">本の3D</td><td>Blender自作。革・金箔紋章・背表紙埋め済み</td><td>牛革の質感（法線マップ・粗さマップ）・小口の金付け・革の擦れ・角の丸み。開閉は今の仕組みを継承</td><td>表紙テクスチャ一式（色・法線・粗さ）を写真かChatGPTで作り直し</td><td><span class="pill p-wait">次</span></td></tr>
+<tr><td class="k">開く演出</td><td>表紙が開き光に吸い込まれる</td><td>そのまま採用。光の粒と音を作り込む</td><td>吸い込みSE 1本</td><td><span class="pill p-ok">確定</span></td></tr>
+<tr><td class="k">めくり</td><td>自作canvas。裏透け・追従</td><td>紙の厚み・端の擦れ・影の落ち方を詰める。790枚を軽く（先読み済み）</td><td>なし（実装）</td><td><span class="pill p-ok">継承</span></td></tr>
+<tr><td class="k">灯りと火の粉</td><td>暖色の光・加算合成の粒</td><td>灯りは「一番良かった時」を基準に固定。火の粒は実写素材の合成に切替も検討</td><td>火の粉の実写ループ動画（無料素材サイト・透過WebM）候補2〜3本</td><td><span class="pill p-wait">素材探し</span></td></tr>
+<tr><td class="k">音</td><td>YouTube抽出の雨＋暖炉／BGM半分</td><td>場面ごとに層を分ける。人間＝雨・暖炉／本＝＋紙の擦れ／読書＝＋BGM。めくり音を数種類ランダム</td><td>めくり音3〜5種、吸い込みSE、BGM1〜2曲（Suno）</td><td><span class="pill p-wait">素材作り</span></td></tr>
+<tr><td class="k">文字・UI</td><td>装甲明朝の金字幕／茶の板ボタン</td><td>字幕は装甲明朝で統一。ボタン・パネルは3案作ってKEIが選ぶ。ロゴマークは常にどこかに</td><td>UIパターン3案（画像で提示）</td><td><span class="pill p-kei">KEIが選ぶ</span></td></tr>
+<tr><td class="k">言葉</td><td>790枚の画像</td><td>全部入り。テーマ分けは保留。増える前提でコピー1本で追加できる導線</td><td>追加手順書（済）</td><td><span class="pill p-ok">済</span></td></tr>
+<tr><td class="k">読み方</td><td>ランダム／栞／お気に入り</td><td>そのまま。栞は1つ。テーマ読みは保留</td><td>なし</td><td><span class="pill p-ok">確定</span></td></tr>
+<tr><td class="k">軽さ</td><td>先読み8枚・画像290KB</td><td>初回3秒以内。3Dは軽量化（テクスチャ圧縮）。古いスマホでも落ちない</td><td>なし（実装）</td><td><span class="pill p-wait">組み直し時</span></td></tr>
+<tr><td class="k">土台</td><td>3つのHTMLが別々。設定は共有</td><td>1つのアプリとして組む（画面切替で音が途切れない・キャッシュ問題が消える）</td><td>なし（実装）</td><td><span class="pill p-wait">組み直し時</span></td></tr>
+<tr><td class="k">お金</td><td>なし</td><td>保留。会員ページを後から差し込める構造だけ残す</td><td>—</td><td><span class="pill p-hold">保留</span></td></tr>
+</table></div>
+
+<h2>4. 先に揃える素材（順番どおり）</h2>
+<ul class="check">
+  <li>書斎の背景 1枚を決める<small>MJ3案＋ChatGPT3案 → KEIが選ぶ → 高解像度化 → 暗い版を作る</small></li>
+  <li>本の表紙テクスチャ一式<small>色・法線・粗さ。牛革＋金箔紋章。今の参照画像を元に</small></li>
+  <li>人物モデル<small>KEI制作。骨の名前は Torso / Head / ArmL / ArmR / HandL / HandR に合わせると今の動きがそのまま効く</small></li>
+  <li>UIパターン3案<small>ボタン・パネル・設定画面。画像で並べてKEIが選ぶ</small></li>
+  <li>音<small>めくり音3〜5種／吸い込みSE／BGM（Suno）／雨・暖炉は今のを継続</small></li>
+  <li>火の粉の実写素材（任意）<small>透過WebM。合わなければ今の描画を磨く</small></li>
+  <li>説明文・セリフの原稿<small>「この本の説明」と書斎の主のセリフ集。KEIの声で</small></li>
+</ul>
+
+<h2>5. 作り直しの段取り</h2>
+<ol>
+  <li><strong>素材（1〜2週間）</strong> 上の7つを揃える。KEIの選択が要るのは背景・UI・人物。</li>
+  <li><strong>骨組み（2日）</strong> 1つのアプリとして、画面の切替・音の層・設定・栞・お気に入りを先に組む。見た目は後。</li>
+  <li><strong>画面（3日）</strong> 書斎の主 → 本 → 読書、の順に見た目を入れる。1画面ずつKEI確認。</li>
+  <li><strong>演出（2日）</strong> 開く演出・灯り・火の粉・めくりの質感。ここで一番時間を使う。</li>
+  <li><strong>検証（1日）</strong> KEIのiPhone・古い端末・回線が弱い時。落ちない・重くない・音が途切れない。</li>
+</ol>
+<div class="note">今のプロトタイプは「答え合わせ用」として残す。作り直しは別フォルダで進め、揃ってから差し替える。</div>
+
+<h2>6. KEIに決めてほしいこと</h2>
+<div class="decide">
+  <p><b>1. 背景</b>：MJ3案とChatGPT3案のどれか。または「もう1周」。</p>
+  <p><b>2. UI</b>：3案を出すので選ぶ（金×黒の字幕は確定として）。</p>
+  <p><b>3. 人物</b>：いつ頃できそうか。仮の素体のまま進めてよいか。</p>
+  <p><b>4. 音</b>：BGMはSunoで新しく作るか、今の曲を続けるか。</p>
+  <p><b>5. 段取り</b>：上の順番でよいか。先に見たい画面があるか。</p>
+</div>
+
+<h2>7. 保留にしたもの</h2>
+<ul>
+  <li>お金の受け取り方（FANBOX/note → Stripe の2段階案は出してある）</li>
+  <li>テーマで読む（790枚の分類）</li>
+  <li>思考実験・占い・星座占い・エッセイ集の中身</li>
+</ul>
+
+<div class="three">
+  <div class="t">── 3行まとめ ──</div>
+  <ol>
+    <li>今の試作を土台に、素材を先に揃えてから一から組み直す計画。</li>
+    <li>上げられる所を全部書き出した。背景・人物・本の質感・音・UI・軽さ・土台。</li>
+    <li>KEIは6番の5つを決めて。背景とUIの候補はこれから届く。</li>
+  </ol>
+</div>
+
+<footer>D:\kei-vault\30_manuals\meigen_book_project.md（手順の正）／この計画書は D:\kei-vault\90_ideas\meigen_book_rebuild_plan.md にも保存</footer>
+</div>
+
+</body>
+</html>
