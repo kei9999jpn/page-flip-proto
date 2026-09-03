@@ -54,6 +54,17 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   padding:7px 15px;font-size:12px;letter-spacing:.24em;text-indent:.24em;font-family:serif;cursor:pointer}
 .ico:active{background:rgba(216,207,188,.16)}
 
+/* ---- 読み方を選ぶ(2026-09-03 KEI) ---- */
+#modes{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:40;background:rgba(5,3,1,.72)}
+#modes .box{width:min(88vw,420px);background:linear-gradient(180deg,rgba(46,33,18,.97),rgba(22,15,8,.98));border:2px solid rgba(201,181,138,.55);
+  box-shadow:0 0 0 5px rgba(20,14,8,.9),0 0 0 6px rgba(201,181,138,.28),0 14px 40px rgba(0,0,0,.8);padding:22px 20px 18px;font-family:serif}
+#modes h2{font-size:14px;letter-spacing:.4em;text-indent:.4em;margin:0 0 16px;font-weight:normal;text-align:center;color:#e6dcc5}
+#modes .mode{display:flex;flex-direction:column;align-items:flex-start;width:100%;box-sizing:border-box;margin:0 0 9px;padding:12px 16px;
+  color:#efe6d0;background:rgba(0,0,0,.28);border:1px solid rgba(201,181,138,.4);font-family:serif;font-size:15px;letter-spacing:.2em;cursor:pointer;text-align:left}
+#modes .mode span{font-size:11px;letter-spacing:.12em;color:#a9997a;margin-top:3px}
+#modes .mode:active{background:rgba(201,181,138,.16)}
+#modes .mode.dim{color:#8b8271;border-color:rgba(201,181,138,.15);cursor:default}
+#modes #modesClose{display:block;margin:14px auto 0;background:none;border:1px solid rgba(216,207,188,.4);color:#d8cfbc;padding:7px 28px;letter-spacing:.35em;text-indent:.35em;font-family:serif;cursor:pointer}
 /* ---- この本について ---- */
 #about{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(5,3,1,.72);z-index:5}
@@ -97,8 +108,7 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
 <div id="menu">
   <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
   <div id="choices">
-    <button class="ch" id="chRead">本を読む</button>
-    <button class="ch" id="btnFav">お気に入り</button>
+    <button class="ch" id="chRead">読み方を選ぶ</button>
     <button class="ch" id="btnAbout">説明</button>
   </div>
   <div id="icons">
@@ -124,6 +134,14 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   </select></label>
   <button id="closeBtn">閉じる</button>
 </div></div>
+<div id="modes"><div class="box">
+  <h2>読み方を選ぶ</h2>
+  <button class="mode" id="mRandom">ランダムに読む<span>開くたびに並びが変わる</span></button>
+  <button class="mode" id="mResume">栞の続きから<span id="mResumeNote">挟んだところから再開</span></button>
+  <button class="mode" id="mFav">お気に入りだけ<span>登録した頁だけの一冊</span></button>
+  <button class="mode dim" id="mTheme">テーマで読む<span>準備中</span></button>
+  <button id="modesClose">閉じる</button>
+</div></div>
 <div id="about"><div class="box">
   <h2>この本の説明</h2>
   <p>■ どんな本か</p>
@@ -138,7 +156,11 @@ html,body{margin:0;height:100%;background:#0d0a07 url(../assets/hall-bg.jpg) cen
   <hr>
   <p>■ お気に入り</p>
   <p>気に入った頁で「お気に入りに登録」を押すと、その頁を挟んでおけます。</p>
-  <p>入口の「お気に入りを見る」から、挟んだ頁だけを綴じ直した、あなただけの一冊を開けます。</p>
+  <p>「読み方を選ぶ」の「お気に入りだけ」で、挟んだ頁だけを綴じ直した、あなただけの一冊を開けます。</p>
+  <hr>
+  <p>■ 栞</p>
+  <p>読んでいる途中で「栞を挟む」を押すと、その場所を覚えておけます。</p>
+  <p>次に来たとき「栞の続きから」を選ぶと、同じ並びの同じ頁から再開できます（栞は1つだけ。このスマホのブラウザに保存されます）。</p>
   <hr>
   <p>■ 音</p>
   <p>雨と暖炉の音、BGMが流れます。音量や種類は「設定」で変えられます。</p>
@@ -309,7 +331,7 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', () => { dragging = false; });
 
 // ---------- 演出: 表紙が開く → 吸い込まれ → 遷移 ----------
-let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903b#read';
+let opening = false, openT = 0, diving = false, diveT = 0, dest = '../a/?b=20260903c#read';
 function beginRead(to) {
   if (opening || diving) return;
   ensureAudio(); dest = to;
@@ -324,7 +346,7 @@ function beginRead(to) {
   setTimeout(() => { $('fade').style.opacity = 1; }, 3050);
   setTimeout(() => location.href = dest, 4100);
 }
-$('btnFav').onclick = () => { if (opening || diving) return; choices.style.visibility = 'hidden'; say('挟んだ頁だけの一冊だな。', () => setTimeout(() => beginRead('../a/?b=20260903b#fav'), 600)); };
+// (btnFav は読み方パネルへ統合)
 
 // ---------- 対話 + 選択肢 ----------
 const talkTxt = $('talkTxt'), choices = $('choices');
@@ -344,11 +366,20 @@ const fromHall = new URLSearchParams(location.search).get('from') === 'hall';
 function startDialogue() {
   showChoices();   // セリフは出さない(KEI 2026-09-03)
 }
-$('chRead').onclick = () => {
-  if (opening || diving) return;
-  choices.style.visibility = 'hidden';
-  say('じゃあ、これだね。', () => setTimeout(() => beginRead('../a/?b=20260903b#read'), 700));
-};
+$('chRead').onclick = () => { if (opening || diving) return; ensureAudio(); openModes(); };
+function hasBookmark() { try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch (e) { return false; } }
+function openModes() {
+  const hb = hasBookmark();
+  $('mResume').classList.toggle('dim', !hb);
+  $('mResumeNote').textContent = hb ? '挟んだところから再開' : 'まだ栞は挟まれていない';
+  $('modes').style.display = 'flex';
+}
+function go(hash) { $('modes').style.display = 'none'; choices.style.visibility = 'hidden'; beginRead('../a/?b=20260903c' + hash); }
+$('mRandom').onclick = () => go('#read');
+$('mResume').onclick = () => { if (hasBookmark()) go('#resume'); };
+$('mFav').onclick = () => go('#fav');
+$('modesClose').onclick = () => { $('modes').style.display = 'none'; };
+$('modes').addEventListener('click', e => { if (e.target === $('modes')) $('modes').style.display = 'none'; });
 choices.querySelectorAll('.ch.dim').forEach(b => {
   b.onclick = () => {
     const s = b.querySelector('.soon');
@@ -364,7 +395,7 @@ canvas.addEventListener('pointerup', e => {
   if (!downXY) return;
   const d = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
   downXY = null;
-  if (d < 8 && book) beginRead('../a/?b=20260903b#read');
+  if (d < 8 && book) beginRead('../a/?b=20260903c#read');
 });
 
 function resize() {

@@ -87,9 +87,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
   box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 6px 16px rgba(0,0,0,.6);
   padding:0 18px;font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
 #favBtn{right:14px}
-#favListBtn{display:none}
+#favListBtn{right:auto;left:14px}
 #favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
-#favBtn.on{color:#e8b04b;border-color:rgba(232,176,75,.6)}
+#favBtn.on,#favListBtn.on{color:#e8b04b;border-color:rgba(232,176,75,.6)}
 #favPanel{position:fixed;inset:0;z-index:29;display:none;background:rgba(5,3,1,.85);
   align-items:center;justify-content:center}
 #favPanel .box{max-height:76vh;overflow:auto;background:#161009;border:1px solid rgba(216,207,188,.4);
@@ -118,7 +118,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
 <div id="seen"></div>
 <div id="favBtn">♡</div>
-<div id="favListBtn">栞</div>
+<div id="favListBtn">栞を挟む</div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
@@ -196,7 +196,6 @@ function updateFavUI() {
   const on = favs.includes(deck[index]);
   favBtn.textContent = on ? '✓ お気に入り済み' : 'お気に入りに登録';
   favBtn.classList.toggle('on', on);
-  favListBtn.textContent = !favMode ? '栞' : '全';
 }
 favBtn.addEventListener('click', () => {
   ensureAudio();
@@ -222,7 +221,19 @@ function exitFavBook() {
   favMode = false; deck = shuffled(ALL_PAGES); index = 0; flip = null; anim = null;
   draw(); updateFavUI(); pageSound(0.6);
 }
-favListBtn.addEventListener('click', () => { ensureAudio(); favMode ? exitFavBook() : enterFavBook(); });
+// 2026-09-03 KEI: 栞=「ここまで読んだ」を1か所だけ覚える(このブラウザ内)。次回「栞の続きから」で同じ並び・同じ頁から再開
+function saveBookmark() {
+  try { localStorage.setItem('bookexp-bookmark', JSON.stringify({ deck: deck, index: index, ts: Date.now(), fav: favMode })); } catch (e) {}
+}
+favListBtn.addEventListener('click', () => {
+  ensureAudio(); saveBookmark();
+  favListBtn.textContent = '栞を挟んだ'; favListBtn.classList.add('on');
+  setTimeout(() => { favListBtn.textContent = '栞を挟む'; favListBtn.classList.remove('on'); }, 1600);
+});
+function loadBookmark() {
+  try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); if (b && Array.isArray(b.deck) && b.deck.length) return b; } catch (e) {}
+  return null;
+}
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
 function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); updateFavUI(); }
 
@@ -757,7 +768,7 @@ function rampGlow(target, ms) {
 }
 
 // ---- スタート画面から直行: #read=即めくり / #fav=お気に入りだけの本 (2D表紙シーンは飛ばす) ----
-if (location.hash === '#fav' || location.hash === '#read') {
+if (location.hash === '#fav' || location.hash === '#read' || location.hash === '#resume') {
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
@@ -768,6 +779,10 @@ if (location.hash === '#fav' || location.hash === '#read') {
   });
   showFavButtons();
   if (location.hash === '#fav') enterFavBook();
+  if (location.hash === '#resume') {
+    const b = loadBookmark();
+    if (b) { const ok = b.deck.every(n => n >= 0 && n < N); if (ok) { deck = b.deck; index = Math.min(b.index, deck.length - 1); favMode = !!b.fav; draw(); updateFavUI(); } }
+  }
 }
 })();
 </script>
