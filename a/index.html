@@ -12,7 +12,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavior:none}
 #bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.6) saturate(.9)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
-#book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 18px 50px rgba(0,0,0,.75);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
+#book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
 #fade{position:fixed;inset:0;background:#000;opacity:1;transition:opacity 1.6s ease;pointer-events:none;z-index:30}
 
@@ -81,27 +81,23 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 
 /* ---- favorites ---- */
 /* 2026-09-03 KEI: ハートはダサい→文字ボタン「お気に入りに登録」。栞ボタンは廃止(お気に入りの本は入口の「お気に入りを見る」から) */
-#favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:27;height:38px;
-  display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:.2em;color:#efe6d0;
-  background:linear-gradient(180deg,rgba(46,33,18,.9),rgba(22,15,8,.94));border:1px solid rgba(201,181,138,.45);
-  box-shadow:0 0 0 3px rgba(20,14,8,.85),0 0 0 4px rgba(201,181,138,.2),0 6px 16px rgba(0,0,0,.6);
-  padding:0 18px;font-family:serif;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s;pointer-events:none}
-#favBtn,#favListBtn,#setBtn{width:118px;padding:0;text-align:center;left:auto;right:auto}
-#favListBtn{left:calc(50% - 186px)}
-#setBtn{left:calc(50% - 59px)}
-#favBtn{left:calc(50% + 68px)}
-/* 見た枚数(右上)。総数は出さない(KEI) */
-#seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#d8cfbc;font-family:serif;font-size:13px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
-#seen.show{opacity:.8}
-#seen b{font-weight:normal;font-size:19px;letter-spacing:.05em;margin-right:.25em}
-/* 埋め込み時の戻る(左上) */
-#backBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;z-index:27;display:none;color:#e8ca72;font-family:serif;font-size:13px;letter-spacing:.2em;
-  padding:7px 14px;background:linear-gradient(180deg,#2a1d10,#150e07);border:1px solid #b08a3c;box-shadow:0 0 0 2px #0a0704,0 0 0 3px #7a5f2a,0 6px 14px rgba(0,0,0,.7);cursor:pointer;opacity:0;transition:opacity 1s}
-#backBtn.show{display:block;opacity:.9}
-#setBtn{display:none}
+#favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 2vh);z-index:27;width:104px;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.2em;text-indent:.2em;
+  color:#b8a98a;background:rgba(11,8,6,.6);border:1px solid rgba(201,162,74,.22);padding:8px 0 9px;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s,border-color .18s}
+#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:15px;letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal}
+#favListBtn{left:calc(50% - 164px)}
+#setBtn{left:calc(50% - 52px);display:none}
 #setBtn.show{display:flex}
-#favBtn.show,#favListBtn.show{opacity:.85;pointer-events:auto}
-#favBtn.on,#favListBtn.on{color:#e8b04b;border-color:rgba(232,176,75,.6)}
+#favBtn{left:calc(50% + 60px)}
+#favBtn.show,#favListBtn.show,#setBtn.show{opacity:.92;pointer-events:auto}
+/* 見た枚数(右上)・戻る(左上): 同じ言語 */
+#seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#b8a98a;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
+#seen.show{opacity:.85}
+#seen b{font-weight:normal;font-family:serif;font-size:18px;letter-spacing:.05em;margin-right:.25em;color:#c9a24a}
+#backBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;z-index:27;display:none;color:#b8a98a;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.2em;
+  padding:7px 12px;background:rgba(11,8,6,.6);border:1px solid rgba(201,162,74,.22);cursor:pointer;opacity:0;transition:opacity 1s}
+#backBtn.show{display:block;opacity:.9}
+#favBtn.on,#favListBtn.on{color:#e9cf7e;border-color:rgba(201,162,74,.6)}
 #favPanel{position:fixed;inset:0;z-index:29;display:none;background:rgba(5,3,1,.85);
   align-items:center;justify-content:center}
 #favPanel .box{max-height:76vh;overflow:auto;background:#161009;border:1px solid rgba(216,207,188,.4);
@@ -130,9 +126,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="lidT" class="hidden"></div><div id="lidB" class="hidden"></div>
 <div id="seen"></div>
 <div id="backBtn">‹ 戻る</div>
-<div id="favBtn">♡</div>
-<div id="favListBtn">栞を挟む</div>
-<div id="setBtn">設定</div>
+<div id="favBtn"><b>♡</b><span>お気に入り</span></div>
+<div id="favListBtn"><b>⌇</b><span>栞を挟む</span></div>
+<div id="setBtn"><b>⚙</b><span>設定</span></div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
@@ -208,7 +204,7 @@ function updateSeen() {
 function updateFavUI() {
   updateSeen();
   const on = favs.includes(deck[index]);
-  favBtn.textContent = on ? '✓ お気に入り' : 'お気に入り';
+  favBtn.querySelector('span').textContent = on ? 'お気に入り済' : 'お気に入り'; favBtn.querySelector('b').textContent = on ? '♥' : '♡';
   favBtn.classList.toggle('on', on);
 }
 favBtn.addEventListener('click', () => {
@@ -241,8 +237,8 @@ function saveBookmark() {
 }
 favListBtn.addEventListener('click', () => {
   ensureAudio(); saveBookmark();
-  favListBtn.textContent = '栞を挟んだ'; favListBtn.classList.add('on');
-  setTimeout(() => { favListBtn.textContent = '栞を挟む'; favListBtn.classList.remove('on'); }, 1600);
+  favListBtn.querySelector('span').textContent = '栞を挟んだ'; favListBtn.classList.add('on');
+  setTimeout(() => { favListBtn.querySelector('span').textContent = '栞を挟む'; favListBtn.classList.remove('on'); }, 1600);
 });
 function loadBookmark() {
   try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); if (b && Array.isArray(b.deck) && b.deck.length) return b; } catch (e) {}
