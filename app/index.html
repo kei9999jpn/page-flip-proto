@@ -19,7 +19,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:serif;-webkit-tap-hig
 
 #backHall{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;z-index:8;display:none;color:#e8ca72;font-family:serif;font-size:13px;letter-spacing:.2em;
   padding:7px 14px;background:linear-gradient(180deg,#2a1d10,#150e07);border:1px solid #b08a3c;box-shadow:0 0 0 2px #0a0704,0 0 0 3px #7a5f2a,0 6px 14px rgba(0,0,0,.7);cursor:pointer}
-.stage-book #backHall{display:block}
 /* ---- 字幕(主のセリフ) ---- */
 #talk{position:fixed;left:50%;top:62%;transform:translate(-50%,-50%);width:min(94vw,640px);text-align:center;z-index:6;cursor:pointer;
   font-family:"Soukou Mincho","Shippori Mincho","Hiragino Mincho ProN",serif;opacity:0;transition:opacity .9s}
@@ -28,31 +27,24 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:serif;-webkit-tap-hig
 #talk .txt{min-height:1.6em;white-space:pre-wrap;font-size:clamp(22px,6.2vw,34px);line-height:1.55;letter-spacing:.06em;font-weight:700;
   background:linear-gradient(180deg,#fff2b8 0%,#f0c95a 45%,#c9952a 60%,#ffe08a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 2px 2px #000) drop-shadow(0 0 14px rgba(0,0,0,.9))}
-#talk.small .txt{font-size:clamp(17px,4.6vw,24px)}
-#talk.small{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 34vh);transform:translateX(-50%)}
+#talk.small .txt{font-size:clamp(17px,4.8vw,25px)}
+#talk.small{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 27vh);transform:translateX(-50%)}
 
-/* ---- 下部UI(A案: 真鍮の縁と黒革) ---- */
-#ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 3vh);z-index:7;
-  display:flex;flex-direction:column;gap:12px;align-items:center;opacity:0;transition:opacity .9s;pointer-events:none}
+/* ---- 下部UI v7: 細い金線と黒の板(小さく・低く) ---- */
+#ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2.2vh);z-index:7;
+  display:flex;flex-direction:column;gap:9px;align-items:center;opacity:0;transition:opacity .9s;pointer-events:none}
 #ui.show{opacity:1;pointer-events:auto}
-.btn{position:relative;color:#f0dfae;font-family:"Shippori Mincho",serif;font-size:15px;letter-spacing:.3em;text-indent:.3em;white-space:nowrap;
-  padding:13px 30px;background:linear-gradient(180deg,#2a1d10,#150e07);border:1px solid #b08a3c;cursor:pointer;
-  box-shadow:0 0 0 3px #0a0704,0 0 0 4px #7a5f2a,0 8px 18px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,220,150,.18);
-  transition:background .2s,opacity .4s,transform .4s}
-.btn::before,.btn::after{content:"";position:absolute;top:50%;width:6px;height:6px;border-radius:50%;transform:translateY(-50%);
-  background:radial-gradient(circle at 35% 35%,#f4d98a,#7a5a1e 70%)}
-.btn::before{left:7px}.btn::after{right:7px}
-.btn:active{background:linear-gradient(180deg,#3a2a16,#1d140a)}
-.btn.dim{color:#8b7f66;border-color:#5a4726;cursor:default}
-.btn.dim .soon{margin-left:.6em;font-size:10px;letter-spacing:.2em;color:#8b7f66}
-#choices{display:flex;flex-direction:column;gap:12px;width:min(78vw,340px)}
-#choices .btn{width:100%;box-sizing:border-box}
-#bookBtns{display:none;flex-direction:column;gap:12px;width:min(78vw,340px)}
+.btn{position:relative;color:#e6cf8e;font-family:"Shippori Mincho",serif;font-size:13.5px;letter-spacing:.34em;text-indent:.34em;white-space:nowrap;
+  padding:11px 26px;background:linear-gradient(180deg,rgba(24,17,9,.92),rgba(10,7,4,.94));border:1px solid rgba(201,162,74,.55);cursor:pointer;
+  box-shadow:0 0 0 1px rgba(0,0,0,.8),inset 0 0 0 1px rgba(201,162,74,.18),0 10px 22px rgba(0,0,0,.7);transition:background .2s,opacity .4s}
+.btn::before,.btn::after{display:none}
+.btn:active{background:linear-gradient(180deg,rgba(60,44,20,.95),rgba(24,17,9,.95))}
+.btn.dim{color:#7c6f55;border-color:rgba(201,162,74,.22);cursor:default}
+.btn.dim .soon{margin-left:.6em;font-size:10px;letter-spacing:.2em;color:#7c6f55}
+#choices{display:none}
+#bookBtns{display:flex;flex-direction:column;gap:9px;width:min(64vw,270px)}
 #bookBtns .btn{width:100%;box-sizing:border-box}
 #act{display:none}
-.stage-hall #choices{display:flex}
-.stage-book #choices{display:none}
-.stage-book #bookBtns{display:flex}
 
 /* ---- パネル共通(A案) ---- */
 .ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:40;background:rgba(5,3,1,.7)}
@@ -91,11 +83,10 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:serif;-webkit-tap-hig
 #reader.show{opacity:1;pointer-events:auto}
 </style>
 </head>
-<body class="stage-hall">
+<body class="stage-book">
 <div id="bgDim"></div>
 <canvas id="c"></canvas>
 
-<button id="backHall">‹ 戻る</button>
 <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
 <div id="ui">
   <div id="choices">
@@ -160,7 +151,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:serif;-webkit-tap-hig
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904e';
+const BUILD = '20260904g';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
@@ -213,6 +204,7 @@ const talk = $('talk'), talkTxt = $('talkTxt');
 let typing = null, typingDone = null, talkHide = null;
 function say(line, done, opts){
   opts = opts || {};
+  line = line.replace(/\n/g, '').replace(/。(?=.)/g, '。\n');   // 一文ごとに改行(KEI 2026-09-04)
   if (typing) { clearInterval(typing); typing = null; }
   if (talkHide) { clearTimeout(talkHide); talkHide = null; }
   talk.classList.toggle('small', !!opts.small);
@@ -254,7 +246,8 @@ const candleH = new THREE.PointLight(0xffd9a8, 7.5, 11, 2.0); candleH.position.s
 const rimH = new THREE.DirectionalLight(0x8290b4, 0.75); rimH.position.set(2.2, 2.4, -2.6); sceneH.add(rimH);
 const fillH = new THREE.PointLight(0xdfe6ff, 1.3, 8, 2.0); fillH.position.set(1.7, 0.4, 1.2); sceneH.add(fillH);
 const NODE = {}, BASE = {}; let figure = null, figureMats = [];
-new GLTFLoader().load('../assets/figure.glb', g => {
+const USE_FIGURE = false;   // 2026-09-04 KEI: 人間の画面は無し
+if (USE_FIGURE) new GLTFLoader().load('../assets/figure.glb', g => {
   figure = g.scene;
   figure.traverse(o => {
     if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.roughness = 0.62; o.material.transparent = true; o.material.depthWrite = false; figureMats.push(o.material); }
@@ -321,7 +314,9 @@ new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '
   book.traverse(o => { if (o.isMesh && o.material) { o.material.roughness = Math.max(o.material.roughness || 0, 0.93); o.material.metalness = 0; } });
   const cover = book.getObjectByName('Cover_Front');
   if (cover) { const bb = new THREE.Box3().setFromObject(cover); hinge = new THREE.Group(); hinge.position.set(bb.min.x, (bb.min.y+bb.max.y)/2, 0); book.add(hinge); hinge.attach(cover); }
-  pivot.scale.setScalar(0.0001);
+  pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
+  $('ui').classList.add('show');
+  setTimeout(() => say(TIPS[Math.floor(Math.random()*TIPS.length)], null, { small:true, autoHide:9000 }), 900);
 });
 // 塵(本の周り)
 const dustGeo = new THREE.BufferGeometry(); const ND = 220, dpos = new Float32Array(ND*3), dspd = [];
@@ -336,7 +331,7 @@ addEventListener('pointermove', e => { if (!dragging) return; camTheta -= (e.cli
 addEventListener('pointerup', () => { dragging = false; downXY = null; });
 
 // ============================================================ 進行(stage)
-let stage = 'hall';   // hall → book → read
+let stage = 'book';   // (hall は廃止) book → read
 function setStage(s){ stage = s; document.body.classList.remove('stage-hall','stage-book','stage-read'); document.body.classList.add('stage-' + s); }
 let phase = 0, busy = false;
 function startDialogue(){ phase = 1; $('ui').classList.add('show'); say('よく来たね。', () => setTimeout(() => { if (phase === 1) advance(); }, 1400)); }
@@ -359,11 +354,7 @@ function toBook(){
 // 本 → 主へ戻る(読書から戻った時)
 function toHallBook(){ setStage('book'); bookTarget = 1; $('ui').classList.add('show'); }
 // 本の画面 → 主の画面へ戻る(KEI 2026-09-04)
-$('backHall').onclick = () => {
-  if (opening || diving || stage !== 'book') return;
-  bookTarget = 0; talk.classList.remove('show');
-  setTimeout(() => { setStage('hall'); figureTarget = 1; phase = 2; busy = false; say('他に、見たいものはあるかい？'); }, 500);
-};
+// (人間の画面は廃止)
 
 // ============================================================ 本を開く → 吸い込まれる → 読書(埋め込み)
 const reader = $('reader');
@@ -377,7 +368,7 @@ function beginRead(hash){
   ensureAudio();
   document.querySelectorAll('.ov').forEach(o => o.classList.remove('show'));
   preloadReader(hash);
-  $('ui').classList.remove('show'); talk.classList.remove('show'); $('crest').style.opacity = 0;
+  $('ui').classList.remove('show'); talk.classList.remove('show');
   // 2026-09-04 KEI: ゆっくり開く → ぐーっと吸い込まれる → 暗転 → 暗い所から蝋燭の灯りが徐々にボワンと灯る
   while (camTheta > Math.PI) camTheta -= Math.PI * 2; while (camTheta < -Math.PI) camTheta += Math.PI * 2;
   $('readTitle').classList.add('show');
@@ -391,7 +382,7 @@ function beginRead(hash){
     reader.classList.add('show');                                   // 読書側は暗い所から rampGlow で灯る
     setTimeout(() => { $('burst').style.opacity = 0; }, 200);
     setTimeout(() => { $('fade').style.opacity = 0; }, 900);
-    opening = false; diving = false; openT = 0; diveT = 0; if (hinge) hinge.rotation.z = 0; bookTarget = 0; pivot.scale.setScalar(0.0001);
+    opening = false; diving = false; openT = 0; diveT = 0; if (hinge) hinge.rotation.z = 0;
   }, 6900);
 }
 $('bOpen').onclick = () => beginRead('#read');
@@ -409,8 +400,8 @@ addEventListener('message', e => {
     bgmWanted = false; applyAudio();
     $('fade').style.opacity = 1;
     setTimeout(() => {
-      reader.classList.remove('show'); reader.src = 'about:blank'; $('bgDim').style.opacity = 0; $('crest').style.opacity = .9;
-      toHallBook();
+      reader.classList.remove('show'); reader.src = 'about:blank'; $('bgDim').style.opacity = 0;
+      setStage('book'); bookTarget = 1; $('ui').classList.add('show');
       setTimeout(() => { $('fade').style.opacity = 0; }, 200);
     }, 1100);
   }
@@ -436,7 +427,7 @@ renderer.setAnimationLoop(() => {
     pivot.scale.setScalar(sc);
     pivot.position.y = 0.10 + Math.sin(t*0.9)*0.008;
     idleT += dt;
-    if (!dragging && idleT > 1.2 && !opening && !diving && stage === 'book') camTheta += dt * 0.14;
+    if (!dragging && !opening && !diving && stage === 'book') camTheta += dt * 0.055;   // 常にゆっくり(KEI)
     while (camTheta > Math.PI) camTheta -= Math.PI * 2; while (camTheta < -Math.PI) camTheta += Math.PI * 2;
     if (opening && hinge) { openT = Math.min(openT + wdt/2.2, 1); const k = openT*openT*(3-2*openT); hinge.rotation.z = k * 2.5; }
     candleB.intensity = 1.9 + Math.sin(t*0.71)*0.22 + Math.sin(t*1.63+1.1)*0.13 + Math.sin(t*0.29+2.4)*0.16;
