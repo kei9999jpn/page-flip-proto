@@ -57,7 +57,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 #ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2vh);z-index:7;display:flex;flex-direction:column;gap:14px;align-items:center;
   opacity:0;transition:opacity .9s;pointer-events:none}
 #ui.show{opacity:1;pointer-events:auto}
-#choices{display:none}
 #bookBtns{display:flex;flex-direction:column;align-items:center;gap:14px}
 .seal{font-family:var(--serif);font-size:clamp(14px,4.2vw,17px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
   width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.png) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
@@ -99,8 +98,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 .dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
 .dots i.on{background:var(--gold);opacity:1}
 /* ---- 演出 ---- */
-#burst{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .55s ease;z-index:20;
-  background:radial-gradient(circle at 50% 52%,rgba(255,238,200,.95) 0%,rgba(255,210,130,.55) 30%,transparent 68%)}
 #readTitle{position:fixed;left:0;right:0;top:36%;text-align:center;pointer-events:none;z-index:21;font-family:var(--serif);color:var(--gold2);
   opacity:0;filter:blur(14px);transition:opacity 1.2s ease,filter 1.2s ease}
 #readTitle .main{font-size:min(11vw,64px);font-weight:500;letter-spacing:.3em;text-indent:.3em;white-space:nowrap;text-shadow:0 0 26px rgba(233,207,126,.55),0 2px 12px rgba(0,0,0,.9)}
@@ -118,7 +115,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 <div id="vignette"></div><div id="grain"></div>
 <div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
 <div id="ui">
-  <div id="choices"></div>
   <div id="bookBtns">
     <button class="seal" id="bOpen">本 を 開 く</button>
     <div class="row">
@@ -167,7 +163,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
   <button class="close" id="panelClose">閉じる</button>
 </div></div>
 
-<div id="burst"></div>
 <div id="readTitle"><div class="rule"></div><div class="main">名言の書</div><div class="rule"></div></div>
 <iframe id="reader" title="名言の書" allow="autoplay"></iframe>
 <div id="fade"></div>
@@ -185,7 +180,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904p';
+const BUILD = '20260904q';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -314,65 +309,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.72;
 renderer.autoClear = false;
 
-// ---------- 書斎の主(hall) ----------
-const sceneH = new THREE.Scene();
-const camH = new THREE.PerspectiveCamera(38, 1, 0.05, 60);
-sceneH.add(new THREE.AmbientLight(0x241b14, 1.1));
-const candleH = new THREE.PointLight(0xffd9a8, 7.5, 11, 2.0); candleH.position.set(-1.35, 1.45, 1.75); sceneH.add(candleH);
-const rimH = new THREE.DirectionalLight(0x8290b4, 0.75); rimH.position.set(2.2, 2.4, -2.6); sceneH.add(rimH);
-const fillH = new THREE.PointLight(0xdfe6ff, 1.3, 8, 2.0); fillH.position.set(1.7, 0.4, 1.2); sceneH.add(fillH);
-const NODE = {}, BASE = {}; let figure = null, figureMats = [];
-const USE_FIGURE = false;   // 2026-09-04 KEI: 人間の画面は無し
-if (USE_FIGURE) new GLTFLoader().load('../assets/figure.glb', g => {
-  figure = g.scene;
-  figure.traverse(o => {
-    if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.roughness = 0.62; o.material.transparent = true; o.material.depthWrite = false; figureMats.push(o.material); }
-    if (o.name) NODE[o.name] = o;
-  });
-  ['Torso','Head','ArmL','ArmR','HandL','HandR','LegL','LegR'].forEach(n => { const o = NODE[n]; if (o) BASE[n] = { p:o.position.clone(), q:o.quaternion.clone(), s:o.scale.clone() }; });
-  sceneH.add(figure);
-  setTimeout(startDialogue, 500);
-}, undefined, e => console.error('figure.glb', e));
-const HOME = { ph:1.50, d:1.25 }, TARGET_Y = 1.52;      // 顔のドアップ(KEI)
-camH.position.set(0, TARGET_Y + HOME.d * Math.cos(HOME.ph), HOME.d * Math.sin(HOME.ph)); camH.lookAt(0, TARGET_Y, 0);
-let headYaw = 0, headPitch = 0, hyFrom = 0, hyTo = 0, hpFrom = 0, hpTo = 0, headT = 0, headDur = 1.8, nextLook = 5;
-function scheduleLook(){ hyFrom = headYaw; hpFrom = headPitch; const back = Math.random() < 0.45; hyTo = back ? 0 : (Math.random()*2-1)*0.46; hpTo = back ? 0 : (Math.random()*2-1)*0.10; headT = 0; headDur = 1.5 + Math.random()*0.9; nextLook = 6 + Math.random()*4; }
-let nodT = -1, nextGesture = 3.5, figureAlpha = 1, figureTarget = 1;
-let _dbgA = 0, _dbgB = 0, _dbgDt = 0;
-function animFigure(t, dt, wdt){
-  _dbgA++; _dbgDt = dt; wdt = (wdt == null) ? dt : wdt;
-  if (!figure) return;
-  const br = Math.sin(t * (Math.PI*2/4.0));
-  const T = NODE.Torso, bT = BASE.Torso;
-  if (T && bT) { T.scale.set(bT.s.x*(1+br*0.007), bT.s.y*(1+br*0.011), bT.s.z*(1+br*0.009)); T.position.set(bT.p.x, bT.p.y + br*0.009, bT.p.z); T.rotation.set(0, 0, Math.sin(t*0.31)*0.012); }
-  nextLook -= dt; if (nextLook <= 0 && nodT < 0) scheduleLook();
-  if (headT < headDur) { headT += dt; const k = Math.min(headT/headDur, 1), e = k*k*(3-2*k); headYaw = hyFrom + (hyTo-hyFrom)*e; headPitch = hpFrom + (hpTo-hpFrom)*e; }
-  nextGesture -= dt; if (nextGesture <= 0 && nodT < 0) { nodT = 0; nextGesture = 5 + Math.random()*5; }
-  let nod = 0, raise = 0;
-  if (nodT >= 0) { nodT += dt; nod = Math.sin(Math.min(nodT,1.1)*Math.PI/1.1)*0.26; raise = Math.sin(Math.min(nodT,1.6)*Math.PI/1.6); if (nodT > 1.8) nodT = -1; }
-  const H = NODE.Head, bH = BASE.Head;
-  if (H && bH) { H.rotation.set(headPitch - br*0.018 + nod, headYaw, Math.sin(t*0.27+2.0)*0.015); H.position.set(bH.p.x, bH.p.y + br*0.004, bH.p.z); }
-  const aL = NODE.ArmL, aR = NODE.ArmR;
-  if (aL && aR && BASE.ArmL && BASE.ArmR) {
-    aL.quaternion.copy(BASE.ArmL.q); aR.quaternion.copy(BASE.ArmR.q);
-    aL.rotateZ(-0.030 + Math.sin(t*0.62)*0.030 - raise*0.62); aL.rotateX(Math.sin(t*0.47+0.6)*0.030 - raise*0.30);
-    aR.rotateZ( 0.030 - Math.sin(t*0.62+1.35)*0.030); aR.rotateX(Math.sin(t*0.47+2.1)*0.030);
-  }
-  const hL = NODE.HandL, hR = NODE.HandR;
-  if (hL && hR && BASE.HandL && BASE.HandR) {
-    hL.quaternion.copy(BASE.HandL.q); hR.quaternion.copy(BASE.HandR.q);
-    hL.rotateZ(Math.sin(t*0.93+0.3)*0.075 - raise*0.35); hL.rotateX(Math.sin(t*0.71+1.4)*0.055);
-    hR.rotateZ(-Math.sin(t*0.88+2.2)*0.075); hR.rotateX(Math.sin(t*0.66+0.2)*0.055);
-  }
-  // フェード(主が消える/戻る)
-  _dbgB++;
-  figureAlpha += (figureTarget - figureAlpha) * (1 - Math.exp(-wdt / 0.45));
-  figureMats.forEach(m => { m.opacity = figureAlpha; });
-  figure.visible = figureAlpha > 0.01;
-  const fl = 1 + Math.sin(t*0.9)*0.05 + Math.sin(t*2.1)*0.03;
-  candleH.intensity = 7.5 * fl;
-}
-
 // ---------- 本(book) ----------
 const sceneB = new THREE.Scene();
 const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
@@ -434,29 +370,6 @@ addEventListener('pointerup', () => { dragging = false; downXY = null; });
 // ============================================================ 進行(stage)
 let stage = 'book';   // (hall は廃止) book → read
 function setStage(s){ stage = s; document.body.classList.remove('stage-hall','stage-book','stage-read'); document.body.classList.add('stage-' + s); }
-let phase = 0, busy = false;
-function startDialogue(){ phase = 1; $('ui').classList.add('show'); say('よく来たね。', () => setTimeout(() => { if (phase === 1) advance(); }, 1400)); }
-function advance(){ if (busy) return; if (skipTyping()) return; if (phase === 1) { phase = 2; say('今日はどうしたんだい？'); } }
-talk.onclick = () => { if (stage === 'hall') advance(); };
-document.querySelectorAll('#choices .btn.dim').forEach(b => { b.onclick = () => { b.style.opacity = .55; setTimeout(() => b.style.opacity = '', 500); }; });
-if ($('chRead')) $('chRead').onclick = () => { if (busy || stage !== 'hall') return; busy = true; ensureAudio(); nodT = 0; toBook(); };
-
-// 主が消え、本が中央に現れて回る(バイオのアイテム取得・KEI 2026-09-03)
-function toBook(){
-  skipTyping(); talk.classList.remove('show');
-  figureTarget = 0;
-  setTimeout(() => {
-    setStage('book');
-    bookTarget = 1; idleT = 0; camTheta = 0.35; camPhi = 1.02;
-    say(TIPS[Math.floor(Math.random()*TIPS.length)], null, { small:true, autoHide:6500 });
-    busy = false;
-  }, 650);
-}
-// 本 → 主へ戻る(読書から戻った時)
-function toHallBook(){ setStage('book'); bookTarget = 1; $('ui').classList.add('show'); }
-// 本の画面 → 主の画面へ戻る(KEI 2026-09-04)
-// (人間の画面は廃止)
-
 // ============================================================ 本を開く → 吸い込まれる → 読書(埋め込み)
 const reader = $('reader');
 let readerReady = false, opening = false, openT = 0, diving = false, diveT = 0;
@@ -510,17 +423,13 @@ addEventListener('message', e => {
 function notifyReader(msg){ try { reader.contentWindow && reader.contentWindow.postMessage(msg, '*'); } catch(e){} }
 
 // ============================================================ ループ
-function resize(){ renderer.setSize(innerWidth, innerHeight, false); camH.aspect = camB.aspect = innerWidth/innerHeight; camH.updateProjectionMatrix(); camB.updateProjectionMatrix(); }
+function resize(){ renderer.setSize(innerWidth, innerHeight, false); camB.aspect = innerWidth/innerHeight; camB.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const raw = clock.getDelta(), dt = Math.min(raw, 0.05), wdt = Math.min(raw, 0.5), t = clock.elapsedTime;   // wdt=実時間ベース(フェード/出現用。裏タブや低fpsでも遅れない)
   bgmTick(wdt);
   renderer.clear();
-  // --- 主 ---
-  animFigure(t, dt, wdt);
-  if (figure && figure.visible) renderer.render(sceneH, camH);
-  renderer.clearDepth();   // 主の奥行きを本に持ち込まない(重なると本が欠ける)
   // --- 本 ---
   if (book) {
     // 0→100% にふわっと出る(ease out back 少し)
@@ -548,7 +457,7 @@ renderer.setAnimationLoop(() => {
     if (bookScale > 0.002) renderer.render(sceneB, camB);
   }
 });
-window.__app = { setStage, toBook, beginRead, get stage(){ return stage; }, get alpha(){ return figureAlpha; }, get target(){ return figureTarget; }, setTarget(v){ figureTarget = v; }, anim: (t, dt) => animFigure(t, dt), hasFigure: () => !!figure, dbg: () => [_dbgA, _dbgB, _dbgDt], dtProbe: () => clock.getDelta(), mats: () => figureMats.map(m => [m.type, m.opacity, m.transparent]) };
+window.__app = { beginRead, get stage(){ return stage; } };
 </script>
 </body>
 </html>
