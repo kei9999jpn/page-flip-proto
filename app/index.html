@@ -49,6 +49,8 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #talk .txt{min-height:1.6em;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:var(--t-lg);line-height:1.7;letter-spacing:.08em;font-weight:500;color:var(--gold2);
   text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
 #talk.small .txt{font-size:clamp(18px,5vmin,24px)}
+/* v16: 読書中も本が語りかける(読書の上に重ねる) */
+body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 16vh);bottom:calc(env(safe-area-inset-bottom,0px) + 16dvh)}
 #talk .cur{opacity:.7;animation:blink 1s steps(1) infinite;margin-left:.15em}
 @keyframes blink{50%{opacity:0}}
 
@@ -203,7 +205,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904u';
+const BUILD = '20260904v16';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -249,24 +251,159 @@ function shuffleOrder(){ order = Array.from({length: BGM_N}, (_, i) => i); for (
 shuffleOrder();
 function nextTrackSrc(){ if (orderPos >= order.length) shuffleOrder(); return BGM_SRC(order[orderPos++]); }
 const bgm = decks[0];   // 互換: 解錠処理などが参照
-function bgmTargetVol(){ return (S.bgm && bgmWanted) ? 0.22 * S.bgmVol : 0; }
+// v16: ダッキング。めくる瞬間だけBGMを1〜2dB下げ、30秒操作がなければBGMを引っ込めて雨と部屋の音を前に出す
+let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
+function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
+function flipDuck(){ duck = 0.80; duckUntil = performance.now() + 550; }
+function bgmTargetVol(){ return (S.bgm && bgmWanted) ? 0.22 * S.bgmVol * duckCur : 0; }
 function bgmStart(){
   const d = decks[deckIdx];
   if (!d.src) d.src = nextTrackSrc();
   d.volume = bgmTargetVol(); d.play().catch(()=>{});
 }
 function bgmTick(dt){
+  // ダッキングの追従(実時間)
+  if (duck < 1 && duckUntil && performance.now() > duckUntil && !idleQuiet) { duck = 1; duckUntil = 0; }
+  if (stage === 'read' && !idleQuiet && performance.now() - lastActivity > 30000) { idleQuiet = true; duck = 0.5; ambBoost = 1.3; }
+  duckCur += (duck - duckCur) * (1 - Math.exp(-dt / (duck < duckCur ? 0.12 : 0.9)));
+  ambBoostCur += (ambBoost - ambBoostCur) * (1 - Math.exp(-dt / 1.5));
+  if (audioOn) { const rv = S.rain ? Math.min(1, 0.34 * S.amb * ambBoostCur) : 0; if (Math.abs(rain.volume - rv) > 0.002) rain.volume = rv; }
   const cur = decks[deckIdx];
   if (!bgmWanted || !S.bgm || cur.paused || !cur.duration) return;
+  if (!xfading) { const tv = bgmTargetVol(); if (Math.abs(cur.volume - tv) > 0.002) cur.volume = tv; }
   const remain = cur.duration - cur.currentTime;
   if (remain < 6 && !xfading) {
     xfading = true;
     const nxt = decks[1 - deckIdx]; nxt.src = nextTrackSrc(); nxt.volume = 0; nxt.play().catch(()=>{});
-    const t0 = performance.now(), from = cur.volume, to = bgmTargetVol();
-    (function step(){ const k = Math.min(1, (performance.now() - t0) / 5500); cur.volume = from * (1 - k); nxt.volume = to * k;
+    const t0 = performance.now(), from = cur.volume;
+    (function step(){ const k = Math.min(1, (performance.now() - t0) / 5500); const to = bgmTargetVol(); cur.volume = from * (1 - k); nxt.volume = to * k;
       if (k < 1) requestAnimationFrame(step); else { cur.pause(); cur.removeAttribute('src'); cur.load(); deckIdx = 1 - deckIdx; xfading = false; } })();
   }
 }
+// BGMをゆっくり遠ざけて止める(本を閉じる時)
+function bgmFadeOut(ms){
+  const cur = decks[deckIdx]; bgmWanted = false;
+  const from = cur.volume, t0 = performance.now();
+  (function step(){ const k = Math.min(1, (performance.now() - t0) / ms); cur.volume = from * (1 - k) * (1 - k);
+    if (k < 1 && !bgmWanted) requestAnimationFrame(step); else if (!bgmWanted) decks.forEach(d => { if (!d.paused) d.pause(); }); })();
+}
+
+// ============================================================ v16 空間オーディオと効果音(Web Audio)
+// 部屋の配置(イヤホンで聴いた時、頭の中に部屋ができる):
+//   窓(雨)=左上やや奥 / 暖炉(火)=右下手前 / 書斎の主が書く音=左奥 / ページ=中央手前 / 雷=部屋全体(雨の録音に含まれる)
+let sx = null, sxMaster = null, fire = null, quill = null;
+function mkPanner(x, y, z, model){
+  const p = sx.createPanner(); p.panningModel = model || 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 1; p.rolloffFactor = 0.5;
+  if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z);
+  return p;
+}
+function sxInit(){
+  if (sx) { if (sx.state === 'suspended') sx.resume().catch(()=>{}); return; }
+  try { sx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ sx = null; return; }
+  sxMaster = sx.createGain(); sxMaster.gain.value = 1; sxMaster.connect(sx.destination);
+  // 雨 → 窓の方向。<audio>要素をグラフに繋ぐ(音量は要素の volume のまま効く)
+  try {
+    const rs = sx.createMediaElementSource(rain);
+    const p = mkPanner(-1.7, 0.8, -0.9, 'HRTF');
+    rs.connect(p); p.connect(sxMaster);
+  } catch(e){ /* 繋げない環境ではそのまま鳴る */ }
+  startFire(); startQuill();
+}
+// 暖炉(右下手前): 低い唸り + 爆ぜる音。録音の暖炉に「位置」を足す
+function startFire(){
+  if (fire) return;
+  const p = mkPanner(1.3, -0.7, 0.9, 'HRTF');
+  const g = sx.createGain(); g.gain.value = 0; g.connect(p); p.connect(sxMaster);
+  // 唸り(ブラウンノイズ→ローパス)
+  const len = sx.sampleRate * 3, buf = sx.createBuffer(1, len, sx.sampleRate), d = buf.getChannelData(0);
+  let b = 0; for (let i = 0; i < len; i++) { b = (b + (Math.random()*2-1) * 0.02) * 0.995; d[i] = b * 6; }
+  const src = sx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 170; lp.Q.value = 0.5;
+  const rg = sx.createGain(); rg.gain.value = 0.9; src.connect(lp); lp.connect(rg); rg.connect(g); src.start();
+  // 爆ぜる(短いノイズ)
+  const pl = Math.floor(sx.sampleRate * 0.05), pop = sx.createBuffer(1, pl, sx.sampleRate), pd = pop.getChannelData(0);
+  for (let i = 0; i < pl; i++) pd[i] = (Math.random()*2-1) * Math.pow(1 - i/pl, 3);
+  fire = { g, p, pop, next: 0 };
+  (function loop(){
+    if (!sx) return;
+    if (audioOn && S.rain) {
+      const n = 1 + Math.floor(Math.random()*3), t0 = sx.currentTime + 0.02;
+      for (let i = 0; i < n; i++) {
+        const s = sx.createBufferSource(); s.buffer = pop; s.playbackRate.value = 0.5 + Math.random()*1.0;
+        const f = sx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500 + Math.random()*3000; f.Q.value = 0.9;
+        const pg = sx.createGain(); pg.gain.value = 0.35 + Math.random()*0.6;
+        s.connect(f); f.connect(pg); pg.connect(g); s.start(t0 + i * (0.03 + Math.random()*0.09));
+      }
+    }
+    setTimeout(loop, 350 + Math.random()*2400);
+  })();
+}
+// 書斎の主が左奥で書いている音(羽ペンの走り書き・とても小さく)
+function startQuill(){
+  if (quill) return;
+  const p = mkPanner(-1.4, 0.1, -2.0, 'HRTF');
+  const g = sx.createGain(); g.gain.value = 0; g.connect(p); p.connect(sxMaster);
+  quill = { g };
+  (function loop(){
+    if (!sx) return;
+    if (audioOn && S.rain) {
+      const strokes = 3 + Math.floor(Math.random()*6); let t = sx.currentTime + 0.05;
+      for (let i = 0; i < strokes; i++) {
+        const dur = 0.05 + Math.random()*0.11, len = Math.floor(sx.sampleRate * dur), b = sx.createBuffer(1, len, sx.sampleRate), d = b.getChannelData(0);
+        let hp = 0; for (let k = 0; k < len; k++) { const w = Math.random()*2-1; hp = 0.7*hp + w*0.3; d[k] = hp * Math.sin(Math.PI * k/len); }
+        const s = sx.createBufferSource(); s.buffer = b;
+        const f = sx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200 + Math.random()*2600; f.Q.value = 1.4;
+        const sg = sx.createGain(); sg.gain.value = 0.5 + Math.random()*0.5;
+        s.connect(f); f.connect(sg); sg.connect(g); s.start(t); t += dur + 0.03 + Math.random()*0.12;
+      }
+    }
+    setTimeout(loop, 5000 + Math.random()*11000);
+  })();
+}
+function sxTick(){
+  if (!sx || !fire) return;
+  const on = audioOn && S.rain;
+  const a = S.amb * ambBoostCur;
+  fire.g.gain.setTargetAtTime(on ? 0.16 * a : 0, sx.currentTime, 0.4);
+  quill.g.gain.setTargetAtTime(on ? 0.05 * a : 0, sx.currentTime, 0.4);
+}
+// 革表紙が落ちる「ドスッ……」(低く、短く、重い)
+function thudHeavy(){
+  if (!sx) return;
+  const t0 = sx.currentTime;
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(82, t0); o.frequency.exponentialRampToValueAtTime(26, t0 + 0.34);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.9, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.62);
+  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.7);
+  const o2 = sx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(54, t0); o2.frequency.exponentialRampToValueAtTime(30, t0 + 0.25);
+  const g2 = sx.createGain(); g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.35, t0 + 0.01); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+  o2.connect(g2); g2.connect(sxMaster); o2.start(t0); o2.stop(t0 + 0.45);
+  const len = Math.floor(sx.sampleRate * 0.22), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.2);
+  const s = sx.createBufferSource(); s.buffer = nb; const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+  const g3 = sx.createGain(); g3.gain.value = 0.55; s.connect(lp); lp.connect(g3); g3.connect(sxMaster); s.start(t0);
+}
+// 表紙が開く「ギィ……」(革と綴じ糸のきしみ)
+function creak(){
+  if (!sx) return;
+  const t0 = sx.currentTime, dur = 1.5;
+  const o = sx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(74, t0); o.frequency.linearRampToValueAtTime(58, t0 + dur);
+  const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 2.5;
+  const tr = sx.createOscillator(); tr.frequency.value = 11; const tg = sx.createGain(); tg.gain.value = 0.06; tr.connect(tg); tg.connect(lp.frequency);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.045, t0 + 0.25); g.gain.setValueAtTime(0.045, t0 + dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(lp); lp.connect(g); g.connect(sxMaster); o.start(t0); tr.start(t0); o.stop(t0 + dur); tr.stop(t0 + dur);
+  const len = Math.floor(sx.sampleRate * dur), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * (0.4 + 0.6*Math.sin(i/len*Math.PI));
+  const s = sx.createBufferSource(); s.buffer = nb; const bp = sx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 3;
+  const g2 = sx.createGain(); g2.gain.value = 0.03; s.connect(bp); bp.connect(g2); g2.connect(sxMaster); s.start(t0);
+}
+function softThud(){
+  if (!sx) return;
+  const t0 = sx.currentTime;
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(34, t0 + 0.2);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.35);
+}
+function haptic(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch(e){} }
 function applyRainSrc(){
   const src = RAIN_SRC[S.rainKind] || RAIN_SRC.study;
   if (rain.getAttribute('src') === src) return;
@@ -287,10 +424,12 @@ let unlocked = false;
 function unlockAudio(){
   // iOS/Safari: ユーザー操作の中で play() を呼んだ要素だけが後から鳴らせる。両方を一度鳴らして止める
   if (unlocked) return; unlocked = true;
+  sxInit();
+  try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{}); } catch(e){}
   if (!decks[0].src) decks[0].src = nextTrackSrc();
   [rain, decks[0], decks[1]].forEach(a => { try { if (!a.src) a.src = BGM_SRC(0); const v = a.volume; a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { if (a !== rain) { a.pause(); } a.muted = false; a.volume = v; applyAudio(); }).catch(() => { a.muted = false; }); else { a.muted = false; } } catch(e){} });
 }
-function ensureAudio(){ unlockAudio(); goFullscreen(); if (audioOn) return; audioOn = true; applyAudio(); }
+function ensureAudio(){ unlockAudio(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
 
 // ============================================================ 没入(モバイル)
@@ -368,6 +507,35 @@ const TIPS = [   // 2026-09-04 KEI確定 10本
   '栞を挟んでおけば、次はその続きから読めますよ',
   '眠くなったら、閉じてください　本は逃げませんから'
 ];
+// ============================================================ v16 本が語りかける(この端末での記録から一言を選ぶ)
+// localStorage 'bookexp-stats' = { visits, lastVisit, pagesTotal, favSaid }
+let ST = { visits:0, lastVisit:0, pagesTotal:0, favSaid:false };
+try { ST = { ...ST, ...(JSON.parse(localStorage.getItem('bookexp-stats')) || {}) }; } catch(e){}
+function saveST(){ try { localStorage.setItem('bookexp-stats', JSON.stringify(ST)); } catch(e){} }
+const prevVisit = ST.lastVisit; ST.visits++; ST.lastVisit = Date.now(); saveST();
+let pagesSession = 0, flipTimes = [], rushSaidAt = 0;
+function favCount(){ try { return (JSON.parse(localStorage.getItem('bookexp-favs')) || []).length; } catch(e){ return 0; } }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+// 着いた時の一言
+function arrivalLine(){
+  const h = new Date().getHours();
+  const days = prevVisit ? (Date.now() - prevVisit) / 86400000 : 0;
+  if (prevVisit && days >= 3) return pick(['お久しぶりですね', 'お久しぶりですね　本は、ずっとここにありましたよ', days >= 14 ? 'お久しぶりですね　随分と時間が経ちましたね' : 'お久しぶりですね　また来てくださって嬉しいです']);
+  if (h >= 0 && h < 4) return pick(['随分遅い時間まで起きているんですね', 'こんな時間まで起きているんですね　無理はなさらずに', '夜更かしですね　静かな時間には、言葉がよく染みますよ']);
+  if (!ST.favSaid && favCount() >= 10) { ST.favSaid = true; saveST(); return 'だいぶあなたの本らしくなってきましたね'; }
+  return pick(TIPS);
+}
+// 本を閉じて戻ってきた時の一言
+function returnLine(){
+  const h = new Date().getHours();
+  if (pagesSession >= 30) return pick(['随分と読みましたね', '随分と読みましたね　目を休めてくださいね', '随分と読みましたね　何か、残る言葉はありましたか']);
+  if (!ST.favSaid && favCount() >= 10) { ST.favSaid = true; saveST(); return 'だいぶあなたの本らしくなってきましたね'; }
+  if (h >= 0 && h < 4 && pagesSession >= 5) return pick(['随分遅い時間まで起きているんですね', 'もう遅い時間ですね　おやすみなさい']);
+  if (pagesSession === 0) return pick(['また、気が向いたときに', 'いつでも、ここにありますから']);
+  return pick(['お疲れさまでした', 'また、いつでもどうぞ', '良い言の葉は、ありましたか', 'また開いてくださいね']);
+}
+// 読んでいる最中の一言(読書の上に小さく)
+function readingLine(text){ say(text, null, { small:true, autoHide:6500 }); }
 
 // ============================================================ three.js 共通
 const canvas = $('c');
@@ -398,10 +566,52 @@ new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '
   const cover = book.getObjectByName('Cover_Front');
   if (cover) { const bb = new THREE.Box3().setFromObject(cover); hinge = new THREE.Group(); hinge.position.set(bb.min.x, (bb.min.y+bb.max.y)/2, 0); book.add(hinge); hinge.attach(cover); }
   pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
+  buildRibbon(); buildFavMarks();
   $('ui').classList.add('show');
-  setTimeout(() => say(TIPS[Math.floor(Math.random()*TIPS.length)], null, { small:true, autoHide:9000 }), 900);
+  setTimeout(() => say(arrivalLine(), null, { small:true, autoHide:9000 }), 900);
   setTimeout(maybeHint, 1400);
 });
+// v16: 栞の紐(本の下から尻尾が出ている)と、お気に入りの金の印(小口に小さく)。localStorage が世界の物体に変わる
+let bookBB = null, favMarks = null;
+function buildRibbon(){
+  if (!book) return;
+  // 本のローカル座標で箱を取る(傾きと浮きを一時的に戻す)
+  const rz = book.rotation.z, py = pivot.position.y; book.rotation.z = 0; pivot.position.y = 0; pivot.updateMatrixWorld(true);
+  bookBB = new THREE.Box3().setFromObject(book);
+  book.rotation.z = rz; pivot.position.y = py;
+  // 実測(2026-09-04): X=小口(幅) / Y=厚み(表紙が+Y) / Z=高さ。紐はページ面(XZ)に寝て、Z端から尻尾が出る
+  const bw = bookBB.max.x - bookBB.min.x, bh = bookBB.max.z - bookBB.min.z;
+  const len = bh * 0.24, w = bw * 0.032;
+  const geo = new THREE.PlaneGeometry(w, len, 1, 8); geo.translate(0, -len / 2, 0);
+  // 先端ほど少し反る
+  const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); const k = -y / len; pos.setZ(i, k * k * w * 1.2); }
+  geo.rotateX(-Math.PI / 2);                                        // -y(垂れ下がり) → +z、反り → +y(表紙側)
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color:0x3a120c, roughness:0.94, metalness:0, side:THREE.DoubleSide });
+  ribbon = new THREE.Mesh(geo, mat);
+  ribbon.position.set(bookBB.min.x + bw * 0.72, 0, bookBB.max.z - bh * 0.015);
+  ribbon.rotation.y = -0.06;
+  book.add(ribbon);
+  ribbon.visible = hasBookmark();
+}
+function buildFavMarks(){
+  if (!book || !bookBB) return;
+  if (favMarks) { book.remove(favMarks); favMarks = null; }
+  let favs = []; try { favs = JSON.parse(localStorage.getItem('bookexp-favs')) || []; } catch(e){}
+  if (!favs.length) return;
+  favMarks = new THREE.Group();
+  const bw = bookBB.max.x - bookBB.min.x, by = bookBB.max.y - bookBB.min.y, bz = bookBB.max.z - bookBB.min.z;
+  const mat = new THREE.MeshStandardMaterial({ color:0xd9b25a, roughness:0.35, metalness:0.7, emissive:0x3a2a08 });
+  const geo = new THREE.BoxGeometry(bw * 0.012, Math.max(0.0006, by * 0.006), bz * 0.028);
+  favs.slice(0, 80).forEach((p, i) => {
+    const m = new THREE.Mesh(geo, mat);
+    const k = (p % 790) / 790;                                           // ページ番号に応じて厚み(Y)の中の位置が決まる
+    const z = bookBB.max.z - bz * (0.12 + ((i * 0.618) % 1) * 0.76);   // 高さ(Z)は散らす
+    m.position.set(bookBB.max.x + bw * 0.003, bookBB.min.y + by * (0.18 + k * 0.64), z);
+    favMarks.add(m);
+  });
+  book.add(favMarks);
+}
 // 塵(本の周り)
 const dustGeo = new THREE.BufferGeometry(); const ND = 220, dpos = new Float32Array(ND*3), dspd = [];
 for (let i = 0; i < ND; i++) { dpos[i*3] = (Math.random()-0.5)*1.4; dpos[i*3+1] = (Math.random()-0.5)*1.0; dpos[i*3+2] = (Math.random()-0.5)*1.4; dspd.push(0.008 + Math.random()*0.02); }
@@ -458,8 +668,10 @@ function beginRead(hash, title){
   $('ui').classList.remove('show'); talk.classList.remove('show');
   // 2026-09-04 KEI: ゆっくり開く → ぐーっと吸い込まれる → 暗転 → 暗い所から蝋燭の灯りが徐々にボワンと灯る
   $('readTitle').classList.add('show');
+  activity(); pagesSession = 0; flipTimes = [];
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; }, 1700);
+  setTimeout(() => { opening = true; creak(); }, 1700);              // ギィ……
+  setTimeout(() => { softThud(); haptic(12); }, 3800);              // パタン(表紙が開ききる)
   setTimeout(() => { motesStart(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
   setTimeout(() => { $('fade').style.transition = 'opacity 1.4s ease-in'; $('fade').style.opacity = 1; }, 4000);
@@ -476,21 +688,54 @@ $('bFav').onclick = () => beginRead('#fav', 'お気に入り');
 $('mFresh').onclick = () => beginRead('#fresh');
 
 // 読書側からの合図
+// v16: 本を閉じる儀式(約3秒)。
+//   戻る → BGMが遠ざかる → 蝋燭が暗くなる・ページが沈む → 暗転 → 本から抜ける(カメラ) → 表紙が閉じる → ドスッ → 雨音だけ残る → 机の上の本
+let closing = null;   // { phase:'pull'|'shut', t }
+function closeBook(){
+  if (closing || stage !== 'read') return;
+  closing = { phase:'wait', t:0 };
+  notifyReader({ type:'reader-closing' });
+  bgmFadeOut(1300);
+  ambBoost = 0.85;                                                   // 雨も一瞬引く(閉じる動きに耳が向く)
+  $('fade').style.transition = 'opacity .5s ease-in';
+  setTimeout(() => { $('fade').style.opacity = 1; }, 900);
+  setTimeout(() => {
+    reader.classList.remove('show'); reader.src = 'about:blank'; $('bgDim').style.opacity = 0;
+    setStage('book'); bookTarget = 1;
+    if (hinge) hinge.rotation.z = 2.5;                               // 開いたままの本の、すぐそばから
+    closing = { phase:'pull', t:0 };
+    $('fade').style.transition = 'opacity .7s ease-out'; $('fade').style.opacity = 0;
+  }, 1450);
+}
+function closeBookDone(){
+  closing = null; if (hinge) hinge.rotation.z = 0;
+  thudHeavy(); haptic(18); shake = 1;
+  // 机に落ちた衝撃で塵が舞う
+  for (let i = 0; i < dspd.length; i++) dspd[i] = 0.05 + Math.random()*0.08;
+  setTimeout(() => { for (let i = 0; i < dspd.length; i++) dspd[i] = 0.008 + Math.random()*0.02; }, 1800);
+  ambBoost = 1;
+  if (ribbon) ribbon.visible = hasBookmark();
+  buildFavMarks();
+  setTimeout(() => { $('ui').classList.add('show'); say(returnLine(), null, { small:true, autoHide:8000 }); }, 650);
+}
+let shake = 0;
 addEventListener('message', e => {
   const d = e.data || {};
-  if (d.type === 'reader-touch') { bgmWanted = true; ensureAudio(); applyAudio(); }
+  if (d.type === 'reader-touch') { bgmWanted = true; ensureAudio(); applyAudio(); activity(); }
   if (d.type === 'reader-ready') { readerReady = true; }
-  if (d.type === 'reader-settings') { $('panel').classList.add('show'); }
-  if (d.type === 'reader-close') {
-    // 本の中 → 本の画面へ戻る(音楽は止める。環境音は続く)
-    bgmWanted = false; applyAudio();
-    $('fade').style.opacity = 1;
-    setTimeout(() => {
-      reader.classList.remove('show'); reader.src = 'about:blank'; $('bgDim').style.opacity = 0;
-      setStage('book'); bookTarget = 1; $('ui').classList.add('show');
-      setTimeout(() => { $('fade').style.opacity = 0; }, 200);
-    }, 1100);
+  if (d.type === 'reader-settings') { $('panel').classList.add('show'); activity(); }
+  if (d.type === 'reader-activity') { activity(); }
+  if (d.type === 'reader-flip') {
+    activity(); flipDuck(); pagesSession++; ST.pagesTotal = (ST.pagesTotal || 0) + 1; saveST();
+    // 数秒おきに高速でめくっていたら
+    const now = performance.now(); flipTimes.push(now); while (flipTimes.length && now - flipTimes[0] > 9000) flipTimes.shift();
+    if (flipTimes.length >= 6 && now - rushSaidAt > 180000) { rushSaidAt = now; flipTimes = []; readingLine(pick(['そんなに急がなくても、本は逃げませんよ', 'ゆっくりで、いいんですよ'])); }
+    else if (pagesSession === 30) readingLine('随分と読みましたね');
+    else if (pagesSession === 100) readingLine('もう百ページですか　目を休めてくださいね');
   }
+  if (d.type === 'reader-fav') { activity(); if (d.on && d.count === 10 && !ST.favSaid) { ST.favSaid = true; saveST(); readingLine('だいぶあなたの本らしくなってきましたね'); } }
+  if (d.type === 'reader-bookmark') { activity(); if (ribbon) ribbon.visible = true; }
+  if (d.type === 'reader-close') closeBook();
 });
 function notifyReader(msg){ try { reader.contentWindow && reader.contentWindow.postMessage(msg, '*'); } catch(e){} }
 
@@ -513,23 +758,61 @@ renderer.setAnimationLoop(() => {
     if (!dragging && !opening && !diving && stage === 'book') camTheta += dt * 0.055;   // 常にゆっくり(KEI)
     while (camTheta > Math.PI) camTheta -= Math.PI * 2; while (camTheta < -Math.PI) camTheta += Math.PI * 2;
     if (opening && hinge) { openT = Math.min(openT + wdt/2.2, 1); const k = openT*openT*(3-2*openT); hinge.rotation.z = k * 2.5; }
-    candleB.intensity = 1.6 + Math.sin(t*0.71)*0.18 + Math.sin(t*1.63+1.1)*0.11 + Math.sin(t*0.29+2.4)*0.14;
+    // v16: 閉じる儀式。本から抜ける(1.0s) → 表紙が重く閉じる(0.85s) → ドスッ
+    let closeCam = null;
+    if (closing && hinge) {
+      closing.t += wdt;
+      if (closing.phase === 'pull') {
+        const k = Math.min(closing.t / 1.0, 1), e2 = 1 - Math.pow(1 - k, 3);
+        const r = 0.19 + (CAM_R - 0.19) * e2, ph = 0.12 + (camPhi - 0.12) * e2;
+        closeCam = { r, ph };
+        hinge.rotation.z = 2.5;
+        if (k >= 1) closing = { phase:'shut', t:0 };
+      } else if (closing.phase === 'shut') {
+        const k = Math.min(closing.t / 0.85, 1), e2 = k * k * k;             // 重い表紙: ゆっくり動き出して最後は落ちる
+        hinge.rotation.z = 2.5 * (1 - e2);
+        if (k >= 1) closeBookDone();
+      }
+    }
+    if (shake > 0) { shake *= Math.exp(-wdt / 0.18); if (shake < 0.01) shake = 0; }
+    // 端末の傾きで灯りの位置が変わり、革と金の反射が動く
+    tiltCur.x += (tiltRaw.x - tiltCur.x) * 0.08; tiltCur.y += (tiltRaw.y - tiltCur.y) * 0.08;
+    candleB.position.set(0.28 + tiltCur.x * 0.22, 0.34 + tiltCur.y * 0.12, 0.30 - tiltCur.y * 0.15);
+    candleB.intensity = 1.6 + Math.sin(t*0.71)*0.18 + Math.sin(t*1.63+1.1)*0.11 + Math.sin(t*0.29+2.4)*0.14 + shake * 0.6;
     const p = dustGeo.attributes.position.array;
     for (let i = 0; i < ND; i++) { p[i*3+1] += dspd[i]*dt; if (p[i*3+1] > 0.55) p[i*3+1] = -0.55; }
     dustGeo.attributes.position.needsUpdate = true;
     dust.visible = bookScale > 0.2;
+    if (ribbon && ribbon.visible) ribbon.rotation.y = -0.06 + Math.sin(t * 0.7) * 0.03 + shake * Math.sin(t * 40) * 0.08;
     motesStep(wdt);
+    sxTick();
+    const sx0 = shake * Math.sin(t * 57) * 0.012, sy0 = shake * Math.sin(t * 43 + 1) * 0.008;
     if (diving) {
       diveT += wdt; const k = Math.min(diveT/2.4, 1), e2 = k*k*k*(k*(6*k-15)+10);   // ゆっくり入って一気に吸い込まれる
       const r = CAM_R*(1-e2) + 0.19*e2, th = camTheta, ph = camPhi*(1-e2) + 0.12*e2;   // 回転角はそのまま(巻き戻すと本が回って見える)。貫通しない
       camB.position.set(r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph), r*Math.sin(ph)*Math.cos(th)); camB.lookAt(0, 0.01, 0);
+    } else if (closeCam) {
+      const r = closeCam.r, ph = closeCam.ph, th = camTheta;
+      camB.position.set(r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph), r*Math.sin(ph)*Math.cos(th)); camB.lookAt(0, 0.01, 0);
     } else {
-      camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta), CAM_R*Math.cos(camPhi), CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(0, 0, 0);
+      camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta) + sx0, CAM_R*Math.cos(camPhi) + sy0, CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(tiltCur.x * 0.02, tiltCur.y * 0.015, 0);
     }
     if (bookScale > 0.002) renderer.render(sceneB, camB);
   }
 });
-window.__app = { beginRead, get stage(){ return stage; } };
+// v16: 端末の傾き(iOSは最初のタップで許可を取る)
+const tiltRaw = { x:0, y:0 }, tiltCur = { x:0, y:0 };
+let _tiltBound = false;
+function listenTilt(){
+  if (_tiltBound) return; _tiltBound = true;
+  addEventListener('deviceorientation', ev => {
+    if (ev.gamma == null || ev.beta == null) return;
+    tiltRaw.x = Math.max(-1, Math.min(1, ev.gamma / 35));
+    tiltRaw.y = Math.max(-1, Math.min(1, (ev.beta - 45) / 35));
+  }, { passive:true });
+}
+try { if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) listenTilt(); } catch(e){}
+window.__app = { beginRead, closeBook, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
 </script>
 </body>
 </html>

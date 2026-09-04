@@ -17,8 +17,22 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;overflow:hidden;background:#000;overscroll-behavior:none;height:100%;height:-webkit-fill-available;height:100dvh}
 #bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.78) saturate(.95)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
-#book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
+#bg{z-index:0}
+/* v16: 栞の紐(本の裏=ページの間を通る。上から入って下から出る) */
+#ribbon{position:fixed;z-index:1;width:9px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
+  background:linear-gradient(90deg,#1e0906,#4a1a13 30%,#5e2418 50%,#4a1a13 70%,#1e0906),repeating-linear-gradient(180deg,rgba(0,0,0,.18) 0 2px,transparent 2px 5px);
+  background-blend-mode:multiply;border-radius:0 0 3px 3px;box-shadow:0 6px 10px rgba(0,0,0,.6);transform-origin:50% 0}
+#ribbon.show{opacity:1}
+#ribbon.sway{animation:ribbonSway 5.5s ease-in-out infinite alternate}
+@keyframes ribbonSway{from{transform:rotate(-.9deg)}to{transform:rotate(.9deg)}}
+#ribbon::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-8px;height:10px;background:linear-gradient(90deg,transparent,#3a1410 20%,#5a2018 50%,#3a1410 80%,transparent);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
+/* v16: 読んでいる間はUIを闇へ溶かす(2.5秒操作なし)。画面の下側に触れれば戻る */
+body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #seen,body.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
+#book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);z-index:2;box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
+/* v16: 本を閉じる時、ページの世界がゆっくり闇に沈む */
+#book.out{opacity:0 !important;transform:translate(-50%,-49%) scale(.94) !important;filter:blur(5px) brightness(.35) !important;animation:none !important;
+  transition:opacity 1.4s cubic-bezier(.6,0,.9,.6),transform 1.4s cubic-bezier(.6,0,.9,.6),filter 1.4s cubic-bezier(.6,0,.9,.6) !important}
 #fade{position:fixed;inset:0;background:#000;opacity:1;transition:opacity 1.6s ease;pointer-events:none;z-index:30}
 
 /* ---- cover scene ---- */
@@ -119,6 +133,7 @@ html,body{margin:0;overflow:hidden;background:#000;overscroll-behavior:none;heig
 </head>
 <body>
 <div id="bg"></div>
+<div id="ribbon"></div>
 <canvas id="book"></canvas>
 <div id="paperGlow"></div>
 <div id="candle"></div>
@@ -162,7 +177,37 @@ function layout() {
   TRAVEL = Math.max(180, Math.min(W * 1.05, vw * 0.72));
 }
 layout();
-addEventListener('resize', () => { layout(); draw(); });
+addEventListener('resize', () => { layout(); draw(); placeRibbon(false); });
+
+// ---------- v16 共通の小道具 ----------
+// 触覚: 対応端末だけ、指先に「コッ」と来る程度(Safari/iPhoneは未対応なので何も起きない)
+function haptic(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+// 親(シェル)への合図
+function post(type, extra) { if (!EMBED) return; try { parent.postMessage(Object.assign({ type }, extra || {}), '*'); } catch (e) {} }
+// 栞の紐: 本の裏(ページの間)を通る。上から滑り込み、下から尻尾が出る
+const ribbonEl = document.getElementById('ribbon');
+let ribbonShown = false;
+function placeRibbon(animate) {
+  const r = cv.getBoundingClientRect();
+  const tail = Math.round(Math.max(52, r.height * 0.11)), rh = Math.round(r.height * 0.96 + tail);
+  ribbonEl.style.height = rh + 'px';
+  ribbonEl.style.left = Math.round(r.left + r.width * 0.71) + 'px';
+  const top = Math.round(r.top + r.height + tail - rh);
+  if (animate) {
+    ribbonEl.classList.remove('sway');
+    ribbonEl.style.transition = 'none';
+    ribbonEl.style.top = Math.round(r.top - rh - 6) + 'px';
+    void ribbonEl.offsetHeight;
+    ribbonEl.style.transition = '';
+    ribbonEl.classList.add('show');
+    requestAnimationFrame(() => { ribbonEl.style.top = top + 'px'; });
+    setTimeout(() => ribbonEl.classList.add('sway'), 1200);
+  } else {
+    ribbonEl.style.transition = 'none'; ribbonEl.style.top = top + 'px'; void ribbonEl.offsetHeight; ribbonEl.style.transition = '';
+  }
+}
+function showRibbon(animate) { if (ribbonShown && !animate) return; ribbonShown = true; placeRibbon(animate); if (!animate) { ribbonEl.classList.add('show', 'sway'); } }
+function hideRibbon() { if (!ribbonShown) return; ribbonShown = false; ribbonEl.classList.remove('show', 'sway'); }
 
 // ---- lazy image loading (cover shows instantly; pages arrive in the background) ----
 const imgs = new Array(N); let backTex = null;
@@ -211,18 +256,31 @@ function updateSeen() {
 function updateFavUI() {
   updateSeen();
   const bm = loadBookmark();
-  favListBtn.classList.toggle('on', !!(bm && bm.index === index && bm.deck[bm.index] === deck[index]));
+  const bmHere = !!(bm && bm.index === index && bm.deck[bm.index] === deck[index]);
+  favListBtn.classList.toggle('on', bmHere);
+  if (bmHere) showRibbon(false); else hideRibbon();
   const on = favs.includes(deck[index]);
   favBtn.querySelector('span').textContent = on ? 'お気に入り済' : 'お気に入り'; favBtn.querySelector('b').textContent = on ? '♥' : '♡';
   favBtn.classList.toggle('on', on);
 }
+// v16: お気に入り = ページの端に小さな金の印が押される(本そのものが変わる)
+var favStamp = null;   // {t0} 押印アニメ
 favBtn.addEventListener('click', () => {
+  if (performance.now() - uiJustWoke < 400) return;
   ensureAudio();
   const p = deck[index];
   const i = favs.indexOf(p);
-  if (i >= 0) favs.splice(i, 1); else favs.push(p);
-  saveFavs(); updateFavUI();
+  if (i >= 0) { favs.splice(i, 1); sealSound(false); haptic(6); }
+  else { favs.push(p); favStamp = { t0: performance.now() }; sealSound(true); haptic([10, 20, 15]); stampAnim(); }
+  saveFavs(); updateFavUI(); post('reader-fav', { count: favs.length, on: i < 0 });
 });
+function stampAnim() {
+  (function step(now) {
+    if (!favStamp) return;
+    draw();
+    if (now - favStamp.t0 < 700) requestAnimationFrame(step); else { favStamp = null; draw(); }
+  })(performance.now());
+}
 function openFavPanel() { // お気に入りが空の時の案内のみ
   favGrid.innerHTML = '';
   favEmpty.style.display = 'block';
@@ -245,8 +303,12 @@ function saveBookmark() {
   try { localStorage.setItem('bookexp-bookmark', JSON.stringify({ deck: deck, index: index, ts: Date.now(), fav: favMode })); } catch (e) {}
 }
 favListBtn.addEventListener('click', () => {
+  if (performance.now() - uiJustWoke < 400) return;
   ensureAudio(); saveBookmark();
-  favListBtn.querySelector('span').textContent = '栞を挟んだ'; updateFavUI();
+  favListBtn.querySelector('span').textContent = '栞を挟んだ';
+  // 紐が上からスッと滑り込む(音+指先の手応え)
+  showRibbon(true); ribbonSound(); haptic([10, 20, 15]);
+  favListBtn.classList.add('on'); post('reader-bookmark', {});
   setTimeout(() => { favListBtn.querySelector('span').textContent = '栞を挟む'; }, 1600);
 });
 function loadBookmark() {
@@ -257,9 +319,14 @@ document.getElementById('favClose').addEventListener('click', () => { favPanel.s
 function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const sb = document.getElementById('setBtn'); sb.classList.add('show'); sb.onclick = () => { try { parent.postMessage({ type: 'reader-settings' }, '*'); } catch (e) {} }; const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
+// v16: 指のYもページ物理に入れる。掴んだ高さ fy(0=上端,1=下端)で巻き込み方が変わり、指の縦移動 dy で曲がり方が追従する
+var grab = { fy: 0.30, dy: 0 };
 function peel(t, pw, ph) {
-  const C = { x: pw, y: ph * 0.30 };
-  const P1 = { x: pw * 0.05, y: ph * 0.62 }, P2 = { x: -pw * 1.7, y: ph * 0.22 };
+  const fy = grab.fy, gdy = grab.dy;
+  const sag = 1 - Math.min(1, Math.abs(fy - 0.5) * 2);          // 中央付近を掴むほど大きくたわむ
+  const C = { x: pw, y: ph * fy };
+  const P1 = { x: pw * (0.05 - sag * 0.22), y: ph * (fy + (0.5 - fy) * 1.6) + gdy * 0.45 };
+  const P2 = { x: -pw * (1.7 + sag * 0.35),  y: ph * (fy - (0.5 - fy) * 0.4) + gdy * 0.7 };
   const u = 1 - t;
   const M = { x: u * u * C.x + 2 * t * u * P1.x + t * t * P2.x,
               y: u * u * C.y + 2 * t * u * P1.y + t * t * P2.y };
@@ -302,11 +369,14 @@ function lampOverlay() {
   if (lampLevel <= 0.001) return;
   const pw = W - EDGE, ph = H - EDGE;
   const n = _fl ? _smoothNoise(_fl.t) : 0, cur = _fl ? _fl.cur : 0;
-  const lv = Math.max(0, Math.min(1, lampLevel * (0.85 + n * 0.12 + cur * 0.35)));
+  // v16: めくった風で炎が一瞬強く揺れる(gust)。因果: めくる→空気が動く→火が揺れる
+  const gu = _fl ? _fl.gust : 0, gj = gu * Math.sin((_fl ? _fl.t : 0) * 41) * 0.5 + gu * 0.5;
+  const lv = Math.max(0, Math.min(1, lampLevel * (0.85 + n * 0.12 + cur * 0.35 + gj * 0.22)));
   const n2 = _fl ? _smoothNoise(_fl.t * 1.7 + 3.1) : 0;
-  const cx = pw * (0.58 + n * 0.05 + n2 * 0.02), cy = ph * (0.54 + n * 0.035), r = Math.max(pw, ph) * (0.74 + n * 0.09 + cur * 0.15);
+  const cx = pw * (0.58 + n * 0.05 + n2 * 0.02 + gu * Math.sin((_fl ? _fl.t : 0) * 33) * 0.05), cy = ph * (0.54 + n * 0.035 - gu * 0.03), r = Math.max(pw, ph) * (0.74 + n * 0.09 + cur * 0.15 + gj * 0.12);
   ctx.save();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  sheen(pw, ph);
   // 縁を闇に沈める(乗算)
   ctx.globalCompositeOperation = 'multiply';
   let g = ctx.createRadialGradient(cx, cy, r * 0.18, cx, cy, r);
@@ -324,6 +394,50 @@ function lampOverlay() {
   ctx.globalAlpha = lv;
   ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
   ctx.restore();
+}
+// v16: 綴じ目(ノド)の影。めくり中は紙がしなって影が深くなる
+function gutter(pw, ph, k) {
+  const w = pw * 0.07, a = 0.16 + 0.20 * k;
+  const gr = ctx.createLinearGradient(0, 0, w, 0);
+  gr.addColorStop(0, 'rgba(20,12,4,' + a.toFixed(3) + ')'); gr.addColorStop(0.5, 'rgba(20,12,4,' + (a * 0.3).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(20,12,4,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = gr; ctx.fillRect(0, 0, w, ph); ctx.restore();
+}
+// v16: お気に入りの金の印(ページ右上の端に小さく押されている)
+function drawSeal(pw, ph) { drawSealFor(pw, ph, deck[index]); }
+function drawSealFor(pw, ph, page) {
+  if (page == null || !favs.includes(page)) return;
+  let s = 1, al = 1, flash = 0;
+  if (favStamp && page === deck[index]) {
+    const k = Math.min(1, (performance.now() - favStamp.t0) / 700);
+    const e = k < 0.35 ? k / 0.35 : 1;                                   // 上から降りてきて押される
+    s = 1.9 - 0.9 * (1 - Math.pow(1 - e, 3)); al = Math.min(1, e * 1.4);
+    flash = k > 0.3 ? Math.max(0, 1 - (k - 0.3) / 0.7) : 0;
+  }
+  const r = Math.max(6, pw * 0.021), cx = pw - r * 2.2, cy = r * 2.4;
+  ctx.save();
+  ctx.translate(cx, cy); ctx.scale(s, s); ctx.globalAlpha = al;
+  if (flash > 0) { const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 5); g.addColorStop(0, 'rgba(255,220,140,' + (0.55 * flash).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,200,100,0)'); ctx.fillStyle = g; ctx.fillRect(-r * 5, -r * 5, r * 10, r * 10); }
+  ctx.rotate(Math.PI / 4);
+  ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+  const g2 = ctx.createLinearGradient(-r, -r, r, r);
+  g2.addColorStop(0, '#f2dc9a'); g2.addColorStop(0.45, '#c9a24a'); g2.addColorStop(0.55, '#a8842e'); g2.addColorStop(1, '#e9cf7e');
+  ctx.fillStyle = g2; ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = 'rgba(80,55,10,.55)'; ctx.lineWidth = Math.max(0.6, r * 0.09); ctx.strokeRect(-r, -r, r * 2, r * 2);
+  ctx.strokeStyle = 'rgba(255,245,210,.55)'; ctx.lineWidth = Math.max(0.5, r * 0.07); ctx.strokeRect(-r * 0.62, -r * 0.62, r * 1.24, r * 1.24);
+  ctx.fillStyle = 'rgba(90,60,10,.7)'; ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+// v16: 端末の傾きで紙とインクの艶がチラリと動く(ガラスの奥に物がある感触)
+var tilt = { x: 0, y: 0, on: false, sx: 0, sy: 0 };
+function sheen(pw, ph) {
+  if (!tilt.on) return;
+  tilt.sx += (tilt.x - tilt.sx) * 0.12; tilt.sy += (tilt.y - tilt.sy) * 0.12;
+  const px = pw * (0.5 + tilt.sx * 0.9), py = ph * (0.5 + tilt.sy * 0.9);
+  const g = ctx.createLinearGradient(px - pw * 0.55, py - ph * 0.35, px + pw * 0.55, py + ph * 0.35);
+  const a = 0.09 + 0.06 * Math.min(1, Math.hypot(tilt.sx, tilt.sy) * 2);
+  g.addColorStop(0, 'rgba(255,240,200,0)'); g.addColorStop(0.42, 'rgba(255,240,200,0)'); g.addColorStop(0.5, 'rgba(255,244,210,' + a.toFixed(3) + ')'); g.addColorStop(0.58, 'rgba(255,240,200,0)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph); ctx.restore();
 }
 function drawInner() {
   pump();
@@ -343,10 +457,10 @@ function drawInner() {
   }
 
   if (!pg(index)) { ctx.fillStyle = '#1a140c'; ctx.fillRect(0, 0, pw, ph); return; }
-  if (!flip) { ctx.drawImage(pg(index), 0, 0, pw, ph); return; }
+  if (!flip) { ctx.drawImage(pg(index), 0, 0, pw, ph); gutter(pw, ph, 0); drawSeal(pw, ph); return; }
   const under = flip.dir > 0 ? pg(index + 1) : pg(index);
   const sheet = flip.dir > 0 ? pg(index) : pg(index - 1);
-  if (!under || !sheet) { ctx.drawImage(pg(index), 0, 0, pw, ph); return; }
+  if (!under || !sheet) { ctx.drawImage(pg(index), 0, 0, pw, ph); gutter(pw, ph, 0); drawSeal(pw, ph); return; }
   const t = Math.min(Math.max(flip.t, 0.004), 0.996);
   const g = peel(t, pw, ph);
   const rect = [{ x: 0, y: 0 }, { x: pw, y: 0 }, { x: pw, y: ph }, { x: 0, y: ph }];
@@ -354,6 +468,8 @@ function drawInner() {
   const foldPoly  = clipPoly(rect, g, true);
 
   ctx.drawImage(under, 0, 0, pw, ph);
+  gutter(pw, ph, Math.sin(Math.PI * t));
+  drawSealFor(pw, ph, flip.dir > 0 ? deck[index + 1] : deck[index]);
 
   const so = 0.40 * Math.sin(Math.PI * t);
   if (so > 0.01 && foldPoly.length) {
@@ -368,6 +484,7 @@ function drawInner() {
   if (frontPoly.length) {
     ctx.save(); pathPoly(frontPoly); ctx.clip();
     ctx.drawImage(sheet, 0, 0, pw, ph);
+    drawSealFor(pw, ph, flip.dir > 0 ? deck[index] : deck[index - 1]);
     const cw = Math.min(30, pw * 0.12);
     const gr = ctx.createLinearGradient(g.mid.x, g.mid.y, g.mid.x + g.n.x * cw, g.mid.y + g.n.y * cw);
     gr.addColorStop(0, 'rgba(0,0,0,0.28)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
@@ -490,26 +607,89 @@ function ensureAudio() {
   if (EMBED && !_touched) { _touched = true; try { parent.postMessage({ type: 'reader-touch' }, '*'); } catch (e) {} }
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
-    if (ac) fetch('../assets/se/page-soft.mp3').then(r => r.arrayBuffer())
-      .then(b => ac.decodeAudioData(b)).then(buf => { flipBuf = buf; }).catch(() => {});
+    if (ac) {
+      // v16: 録音3種を持ち、毎回どれか×ピッチ揺らぎ。「同じ録音の再生だ」と脳に気づかせない
+      ['../assets/se/page-soft.mp3'].forEach((u, i) => {   // KEI 2026-09-04: めくり音は元の1録音×5声色のまま(擦れ音・別録音は不採用)
+        fetch(u).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).then(buf => { flipBufs[i] = buf; if (i === 0) flipBuf = buf; }).catch(() => {});
+      });
+      sfxOut = ac.createGain(); sfxOut.gain.value = 1; sfxOut.connect(ac.destination);
+      try { if (DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(() => {}); } catch (e) {}
+    }
     startCrickets();
     startCrackle();
   }
   if (bgm.paused && SND.bgm) { bgm.volume = 0.22 * SND.bgmVol; bgm.play().catch(() => {}); }
   if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
 }
-let _lastVar = -1;
-function pageSound(strength) {
-  if (!ac || !flipBuf || SND.flipOn === false) return;
-  const src = ac.createBufferSource(); src.buffer = flipBuf;
-  // 2026-09-04 KEI: めくり音を5種類。1つの録音を5通りの声色(速さ×こもり×減衰)で回し、同じ音が続かないようにする
+let _lastVar = -1, _lastBuf = -1, sfxOut = null;
+const flipBufs = [];
+// v16: 速さに応じて音が変わる。ゆっくり=「サァ…」(こもって静か)、速い=「パサッ」(明るく重い)
+function pageSound(strength, vel) {
+  if (!ac || SND.flipOn === false) return;
+  const avail = flipBufs.map((b, i) => b ? i : -1).filter(i => i >= 0);
+  if (!avail.length) return;
+  let bi = avail[Math.floor(Math.random() * avail.length)]; if (avail.length > 1 && bi === _lastBuf) bi = avail[(avail.indexOf(bi) + 1) % avail.length]; _lastBuf = bi;
+  const src = ac.createBufferSource(); src.buffer = flipBufs[bi];
   const VAR = [ [1.00, 9000, 1.0], [0.88, 5200, 1.05], [1.12, 12000, 0.9], [0.80, 3800, 1.15], [1.06, 7000, 0.95] ];
   let vi = Math.floor(Math.random() * VAR.length); if (vi === _lastVar) vi = (vi + 1) % VAR.length; _lastVar = vi;
   const V = VAR[vi];
-  src.playbackRate.value = V[0] * (0.97 + Math.random() * 0.06);
-  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = V[2] > 1 ? V[1] : V[1] * 1.2; lp.Q.value = 0.4;
-  const g = ac.createGain(); g.gain.value = 2.2 * SND.flip * Math.min(1, strength + 0.35) * V[2];
-  src.connect(lp); lp.connect(g); g.connect(ac.destination); src.start();
+  const v = Math.min(1, Math.abs(vel || 0) / 1.6);                       // 0..1 指の速さ
+  src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
+  const g = ac.createGain(); const t0 = ac.currentTime;
+  const peak = 2.2 * SND.flip * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2);
+  g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
+  const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
+  src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
+  src.start(); src.stop(t0 + 1.05);
+}
+// v16: 指でゆっくり引いている間の「紙の擦れる音」。速さに追従して鳴る
+let rustle = null;
+function rustleStart() {
+  if (!ac || rustle || SND.flipOn === false) return;
+  const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.96 * b0 + w * 0.04; b1 = 0.6 * b1 + (w - b0) * 0.4; d[i] = b1 * 2.2; }
+  const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 0.7;
+  const g = ac.createGain(); g.gain.value = 0;
+  src.connect(bp); bp.connect(g); g.connect(sfxOut || ac.destination); src.start();
+  rustle = { src, g, bp, lvl: 0 };
+}
+function rustleTick(speed) {   // speed: めくり量の変化(0..1/秒程度)
+  if (!rustle) return;
+  const target = Math.min(0.30, Math.abs(speed) * 0.55) * SND.flip;
+  rustle.lvl += (target - rustle.lvl) * 0.25;
+  rustle.g.gain.setTargetAtTime(rustle.lvl, ac.currentTime, 0.03);
+  rustle.bp.frequency.setTargetAtTime(2400 + Math.min(1, Math.abs(speed)) * 3000, ac.currentTime, 0.05);
+}
+function rustleStop() {
+  if (!rustle) return;
+  const r = rustle; rustle = null;
+  r.g.gain.setTargetAtTime(0, ac.currentTime, 0.05);
+  setTimeout(() => { try { r.src.stop(); } catch (e) {} }, 300);
+}
+// v16: 金の印を押す「コトッ」／外す時は軽く
+function sealSound(on) {
+  if (!ac) return;
+  const t0 = ac.currentTime;
+  const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(on ? 210 : 260, t0); o.frequency.exponentialRampToValueAtTime(on ? 120 : 180, t0 + 0.07);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(on ? 0.22 : 0.10, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + (on ? 0.12 : 0.08));
+  o.connect(g); g.connect(sfxOut || ac.destination); o.start(t0); o.stop(t0 + 0.15);
+  const len = Math.floor(ac.sampleRate * 0.03), nb = ac.createBuffer(1, len, ac.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
+  const s = ac.createBufferSource(); s.buffer = nb; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+  const g2 = ac.createGain(); g2.gain.value = on ? 0.16 : 0.08; s.connect(hp); hp.connect(g2); g2.connect(sfxOut || ac.destination); s.start(t0);
+}
+// v16: 栞の紐がページの間に「スッ…」と滑り込む音
+function ribbonSound() {
+  if (!ac) return;
+  const t0 = ac.currentTime, dur = 1.0;
+  const len = Math.floor(ac.sampleRate * dur), nb = ac.createBuffer(1, len, ac.sampleRate), d = nb.getChannelData(0);
+  let b0 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.9 * b0 + w * 0.1; d[i] = (w * 0.3 + b0) * Math.sin(Math.PI * i / len); }
+  const s = ac.createBufferSource(); s.buffer = nb;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1; bp.frequency.setValueAtTime(3600, t0); bp.frequency.exponentialRampToValueAtTime(900, t0 + dur);
+  const g = ac.createGain(); g.gain.value = 0.10 * Math.max(0.3, SND.flip);
+  s.connect(bp); bp.connect(g); g.connect(sfxOut || ac.destination); s.start(t0);
 }
 function thump() {
   if (!ac) return;
@@ -538,11 +718,14 @@ function beginFlip(dir) {
   flip = { dir, t: dir > 0 ? 0 : 1 };
   return true;
 }
-function finishFlip(commitTo, withSound) {
+function finishFlip(commitTo, withSound, vel) {
   const from = flip.t, dir = flip.dir;
-  const dur = 150 + 430 * Math.abs(commitTo - from);   // キビキビ、でも紙の重さは残す
+  const v = Math.min(1, Math.abs(vel || 0) / 1.6);
+  const dur = (150 + 430 * Math.abs(commitTo - from)) * (1 - v * 0.35);   // キビキビ、でも紙の重さは残す。速く払えば速く落ちる
   const t0 = performance.now();
-  if (withSound && Math.abs(commitTo - from) > 0.05) pageSound(Math.abs(commitTo - from));
+  const dist = Math.abs(commitTo - from);
+  if (withSound && dist > 0.05) pageSound(dist, vel);
+  if (dist > 0.3) gust(0.5 + v * 0.7);                                    // 風が起き、炎が揺れる
   anim = {};
   (function step(now) {
     const k = Math.min(1, (now - t0) / dur);
@@ -552,25 +735,49 @@ function finishFlip(commitTo, withSound) {
     draw();
     if (k < 1) { anim.raf = requestAnimationFrame(step); }
     else {
+      const turned = (dir > 0 && commitTo === 1) || (dir < 0 && commitTo === 0);
       if (dir > 0 && commitTo === 1) index++;
       if (dir < 0 && commitTo === 0) index--;
       flip = null; anim = null; draw(); updateFavUI();
+      if (turned) { haptic(8); post('reader-flip', { v: vel || 0, dir, seen: seenSet.size }); }
+      // (着地後の紙の揺れ settle() は KEI 2026-09-04「ペラッペラで安っぽい」で不採用。関数は残置)
     }
   })(t0);
 }
+// v16: 着地の余韻。パサッと落ちたあと、紙の端がわずかに浮いて静まる
+let settling = false;
+function settle(dir) {
+  if (!pg(index + 1) || flip) return;
+  settling = true; anim = {};
+  const t0 = performance.now(), dur = 460, amp = 0.032;
+  const keepFy = grab.fy; grab.dy = 0;
+  (function step(now) {
+    if (!settling) return;
+    const k = Math.min(1, (now - t0) / dur);
+    flip = { dir: +1, t: amp * (1 - k) * (1 - k) * Math.abs(Math.sin(k * Math.PI * 2)) };
+    draw();
+    if (k < 1) anim.raf = requestAnimationFrame(step);
+    else { settling = false; flip = null; anim = null; grab.fy = keepFy; draw(); }
+  })(t0);
+}
+function cancelSettle() { if (!settling) return; settling = false; if (anim && anim.raf) cancelAnimationFrame(anim.raf); flip = null; anim = null; }
 
 // ---------- input ----------
 let pd = null, hist = [];
+let _actAt = 0;
 cv.addEventListener('pointerdown', e => {
+  if (settling) cancelSettle();
   if (anim) return;
   ensureAudio();
-  pd = { x0: e.clientX, x: e.clientX, t0: performance.now(), started: false, tBase: 0 };
+  if (performance.now() - _actAt > 1000) { _actAt = performance.now(); post('reader-activity', {}); }
+  const r = cv.getBoundingClientRect();
+  pd = { x0: e.clientX, x: e.clientX, y0: e.clientY, y: e.clientY, t0: performance.now(), started: false, tBase: 0, fy: Math.max(0.04, Math.min(0.96, (e.clientY - r.top) / r.height)) };
   hist = [[e.clientX, performance.now()]];
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e => {
   if (!pd) return;
-  pd.x = e.clientX;
+  pd.x = e.clientX; pd.y = e.clientY;
   hist.push([e.clientX, performance.now()]);
   while (hist.length > 2 && performance.now() - hist[0][1] > 90) hist.shift();
   if (!pd.started) {
@@ -579,6 +786,7 @@ cv.addEventListener('pointermove', e => {
     const dir = dx < 0 ? +1 : -1;
     if (!beginFlip(dir)) { pd = null; return; }
     pd.started = true; pd.tBase = flip.t;
+    grab.fy = 0.30; grab.dy = 0;                    // KEI 2026-09-04: めくる場所は1箇所(右上の角)に固定。紙は丸めすぎない
     startFollow();
   }
   pd.tTarget = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
@@ -587,12 +795,14 @@ cv.addEventListener('pointermove', e => {
 let followRaf = null;
 function startFollow() {
   if (followRaf) return;
+  let prevT = flip ? flip.t : 0, prevNow = performance.now();
   (function fstep() {
     if (pd && pd.started && flip) {
       flip.t += ((pd.tTarget != null ? pd.tTarget : flip.t) - flip.t) * 0.55; // 指にビタ付き(わずかな柔らかさだけ残す)
+      const now = performance.now(), sp = (flip.t - prevT) / Math.max(1, now - prevNow) * 1000; prevT = flip.t; prevNow = now;
       draw();
       followRaf = requestAnimationFrame(fstep);
-    } else { followRaf = null; }
+    } else { followRaf = null; rustleStop(); }
   })();
 }
 function release(e) {
@@ -601,7 +811,8 @@ function release(e) {
   if (!pd.started) {
     if (dt < 300 && Math.abs(dx) < 8) {
       const dir = pd.x0 > innerWidth / 2 ? +1 : -1;
-      if (beginFlip(dir)) finishFlip(dir > 0 ? 1 : 0, true);
+      grab.fy = 0.30; grab.dy = 0;
+      if (beginFlip(dir)) finishFlip(dir > 0 ? 1 : 0, true, 0.6);
     }
     pd = null; return;
   }
@@ -614,11 +825,12 @@ function release(e) {
   let commitTo;
   if (flip.dir > 0) commitTo = (cur > 0.4 || vx < -0.4) ? 1 : 0;
   else              commitTo = (cur < 0.6 || vx > 0.4) ? 0 : 1;
-  finishFlip(commitTo, true);
+  rustleStop();
+  finishFlip(commitTo, true, vx);
   pd = null;
 }
 cv.addEventListener('pointerup', release);
-cv.addEventListener('pointercancel', () => { if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
+cv.addEventListener('pointercancel', () => { rustleStop(); if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
 
 // ---------- dust motes + rising embers + warp streaks ----------
 const dc = document.getElementById('dust'), dctx = dc.getContext('2d');
@@ -728,13 +940,15 @@ let veilTarget = 0;
 veil.style.transition = 'opacity 1.4s ease';
 const shade = document.getElementById('shade'), flame = document.getElementById('flame'), halo = document.getElementById('halo');
 // 2026-09-03 KEI: ピカピカ→「ゆっくり滑らかに、ぼやーっと変わる」灯り。乱数の飛びをやめ、遅い正弦の重ね合わせ+ゆるい目標追従
-var _fl = { t: 0, tgt: 0, cur: 0, next: 0 };   // var: 先に呼ばれる draw()/lampOverlay から参照されるため
+var _fl = { t: 0, tgt: 0, cur: 0, next: 0, gust: 0 };   // var: 先に呼ばれる draw()/lampOverlay から参照されるため
 function _smoothNoise(t) {
   return Math.sin(t * 0.61) * 0.5 + Math.sin(t * 1.37 + 1.3) * 0.3 + Math.sin(t * 0.23 + 2.1) * 0.2;
 }
+function gust(s) { _fl.gust = Math.min(1.2, _fl.gust + s); }
 let _flPrev = performance.now();
 (function flicker(now) {
   const dt = Math.min((now - _flPrev) / 1000, 0.1); _flPrev = now; _fl.t += dt;
+  if (_fl.gust > 0.001) { _fl.gust *= Math.exp(-dt / 0.42); if (_fl.gust < 0.001) _fl.gust = 0; }
   // たまに(8〜20秒に1回)ゆっくり暗くなる「息」。目標値へ時定数~1.2秒で寄る
   if (_fl.t > _fl.next) { _fl.tgt = Math.random() < 0.45 ? -0.35 - Math.random() * 0.25 : 0; _fl.next = _fl.t + 8 + Math.random() * 12; }
   _fl.cur += (_fl.tgt - _fl.cur) * (1 - Math.exp(-dt / 1.2));
@@ -745,7 +959,8 @@ let _flPrev = performance.now();
   const dx = _smoothNoise(_fl.t * 0.8 + 5) * 0.9, dy = _smoothNoise(_fl.t * 0.7 + 9) * 0.6, sc = 1 + n * 0.02;
   shade.style.transform = 'translate(' + dx.toFixed(2) + '%,' + dy.toFixed(2) + '%) scale(' + sc.toFixed(3) + ')';
   shade.style.opacity = (0.86 - _fl.cur * 0.3).toFixed(3);
-  halo.style.opacity = (0.95 + n * 0.10 + _fl.cur * 0.4).toFixed(3);
+  const gj = _fl.gust * (0.5 + 0.5 * Math.sin(_fl.t * 41));
+  halo.style.opacity = Math.min(1, 0.95 + n * 0.10 + _fl.cur * 0.4 + gj * 0.25).toFixed(3);
   // 炎そのもの(ゆっくり): 背の高さ・傾き・明るさを灯りと同期
   flame.style.transform = 'scaleY(' + (0.92 + n * 0.10 + _fl.cur * 0.25).toFixed(3) + ') scaleX(' + (0.96 + n * 0.05).toFixed(3) + ') skewX(' + (dx * 4).toFixed(1) + 'deg)';
   flame.style.opacity = (0.9 + n * 0.08 + _fl.cur * 0.2).toFixed(3);
@@ -756,7 +971,7 @@ let _flPrev = performance.now();
     const vt = _fl.cur < -0.15 ? 0.10 : 0.02;
     if (vt !== veilTarget) { veilTarget = vt; veil.style.opacity = vt.toFixed(3); }
   }
-  if (lampLevel > 0.001 && !flip && (++_lampTick % 2 === 0)) draw();
+  if (lampLevel > 0.001 && !flip && (++_lampTick % 2 === 0 || _fl.gust > 0.01 || tilt.on)) draw();
   requestAnimationFrame(flicker);
 })(performance.now());
 
@@ -867,7 +1082,51 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
     const b = loadBookmark();
     if (b) { const ok = b.deck.every(n => n >= 0 && n < N); if (ok) { deck = b.deck; index = Math.min(b.index, deck.length - 1); favMode = !!b.fav; draw(); updateFavUI(); } }
   }
+  uiWake();
 }
+
+// ---------- v16: 読んでいる間だけUIを消す ----------
+// 2.5秒操作がなければ、ボタンと枚数を闇へ溶かす。残るのは本と書斎と光と雨だけ。画面の下側(または上端)に触れれば戻る
+var uiTimer = null;
+var uiJustWoke = 0;   // 消えていたUIを起こしたタップでは、栞/お気に入りは反応しない(誤操作防止)。戻る/設定は通す
+function uiWake() {
+  if (document.body.classList.contains('uihide')) uiJustWoke = performance.now();
+  document.body.classList.remove('uihide');
+  clearTimeout(uiTimer);
+  uiTimer = setTimeout(() => document.body.classList.add('uihide'), 2500);
+}
+document.addEventListener('pointerdown', e => {
+  const y = e.clientY / innerHeight;
+  if (y > 0.78 || y < 0.14) uiWake();
+  else if (!document.body.classList.contains('uihide')) uiWake();     // 見えている間の操作は表示を延長するだけ
+}, { passive: true });
+[favBtn, favListBtn].forEach(el => el.addEventListener('click', uiWake));
+
+// ---------- v16: 本を閉じる儀式(シェルからの合図で、ページの世界が先に沈む) ----------
+function closeRitual() {
+  rustleStop(); cancelSettle();
+  document.body.classList.add('uihide');
+  cv.classList.remove('sway'); cv.classList.add('out');
+  rampGlow(0, 1200);
+  hideRibbon();
+}
+addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'reader-closing') closeRitual();
+});
+
+// ---------- v16: 端末の傾き(箔押し・インクの艶) ----------
+let _tiltBound = false;
+function listenTilt() {
+  if (_tiltBound) return; _tiltBound = true;
+  addEventListener('deviceorientation', ev => {
+    if (ev.gamma == null || ev.beta == null) return;
+    tilt.on = true;
+    tilt.x = Math.max(-1, Math.min(1, ev.gamma / 35));
+    tilt.y = Math.max(-1, Math.min(1, (ev.beta - 45) / 35));
+  }, { passive: true });
+}
+try { if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) listenTilt(); } catch (e) {}
 })();
 </script>
 </body>
