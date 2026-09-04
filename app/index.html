@@ -37,7 +37,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
   background:linear-gradient(90deg,transparent,rgba(11,8,6,.62) 18%,rgba(11,8,6,.62) 82%,transparent)}
 #talk.show{opacity:1}
 #talk .name{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.5em;text-indent:.5em;color:var(--gold);margin-bottom:8px}
-#talk .txt{min-height:1.6em;white-space:pre-wrap;font-size:var(--t-lg);line-height:1.7;letter-spacing:.08em;font-weight:500;color:var(--gold2);
+#talk .txt{min-height:1.6em;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:var(--t-lg);line-height:1.7;letter-spacing:.08em;font-weight:500;color:var(--gold2);
   text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
 #talk.small .txt{font-size:clamp(17px,4.6vw,23px)}
 #talk .cur{opacity:.7;animation:blink 1s steps(1) infinite;margin-left:.15em}
@@ -113,7 +113,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 <canvas id="c"></canvas>
 
 <div id="vignette"></div><div id="grain"></div>
-<div id="talk"><div class="name">書斎の主</div><div class="txt" id="talkTxt"></div></div>
+<div id="talk"><div class="txt" id="talkTxt"></div></div>
 <div id="ui">
   <div id="bookBtns">
     <button class="seal" id="bOpen">本 を 開 く</button>
@@ -180,7 +180,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904r';
+const BUILD = '20260904s';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -275,7 +275,7 @@ const talk = $('talk'), talkTxt = $('talkTxt');
 let typing = null, typingDone = null, talkHide = null;
 function say(line, done, opts){
   opts = opts || {};
-  line = line.replace(/\n/g, '').replace(/。(?=.)/g, '。\n');   // 一文ごとに改行(KEI 2026-09-04)
+  line = line.replace(/\n/g, '');   // 改行しない(KEI 2026-09-04)
   if (typing) { clearInterval(typing); typing = null; }
   if (talkHide) { clearTimeout(talkHide); talkHide = null; }
   talk.classList.toggle('small', !!opts.small);
@@ -285,18 +285,38 @@ function say(line, done, opts){
   typingDone = () => { talkTxt.textContent = line; typingDone = null; if (done) done(); };
   typing = setInterval(() => {
     talkTxt.textContent = line.slice(0, ++i);
+    blip(i);
     if (i >= line.length) { clearInterval(typing); typing = null; typingDone = null; if (done) done(); }
   }, 55);
   if (opts.autoHide) talkHide = setTimeout(() => talk.classList.remove('show'), opts.autoHide);
 }
+// 文字送りの音(昔のゲームのテキスト音・うっすら)。解錠後だけ鳴る
+let blipCtx = null;
+function blip(i){
+  if (!unlocked || (!S.bgm && !S.rain)) return;
+  try {
+    if (!blipCtx) blipCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (blipCtx.state === 'suspended') blipCtx.resume();
+    const t = blipCtx.currentTime, o = blipCtx.createOscillator(), g = blipCtx.createGain();
+    o.type = 'square'; o.frequency.value = 1180 + (i % 3) * 90;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.012, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.032);
+    o.connect(g); g.connect(blipCtx.destination); o.start(t); o.stop(t + 0.04);
+  } catch(e){}
+}
 function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const f = typingDone; typingDone = null; if (f) f(); return true; } return false; }
 
 // 主の一言(本が出た時・ランダム・2026-09-03 KEI)
-const TIPS = [
-  'ああ、その本か。私も暇なときによく開いてみてるんだ。',
-  '不思議な本でね。開くたびに、中身が変わるんだ。',
-  'それは、私が今まで集めてきた言の葉が全部入っている。',
-  '悩みがあるなら、めくってみるといい。\n答えに近いものが、必ず一つは挟まっている。'
+const TIPS = [   // 2026-09-04 KEI確定 10本
+  '何か良い言の葉に出会えると良いですね。',
+  '私が今まで集めてきた言の葉が、全てこの本に入っています。',
+  'この本は、開くたびに中身が変わる不思議な本です。',
+  '私はあちらで執筆を続けますので、気が済むまで、好きに読んでいてください。',
+  '今日は、どんな言の葉が出てくるでしょうね。',
+  '気に入った言の葉があれば、お気に入りにしておいてください。あとで読み返せます。',
+  '私も、暇さえあればこの本を開いていますよ。',
+  '悩みがあるときにこの本を開くと、解決のヒントになる言葉が出てきます。',
+  '栞を挟んでおけば、次はその続きから読めますよ。',
+  '眠くなったら、閉じてください。本は逃げませんから。'
 ];
 
 // ============================================================ three.js 共通
