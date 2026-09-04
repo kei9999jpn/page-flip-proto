@@ -103,13 +103,6 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .box p b{color:var(--gold);font-weight:500;margin-right:.6em}
 .box hr{border:none;border-top:1px solid rgba(201,162,74,.22);margin:14px 0 12px}
 .box label{display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
-/* v18: 音量スライダー(見た目は元のつまみ式・中身は pointer 駆動でスマホでも確実に動く) */
-.volrow{display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
-.volrow span{flex:none;margin-right:12px}
-.sl{position:relative;width:130px;height:30px;touch-action:none;cursor:pointer;flex:none}
-.sl .tr{position:absolute;left:0;right:0;top:13px;height:4px;background:rgba(201,162,74,.28);border-radius:2px}
-.sl .fl{position:absolute;left:0;top:13px;height:4px;background:var(--gold);border-radius:2px;width:50%}
-.sl .th{position:absolute;top:6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--gold2);box-shadow:0 1px 4px rgba(0,0,0,.7);left:50%}
 .box input[type=checkbox]{accent-color:var(--gold);transform:scale(1.15)}
 .box select{background:rgba(0,0,0,.35);border:1px solid rgba(201,162,74,.35);color:var(--paper);font-family:var(--ui);font-size:13px;padding:5px 8px}
 .box .close{display:block;margin:18px auto 0;background:none;border:1px solid rgba(201,162,74,.45);color:var(--gold2);padding:8px 30px;letter-spacing:.4em;text-indent:.4em;font-family:var(--serif);cursor:pointer}
@@ -152,7 +145,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
     <div class="row">
       <button class="ico" id="bFav"><b>♡</b>お気に入り</button>
       <button class="ico" id="bAbout"><b>?</b>説明</button>
-      <button class="ico" id="bSet"><b>⚙</b>設定</button>
+      <button class="ico" id="bSound"><b></b>音量</button>
     </div>
   </div>
 </div>
@@ -188,10 +181,6 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <button class="close" id="aboutClose">閉じる</button>
 </div></div>
 
-<div class="ov" id="panel"><div class="box frame"><i class="c1"></i><i class="c2"></i>
-  <h2>設定</h2><div class="rule"></div>
-  <label>BGM <input type="checkbox" id="sBgm"></label>
-  <div class="volrow"><span>BGMの大きさ</span><div class="sl" data-key="bgmVol"><i class="tr"></i><i class="fl"></i><b class="th"></b></div></div>
   <label>環境音(雨・暖炉) <input type="checkbox" id="sRain"></label>
   <div class="volrow"><span>環境音の大きさ</span><div class="sl" data-key="amb"><i class="tr"></i><i class="fl"></i><b class="th"></b></div></div>
   <label>紙をめくる音 <input type="checkbox" id="sFlipOn"></label>
@@ -216,7 +205,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v19';
+const BUILD = '20260904v20';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -228,28 +217,16 @@ if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; }
 if (!S.v4) { S.insects = false; S.candle = false; S.v4 = 1; }
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); notifyReader({ type:'settings' }); }
 S.rainKind = 'study';   // 環境音は1種類(KEI 2026-09-04)
-if (!S.v5) { S.bgmVol = 0.5; S.amb = 0.5; S.flip = 0.5; S.v5 = 1; }   // v17: 真ん中=標準。上げ幅を大きく
-$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sFlipOn').checked = S.flipOn !== false;
-// 音量カーブ: 0.5で標準(1.0)、1.0で約3倍。0で無音
+if (!S.v5) { S.bgmVol = 0.5; S.amb = 0.5; S.flip = 0.5; S.v5 = 1; }   // 音量の基準は真ん中固定(v20: つまみは撤去)
+// v20 (2026-09-04 KEI): iPhoneで設定パネルが効かない → 設定を廃止し「音 ON/OFF」1つに(音楽・環境音・めくり音・効果音をまとめて)
+if (!S.v6) { S.sound = true; S.v6 = 1; }
 function curve(x){ return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }
-document.querySelectorAll('.sl').forEach(bar => {
-  const key = bar.dataset.key, fl = bar.querySelector('.fl'), th = bar.querySelector('.th');
-  const paint = () => { const v = S[key] || 0; fl.style.width = (v * 100) + '%'; th.style.left = (v * 100) + '%'; };
-  const setFrom = (clientX) => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(1, Math.round((clientX - r.left) / r.width * 20) / 20)); if (v !== S[key]) { S[key] = v; paint(); saveS(); } };
-  let down = false;
-  bar.addEventListener('pointerdown', e => { down = true; try { bar.setPointerCapture(e.pointerId); } catch(err){} setFrom(e.clientX); e.preventDefault(); });
-  bar.addEventListener('pointermove', e => { if (down) setFrom(e.clientX); });
-  const up = () => { if (down) uiClick(0.6); down = false; };
-  bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
-  bar.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
-  paint();
-});
-$('sFlipOn').onchange = e => { S.flipOn = e.target.checked; saveS(); };
-$('sBgm').onchange = e => { S.bgm = e.target.checked; saveS(); };
-$('sRain').onchange = e => { S.rain = e.target.checked; saveS(); };
+function applySound(){ S.bgm = S.rain = S.flipOn = !!S.sound; document.querySelectorAll('#bSound').forEach(b => { b.innerHTML = '<b>' + (S.sound ? SPK_ON : SPK_OFF) + '</b>音量'; }); }
+const SPK_ON = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M15.5 6.5a5 5 0 0 1 0 7"/><path d="M18.5 4a9 9 0 0 1 0 12"/></svg>', SPK_OFF = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#8a7a58" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M16 7l5 6M21 7l-5 6"/></svg>';
+function toggleSound(){ S.sound = !S.sound; applySound(); saveS(); if (S.sound) uiClick(1); }
+applySound();
 document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => uiClick(1)));
-$('bSet').onclick = () => $('panel').classList.add('show');
-$('panelClose').onclick = () => $('panel').classList.remove('show');
+$('bSound').addEventListener('click', toggleSound);
 $('bAbout').onclick = () => $('about').classList.add('show');
 $('aboutClose').onclick = () => $('about').classList.remove('show');
 // 説明のタブ(この本とは / お気に入り / 栞)
@@ -335,7 +312,7 @@ function bgmFadeOut(ms){ bgmWanted = false; bgmStop(ms); }
 // ---- 効果音(合成・控えめ) ----
 // 革表紙が落ちる「ドスッ……」(低く、短く、重い)
 function thudHeavy(){
-  if (!sx) return;
+  if (!sx || !S.sound) return;
   const t0 = sx.currentTime;
   const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(82, t0); o.frequency.exponentialRampToValueAtTime(26, t0 + 0.34);
   const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.7, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.62);
@@ -347,7 +324,7 @@ function thudHeavy(){
 }
 // ボタンを押した時の音(優しく、派手でない: 木を軽く叩いたような「コッ」)
 function uiClick(k){
-  if (!sx) return;
+  if (!sx || !S.sound) return;
   k = k == null ? 1 : k;
   const t0 = sx.currentTime;
   const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
@@ -441,7 +418,7 @@ function say(line, done, opts){
 }
 // 文字送りの音(昔のゲームのテキスト音・うっすら)。解錠後だけ鳴る
 function blip(i){
-  if (!sx || (!S.bgm && !S.rain)) return;
+  if (!sx || !S.sound) return;
   try {
     const t = sx.currentTime, o = sx.createOscillator(), g = sx.createGain();
     o.type = 'square'; o.frequency.value = 1180 + (i % 3) * 90;
@@ -680,7 +657,7 @@ addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'reader-touch') { bgmWanted = true; ensureAudio(); applyAudio(); activity(); }
   if (d.type === 'reader-ready') { readerReady = true; }
-  if (d.type === 'reader-settings') { $('panel').classList.add('show'); activity(); }
+  if (d.type === 'reader-sound') { toggleSound(); activity(); }
   if (d.type === 'reader-activity') { activity(); }
   if (d.type === 'reader-flip') {
     activity(); flipDuck(); pagesSession++; ST.pagesTotal = (ST.pagesTotal || 0) + 1; saveST();

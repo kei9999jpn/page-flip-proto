@@ -104,7 +104,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
   display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:clamp(11px,3.1vmin,13px);letter-spacing:.2em;text-indent:.2em;
   color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:80px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
 #favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:clamp(15px,4vmin,17px);letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal;height:18px;line-height:18px}
-#favListBtn b svg{vertical-align:top}
+#favListBtn b svg,#setBtn b svg{vertical-align:top}
 #favListBtn{left:calc(50% - 160px)}
 #setBtn{left:calc(50% - 52px);display:none}
 #setBtn.show{display:flex}
@@ -150,7 +150,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
 <div id="backBtn">‹ 戻る</div>
 <div id="favBtn"><b>♡</b><span>お気に入り</span></div>
 <div id="favListBtn"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b><span>栞を挟む</span></div>
-<div id="setBtn"><b>⚙</b><span>設定</span></div>
+<div id="setBtn"><b></b><span>音量</span></div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
@@ -316,7 +316,13 @@ function loadBookmark() {
   return null;
 }
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
-function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const sb = document.getElementById('setBtn'); sb.classList.add('show'); sb.onclick = () => { try { parent.postMessage({ type: 'reader-settings' }, '*'); } catch (e) {} }; const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
+// v20: 音 ON/OFF の表示(親と同じ localStorage を読む)
+function paintSound() {
+  const sb = document.getElementById('setBtn'); if (!sb) return;
+  const on = SND.sound !== false && SND.flipOn !== false;
+  sb.querySelector('b').innerHTML = on ? '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M15.5 6.5a5 5 0 0 1 0 7"/><path d="M18.5 4a9 9 0 0 1 0 12"/></svg>' : '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#8a7a58" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M16 7l5 6M21 7l-5 6"/></svg>';
+}
+function showFavButtons() { favBtn.classList.add('show'); favListBtn.classList.add('show'); seenEl.classList.add('show'); if (EMBED) { const sb = document.getElementById('setBtn'); sb.classList.add('show'); sb.onclick = () => { try { parent.postMessage({ type: 'reader-sound' }, '*'); } catch (e) {} }; paintSound(); const bb = document.getElementById('backBtn'); bb.classList.add('show'); bb.onclick = () => { try { parent.postMessage({ type: 'reader-close' }, '*'); } catch (e) {} }; } updateFavUI(); }
 
 // ---------- book-like peel geometry ----------
 // v16: 指のYもページ物理に入れる。掴んだ高さ fy(0=上端,1=下端)で巻き込み方が変わり、指の縦移動 dy で曲がり方が追従する
@@ -554,7 +560,7 @@ applyRainSrc();
 // 別タブ(設定画面)で雨の種類が変わったら追従する
 addEventListener('message', e => {
   const d = e.data || {};
-  if (d.type === 'settings') { try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (err) {} if (EMBED) { SND.bgm = false; SND.rain = false; } }
+  if (d.type === 'settings') { try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (err) {} if (EMBED) { SND.bgm = false; SND.rain = false; } paintSound(); }
 });
 addEventListener('storage', e => {
   if (e.key !== 'bookexp-settings') return;
@@ -672,7 +678,7 @@ function rustleStop() {
 }
 // v17: ボタンの音(優しい「コッ」)
 function uiClick() {
-  if (!ac) return;
+  if (!ac || SND.flipOn === false) return;
   const t0 = ac.currentTime;
   const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
   const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
@@ -680,7 +686,7 @@ function uiClick() {
 }
 // v16: 金の印を押す「コトッ」／外す時は軽く
 function sealSound(on) {
-  if (!ac) return;
+  if (!ac || SND.flipOn === false) return;
   const t0 = ac.currentTime;
   const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(on ? 210 : 260, t0); o.frequency.exponentialRampToValueAtTime(on ? 120 : 180, t0 + 0.07);
   const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(on ? 0.22 : 0.10, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + (on ? 0.12 : 0.08));
@@ -692,7 +698,7 @@ function sealSound(on) {
 }
 // v16: 栞の紐がページの間に「スッ…」と滑り込む音
 function ribbonSound() {
-  if (!ac) return;
+  if (!ac || SND.flipOn === false) return;
   const t0 = ac.currentTime, dur = 1.0;
   const len = Math.floor(ac.sampleRate * dur), nb = ac.createBuffer(1, len, ac.sampleRate), d = nb.getChannelData(0);
   let b0 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.9 * b0 + w * 0.1; d[i] = (w * 0.3 + b0) * Math.sin(Math.PI * i / len); }
