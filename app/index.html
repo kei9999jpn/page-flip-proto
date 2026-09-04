@@ -116,8 +116,8 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .tarrow:active{color:#fff2c4;border-color:var(--gold)}
 .tabbody{height:min(50vh,340px);height:min(50dvh,340px);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:2px}
 .tabbody::-webkit-scrollbar{display:none}
-.tab p{min-height:0;white-space:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.04em;line-height:1.95;margin:0 0 10px}
-.tab p b{display:block;color:var(--gold);font-weight:500;margin:0 0 2px;letter-spacing:.2em}
+.tab p{min-height:0;white-space:normal;word-break:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.03em;line-height:1.75;margin:0 0 7px}
+.tab p.h{color:var(--gold);letter-spacing:.2em;margin:14px 0 6px;font-size:clamp(11.5px,3.3vw,13.5px)}
 .tab .mode{margin-top:10px;white-space:normal}
 .dots{display:flex;justify-content:center;gap:8px;margin:12px 0 0}
 .dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
@@ -157,23 +157,35 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <div class="rule"></div>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主が、長い年月をかけて集めた言の葉を一冊に綴じた魔法の本。名言、問い、ふとした気づき。心に残った言葉だけを、一枚ずつ挟んである。</p>
-    <p>この本には、決まった順番がない。開くたびに、ページの並びが入れ替わる。同じ本を開いても、二度と同じ順では読めない。だから今日のあなたには、今日の言葉が出てくる。</p>
-    <p>言葉は今も集められ続けていて、本は日に日に厚くなっていく。最後のページは、まだ誰も見たことがない。</p>
-    <p><b>読み方</b>ページの右側を押すか、右から左へなぞると次のページへ。左側を押すと、前のページへ戻る。右上の数字は、あなたが今日見たページの数。</p>
-    <p>主も、暇さえあればこの本を開いている。急がなくていい。本は逃げない。</p>
+    <p>書斎の主が集めた言葉を、一冊に綴じた本。</p>
+    <p>名言、問い、ふとした気づき。</p>
+    <p>開くたびに、ページの並びが変わる。</p>
+    <p>だから今日は、今日の言葉が出てくる。</p>
+    <p>ページは今も、増え続けている。</p>
+    <p class="h">読み方</p>
+    <p>右側を押すと、次のページ。</p>
+    <p>左側を押すと、前のページ。</p>
+    <p>右上の数字は、見たページの数。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>読んでいて心に残ったページがあったら、下の「お気に入り」を押す。そのページの角に、小さな金の印が押される。</p>
-    <p>印は消えない。並びが入れ替わって、いつか同じページが出てきた時も、角の印はそこにある。閉じた本の小口にも、金の印が一つずつ増えていく。</p>
-    <p>印を押したページだけを集めた一冊が、あなたの本になる。本の画面で「お気に入り」を選ぶと、その一冊だけを開いて読める。</p>
-    <p>もう一度「お気に入り」を押すと、印は外れる。印はこの端末の中に記憶される。</p>
+    <p>心に残ったページで、お気に入りを押す。</p>
+    <p>ページの角に、金の印が押される。</p>
+    <p>印は消えない。また出た時もそこにある。</p>
+    <p>閉じた本の小口にも、金の印が増える。</p>
+    <p class="h">印のページだけを読む</p>
+    <p>本の画面で「お気に入り」を選ぶ。</p>
+    <p>印のページだけの一冊が開く。</p>
+    <p>もう一度押すと、印は外れる。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
-    <p>「栞を挟む」を押すと、今読んでいるページに、古い紐の栞が上から滑り込む。</p>
-    <p>栞を挟んだ本は、その並びのまま止まる。開くたびに入れ替わるはずのページが、栞のあるあいだは動かない。次に本を開いた時、栞のページから同じ続きを読める。閉じた本の上から紐の先が覗いているのが、その目印。</p>
-    <p>栞は一本だけ。新しく挟むと、前の栞は外れる。ブラウザを閉じても、栞は残る。</p>
-    <p>栞を外して、また入れ替わる本に戻したい時は「新しく開き直す」を押す。並びが変わり、栞も外れる。</p>
+    <p>「栞を挟む」を押すと、紐が挟まる。</p>
+    <p>栞のある本は、並びが変わらない。</p>
+    <p>次は栞のページから、続きを読める。</p>
+    <p>閉じた本の上から、紐の先が覗く。</p>
+    <p>栞は一本。新しく挟むと、前のは外れる。</p>
+    <p>ブラウザを閉じても、栞は残る。</p>
+    <p class="h">並びを新しくしたい時</p>
+    <p>下の「新しく開き直す」を押す。栞は外れる。</p>
     <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。栞は外れる</span></button>
   </div>
   </div>
@@ -199,7 +211,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v20';
+const BUILD = '20260904v21';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -316,18 +328,61 @@ function thudHeavy(){
   const s = sx.createBufferSource(); s.buffer = nb; const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240;
   const g3 = sx.createGain(); g3.gain.value = 0.4; s.connect(lp); lp.connect(g3); g3.connect(sxMaster); s.start(t0);
 }
-// ボタンを押した時の音(優しく、派手でない: 木を軽く叩いたような「コッ」)
+// ボタンを押した時の音(v21 KEI: 重低音がうっすら・ダーク)。低い「ドッ」+ 遠くの木の音
 function uiClick(k){
   if (!sx || !S.sound) return;
   k = k == null ? 1 : k;
   const t0 = sx.currentTime;
-  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
-  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07 * k, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
-  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.1);
-  const len = Math.floor(sx.sampleRate * 0.02), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(74, t0); o.frequency.exponentialRampToValueAtTime(42, t0 + 0.16);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16 * k, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.3);
+  const len = Math.floor(sx.sampleRate * 0.05), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 3);
-  const s = sx.createBufferSource(); s.buffer = nb; const bp = sx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 1.2;
-  const g2 = sx.createGain(); g2.gain.value = 0.05 * k; s.connect(bp); bp.connect(g2); g2.connect(sxMaster); s.start(t0);
+  const n = sx.createBufferSource(); n.buffer = nb; const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.7;
+  const g2 = sx.createGain(); g2.gain.value = 0.05 * k; n.connect(lp); lp.connect(g2); g2.connect(sxMaster); n.start(t0);
+}
+// 低いノイズのうねり(共通部品): from→to Hz のローパスで、attack→hold→release
+function darkSwell(t0, dur, gain, f0, f1, attack, release){
+  const len = Math.floor(sx.sampleRate * (dur + 0.1)), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  let b0 = 0; for (let i = 0; i < len; i++) { const w = Math.random()*2-1; b0 = 0.985 * b0 + w * 0.015; d[i] = b0 * 8; }
+  const n = sx.createBufferSource(); n.buffer = nb;
+  const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.9; lp.frequency.setValueAtTime(f0, t0); lp.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + attack); g.gain.setValueAtTime(gain, t0 + Math.max(attack, dur - release)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  n.connect(lp); lp.connect(g); g.connect(sxMaster); n.start(t0); n.stop(t0 + dur + 0.05);
+}
+// 表紙が開く音(v21): 低いうねりが立ち上がって、革がきしむ気配
+function openSound(){
+  if (!sx || !S.sound) return;
+  const t0 = sx.currentTime;
+  darkSwell(t0, 2.4, 0.16, 120, 420, 1.1, 1.0);
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(46, t0); o.frequency.linearRampToValueAtTime(58, t0 + 2.2);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.11, t0 + 1.2); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.5);
+  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 2.6);
+}
+// 本に飛び込む音(v21): 光が集まる高いきらめき + 吸い込まれる風 + 最後に低い落下
+function diveSound(){
+  if (!sx || !S.sound) return;
+  const t0 = sx.currentTime;
+  // 光: 高い帯のノイズが上へ昇る(1.5k→7k)
+  const len = Math.floor(sx.sampleRate * 1.8), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1);
+  const n = sx.createBufferSource(); n.buffer = nb;
+  const bp = sx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 6; bp.frequency.setValueAtTime(1500, t0); bp.frequency.exponentialRampToValueAtTime(7000, t0 + 1.6);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.7);
+  n.connect(bp); bp.connect(g); g.connect(sxMaster); n.start(t0); n.stop(t0 + 1.8);
+  // きらめき: 高い正弦が数本、ばらばらに
+  for (let i = 0; i < 6; i++) {
+    const o = sx.createOscillator(); o.type = 'sine'; const f = 1800 + Math.random()*2600; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * 1.6, t0 + 1.4);
+    const og = sx.createGain(); const st = t0 + 0.2 + i * 0.16; og.gain.setValueAtTime(0.0001, st); og.gain.exponentialRampToValueAtTime(0.012, st + 0.08); og.gain.exponentialRampToValueAtTime(0.0001, st + 0.9);
+    o.connect(og); og.connect(sxMaster); o.start(st); o.stop(st + 1.0);
+  }
+  // 風: 低い帯が上がりながら吸い込まれる(0.7s後から)
+  darkSwell(t0 + 0.6, 1.6, 0.22, 180, 2600, 1.0, 0.35);
+  // 落下: 最後の暗転で低く沈む
+  const t1 = t0 + 1.35;
+  const o2 = sx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(70, t1); o2.frequency.exponentialRampToValueAtTime(24, t1 + 0.9);
+  const g2 = sx.createGain(); g2.gain.setValueAtTime(0.0001, t1); g2.gain.exponentialRampToValueAtTime(0.28, t1 + 0.05); g2.gain.exponentialRampToValueAtTime(0.0001, t1 + 1.3);
+  o2.connect(g2); g2.connect(sxMaster); o2.start(t1); o2.stop(t1 + 1.4);
 }
 function haptic(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch(e){} }
 function applyRainSrc(){
@@ -388,6 +443,7 @@ function maybeHint(){
   setTimeout(close, 12000);
 }
 
+function whenVisible(fn){ if (!document.hidden) { fn(); return; } const h = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', h); fn(); } }; document.addEventListener('visibilitychange', h); }
 // ============================================================ 字幕
 const talk = $('talk'), talkTxt = $('talkTxt');
 let typing = null, typingDone = null, talkHide = null;
@@ -412,12 +468,14 @@ function say(line, done, opts){
 }
 // 文字送りの音(昔のゲームのテキスト音・うっすら)。解錠後だけ鳴る
 function blip(i){
+  // v21 KEI: ピコピコはダサい → 低い「ボソボソ」。男の人が小声で呟くような、ごく小さい低音の粒
   if (!sx || !S.sound) return;
   try {
-    const t = sx.currentTime, o = sx.createOscillator(), g = sx.createGain();
-    o.type = 'square'; o.frequency.value = 1180 + (i % 3) * 90;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.012, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.032);
-    o.connect(g); g.connect(sxMaster); o.start(t); o.stop(t + 0.04);
+    const t = sx.currentTime, o = sx.createOscillator(), g = sx.createGain(), lp = sx.createBiquadFilter();
+    o.type = 'triangle'; o.frequency.setValueAtTime(96 + Math.random()*38 + (i % 4) * 6, t); o.frequency.exponentialRampToValueAtTime(70 + Math.random()*20, t + 0.045);
+    lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 0.8;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o.connect(lp); lp.connect(g); g.connect(sxMaster); o.start(t); o.stop(t + 0.06);
   } catch(e){}
 }
 function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const f = typingDone; typingDone = null; if (f) f(); return true; } return false; }
@@ -496,7 +554,7 @@ new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '
   pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
   buildRibbon(); buildFavMarks();
   $('ui').classList.add('show');
-  setTimeout(() => say(arrivalLine(), null, { small:true, hold:4000 }), 900);
+  whenVisible(() => setTimeout(() => say(arrivalLine(), null, { small:true, hold:4000 }), 900));   // v21: 裏で開かれた時はタップまで凍る→見えてから出す
   setTimeout(maybeHint, 1400);
 });
 // v16: 栞の紐(本の下から尻尾が出ている)と、お気に入りの金の印(小口に小さく)。localStorage が世界の物体に変わる
@@ -598,9 +656,9 @@ function beginRead(hash, title){
   $('readTitle').classList.add('show');
   activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; }, 1700);
+  setTimeout(() => { opening = true; openSound(); }, 1700);
   setTimeout(() => { haptic(12); }, 3800);              // 表紙が開ききる(音は KEI 2026-09-04 で撤去)
-  setTimeout(() => { motesStart(); }, 2600);
+  setTimeout(() => { motesStart(); diveSound(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
   setTimeout(() => { $('fade').style.transition = 'opacity 1.4s ease-in'; $('fade').style.opacity = 1; }, 4000);
   setTimeout(() => {

@@ -676,13 +676,17 @@ function rustleStop() {
   r.g.gain.setTargetAtTime(0, ac.currentTime, 0.05);
   setTimeout(() => { try { r.src.stop(); } catch (e) {} }, 300);
 }
-// v17: ボタンの音(優しい「コッ」)
+// v21: ボタンの音(低く暗く、うっすら)
 function uiClick() {
   if (!ac || SND.flipOn === false) return;
   const t0 = ac.currentTime;
-  const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
-  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
-  o.connect(g); g.connect(sfxOut || ac.destination); o.start(t0); o.stop(t0 + 0.1);
+  const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(74, t0); o.frequency.exponentialRampToValueAtTime(42, t0 + 0.16);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+  o.connect(g); g.connect(sfxOut || ac.destination); o.start(t0); o.stop(t0 + 0.3);
+  const len = Math.floor(ac.sampleRate * 0.05), nb = ac.createBuffer(1, len, ac.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const n = ac.createBufferSource(); n.buffer = nb; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+  const g2 = ac.createGain(); g2.gain.value = 0.05; n.connect(lp); lp.connect(g2); g2.connect(sfxOut || ac.destination); n.start(t0);
 }
 // v16: 金の印を押す「コトッ」／外す時は軽く
 function sealSound(on) {
