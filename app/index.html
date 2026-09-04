@@ -9,23 +9,23 @@
 <meta name="apple-mobile-web-app-title" content="名言の書">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
-<link rel="icon" href="icon-192.png?v=2" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
+<link rel="icon" href="icon-192.png?v=3" type="image/png">
 <title>名言の書 — 異世界の叡智</title>
-<meta name="description" content="書斎の主が集めた言の葉を、すべて綴じた魔法の本。開くたびに、ページの並びが変わる。">
+<meta name="description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="異世界の叡智">
 <meta property="og:title" content="名言の書 — 異世界の叡智">
-<meta property="og:description" content="書斎の主が集めた言の葉を、すべて綴じた魔法の本。開くたびに、ページの並びが変わる。">
+<meta property="og:description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
 <meta property="og:url" content="https://kei9999jpn.github.io/page-flip-proto/app/">
-<meta property="og:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=1">
+<meta property="og:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="名言の書 — 異世界の叡智">
-<meta name="twitter:description" content="書斎の主が集めた言の葉を、すべて綴じた魔法の本。開くたびに、ページの並びが変わる。">
-<meta name="twitter:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=1">
+<meta name="twitter:description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
+<meta name="twitter:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=2">
 <style>
 /* ============================================================
    名言の書 v8 デザインシステム (2026-09-04)
@@ -174,7 +174,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <div class="rule"></div>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主が集めた言葉を、一冊に綴じた本。</p>
+    <p>書斎の主・異世界の叡智が、集めた言の葉を綴じた魔法の本。</p>
     <p>名言、問い、ふとした気づき。</p>
     <p>開くたびに、ページの並びが変わる。</p>
     <p>だから今日は、今日の言葉が出てくる。</p>
@@ -185,14 +185,14 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
     <p>右上の数字は、見たページの数。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>心に残ったページで、お気に入りを押す。</p>
+    <p>心に残ったページで「印」を押す。</p>
     <p>ページの角に、金の印が押される。</p>
     <p>印は消えない。また出た時もそこにある。</p>
     <p>閉じた本の小口にも、金の印が増える。</p>
     <p class="h">印のページだけを読む</p>
-    <p>本の画面で「お気に入り」を選ぶ。</p>
+    <p>本の画面で「印」を選ぶ。</p>
     <p>印のページだけの一冊が開く。</p>
-    <p>もう一度押すと、印は外れる。</p>
+    <p>もう一度「印」を押すと、外れる。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
     <p>「栞を挟む」を押すと、紐が挟まる。</p>
@@ -228,7 +228,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v27b';
+const BUILD = '20260904v28';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -253,7 +253,7 @@ $('bSound').addEventListener('click', toggleSound);
 $('bAbout').onclick = () => $('about').classList.add('show');
 $('aboutClose').onclick = () => $('about').classList.remove('show');
 // 説明のタブ(この本とは / お気に入り / 栞)
-const TAB_TITLES = ['名言の書', 'お気に入り', '栞'];
+const TAB_TITLES = ['名言の書', '印', '栞'];
 let tabIdx = 0;
 function showTab(n){
   tabIdx = (n + 3) % 3;
@@ -271,7 +271,7 @@ document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => {
 const rain = $('rain');
 let audioOn = false, bgmWanted = false;
 // BGMの曲リスト。ここに足せば順に(2曲以上ならランダム順で)6秒クロスフェードで繋がる
-const BGM_LIST = ['../assets/bgm-loop.mp3?b=' + BUILD];
+const BGM_LIST = ['../assets/bgm-loop.mp3?b=' + BUILD];   // v28: ファイルを更に-6dB(合計-16dB)。KEI「BGMは半分でいい」
 const BGM_BASE = 0.5;   // v23: bgm-loop.mp3 を-10dBで作り直したぶん上げる                                     // 真ん中の音量(KEI v17「全く聞こえない」→上げた)
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
 function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
@@ -505,10 +505,10 @@ const TIPS = [   // 2026-09-04 KEI確定10本 → v18: 1行に収まる長さ(16
   '開くたびに中身が変わる本です',
   '気の済むまで、どうぞご自由に',
   '今日は、どんな言の葉でしょうね',
-  '気に入ったら、お気に入りへ',
+  '気に入ったら、印を押してください',
   '私も、暇さえあれば開いていますよ',
   '悩んだ時ほど、良い言葉が出ます',
-  '栞を挟めば、次はその続きからです',
+  '栞を挟めば、次はその続きから読めます',
   '眠くなったら、閉じてください'
 ];
 // ============================================================ v16 本が語りかける(この端末での記録から一言を選ぶ)
@@ -816,7 +816,7 @@ function listenTilt(){
   }, { passive:true });
 }
 try { if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) listenTilt(); } catch(e){}
-window.__app = { beginRead, closeBook, get dbg(){ return { bgmWanted, bgmFade, tv: bgmTargetVol(), duckCur, audioOn, sbgm: S.bgm, vol: S.bgmVol, routed, sxState: sx && sx.state, rainV: getRainVol(), bgmV: getBgmVol() }; }, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
+window.__app = { setCam(th, ph){ camTheta = th; camPhi = ph; }, beginRead, closeBook, get dbg(){ return { bgmWanted, bgmFade, tv: bgmTargetVol(), duckCur, audioOn, sbgm: S.bgm, vol: S.bgmVol, routed, sxState: sx && sx.state, rainV: getRainVol(), bgmV: getBgmVol() }; }, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
 </script>
 </body>
 </html>
