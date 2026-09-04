@@ -180,8 +180,9 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904m';
+const BUILD = '20260904n';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
@@ -370,6 +371,10 @@ function animFigure(t, dt, wdt){
 
 // ---------- 本(book) ----------
 const sceneB = new THREE.Scene();
+// v12: 環境反射(革の鈍い艶・金箔の照り返し)。部屋の環境マップを暗めに
+const pmrem = new THREE.PMREMGenerator(renderer);
+sceneB.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+sceneB.environmentIntensity = 0.28;
 const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
 const CAM_R = 1.55;   // KEI: 本を少し小さく
 let camTheta = 0.35, camPhi = 1.02;
@@ -383,13 +388,13 @@ const glbOverride = new URLSearchParams(location.search).get('glb');
 new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '../assets/book.glb?b=' + BUILD, g => {
   book = g.scene; book.rotation.z = 0.06; pivot.add(book);
   // 革は艶を殺して暗く(蝋燭光でオレンジに飛ばない)
-  book.traverse(o => { if (o.isMesh && o.material) { o.material.roughness = Math.max(o.material.roughness || 0, 0.95); o.material.metalness = 0; if (o.material.color) o.material.color.multiplyScalar(0.86); } });
+  book.traverse(o => { if (o.isMesh && o.material) { const m = o.material; m.metalness = 0; if (!m.roughnessMap) m.roughness = Math.max(m.roughness || 0, 0.9); m.envMapIntensity = 0.9; if (m.color) m.color.multiplyScalar(0.9); m.needsUpdate = true; } });
   const cover = book.getObjectByName('Cover_Front');
   if (cover) { const bb = new THREE.Box3().setFromObject(cover); hinge = new THREE.Group(); hinge.position.set(bb.min.x, (bb.min.y+bb.max.y)/2, 0); book.add(hinge); hinge.attach(cover); }
   // 栞のリボン: 栞を挟んでいる時だけ小口から垂れる(KEI 2026-09-04)
   const bb = new THREE.Box3().setFromObject(book);
   // 小口の少し上から、絹のリボンが一本垂れる(深紅・細い・艶なし)
-  const ribMat = new THREE.MeshStandardMaterial({ color:0x4a0e10, roughness:0.92, metalness:0 });
+  const ribMat = new THREE.MeshStandardMaterial({ color:0x2e0808, roughness:0.95, metalness:0 });
   const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.0009, 0.062, 0.011), ribMat);          // 小口の面に沿って垂れる(X=厚み方向は極薄)
   rib2.position.set(bb.max.x + 0.0007, bb.max.y * 0.5 - 0.028, 0.012); rib2.rotation.y = 0.02;
   const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.0009, 0.011), ribMat);           // 頁の間から少し顔を出す部分

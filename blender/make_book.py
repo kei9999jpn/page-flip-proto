@@ -25,7 +25,7 @@ HARDWARE = False
 # 本の寸法 (m): 幅0.24 / 高さ0.32 / 厚み0.105 (参照画像に合わせて大幅に分厚く)
 W, H, T = 0.24, 0.32, 0.105
 SPINE_R_PRE = T / 2
-COVER_T = 0.009          # 表紙板の厚み
+COVER_T = 0.012          # 表紙板の厚み(v12: 重厚に)
 OVERHANG = 0.009         # 表紙が中身より張り出す量(チリ)
 CX0, CX1 = -W / 2, W / 2 + OVERHANG          # 表紙のX範囲
 CY0, CY1 = -(H / 2 + OVERHANG), H / 2 + OVERHANG
@@ -38,7 +38,7 @@ def new_obj(name, mesh):
     col.objects.link(o)
     return o
 
-def make_box(name, sx, sy, sz, loc, bevel=0.0025, segs=2):
+def make_box(name, sx, sy, sz, loc, bevel=0.0038, segs=3):
     m = bpy.data.meshes.new(name)
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1)
@@ -275,7 +275,7 @@ def mat(name, rgba, rough=0.85, metal=0.0):
     b.inputs["Metallic"].default_value = metal
     return m
 
-def hook_tex(material, path):
+def hook_tex(material, path, kind="color"):
     if not os.path.exists(path):
         path = os.path.join(FALLBACK_TEXDIR, os.path.basename(path))
     if not os.path.exists(path):
@@ -283,7 +283,17 @@ def hook_tex(material, path):
     img = bpy.data.images.load(path)
     nt = material.node_tree
     tn = nt.nodes.new('ShaderNodeTexImage'); tn.image = img
-    nt.links.new(tn.outputs["Color"], nt.nodes.get("Principled BSDF").inputs["Base Color"])
+    bsdf = nt.nodes.get("Principled BSDF")
+    if kind == "color":
+        nt.links.new(tn.outputs["Color"], bsdf.inputs["Base Color"])
+    elif kind == "rough":
+        img.colorspace_settings.name = 'Non-Color'
+        nt.links.new(tn.outputs["Color"], bsdf.inputs["Roughness"])
+    elif kind == "normal":
+        img.colorspace_settings.name = 'Non-Color'
+        nm = nt.nodes.new('ShaderNodeNormalMap'); nm.inputs["Strength"].default_value = 1.4
+        nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+        nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
 
 m_cover  = mat("M_Cover",  (0.35, 0.27, 0.18, 1), 0.96)
 m_spine  = mat("M_Spine",  (0.20, 0.15, 0.10, 1), 0.94)
@@ -292,8 +302,11 @@ m_top    = mat("M_PageTop",(0.90, 0.75, 0.50, 1), 0.92)
 # v2: 焼き黒めの鉄。金属度を上げて縁のベベルだけが蝋燭光を拾うようにする。
 m_iron   = mat("M_Iron",   (0.030, 0.028, 0.026, 1), 0.48, 0.75)
 hook_tex(m_cover, os.path.join(TEXDIR, "cover-texture.png"))
+hook_tex(m_cover, os.path.join(TEXDIR, "cover-normal.png"), "normal")   # v12: 革の凹凸
+hook_tex(m_cover, os.path.join(TEXDIR, "cover-rough.png"), "rough")     # v12: 金箔だけ艶
+GILT = os.path.join(TEXDIR, "pageedge-gilt.png")
 hook_tex(m_spine, os.path.join(TEXDIR, "spine-texture.png"))
-hook_tex(m_pages, os.path.join(TEXDIR, "pageedge-texture.png"))
+hook_tex(m_pages, GILT if os.path.exists(GILT) else os.path.join(TEXDIR, "pageedge-texture.png"))   # v12: 小口の金付け(擦れあり)
 hook_tex(m_top,   os.path.join(TEXDIR, "pagetop.jpg"))
 
 front.data.materials.append(m_cover)
