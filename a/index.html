@@ -969,7 +969,7 @@ veil.style.transition = 'opacity 1.4s ease';
 const shade = document.getElementById('shade'), flame = document.getElementById('flame'), halo = document.getElementById('halo');
 // v23: ロウソク画像(あれば点ける)。炎の位置は画像内の比率(FLAME_X/Y)で合わせる
 const candleImg = document.getElementById('candleImg'), flameGlow = document.getElementById('flameGlow');
-var candleOn = false; const FLAME_X = 0.5, FLAME_Y = 0.22;
+var candleOn = false; const FLAME_X = 0.43, FLAME_Y = 0.23;
 candleImg.addEventListener('load', () => { candleOn = true; setTimeout(() => candleImg.classList.add('on'), 800); });
 // 2026-09-03 KEI: ピカピカ→「ゆっくり滑らかに、ぼやーっと変わる」灯り。乱数の飛びをやめ、遅い正弦の重ね合わせ+ゆるい目標追従
 var _fl = { t: 0, tgt: 0, cur: 0, next: 0, gust: 0 };   // var: 先に呼ばれる draw()/lampOverlay から参照されるため
