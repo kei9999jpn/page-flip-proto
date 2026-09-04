@@ -654,7 +654,10 @@ function ensureAudio() {
 let _lastVar = -1, _lastBuf = -1, sfxOut = null;
 const flipBufs = [];
 // v16: 速さに応じて音が変わる。ゆっくり=「サァ…」(こもって静か)、速い=「パサッ」(明るく重い)
+var _psCalls = 0, _psLast = null;
+window.__snd = { get bufs(){ return flipBufs.filter(Boolean).length; }, get on(){ return SND.flipOn; }, get flip(){ return SND.flip; }, get ac(){ return ac && ac.state; }, get calls(){ return _psCalls; }, get last(){ return _psLast; } };
 function pageSound(strength, vel) {
+  _psCalls++; _psLast = { ac: !!ac, on: SND.flipOn, bufs: flipBufs.filter(Boolean).length, strength };
   if (!ac || SND.flipOn === false) return;
   const avail = flipBufs.map((b, i) => b ? i : -1).filter(i => i >= 0);
   if (!avail.length) return;
@@ -667,7 +670,7 @@ function pageSound(strength, vel) {
   src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
   const g = ac.createGain(); const t0 = ac.currentTime;
-  const peak = Math.min(14, 6.4 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
+  const peak = Math.min(14, 6.8 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
   g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
   src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
@@ -875,6 +878,8 @@ function release(e) {
   pd = null;
 }
 cv.addEventListener('pointerup', release);
+// v32: iPhone は touchend/click の中でしか AudioContext を確実に起こせない(めくり音が全く鳴らない件)
+['touchend', 'click'].forEach(ev => document.addEventListener(ev, () => { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } }, { passive: true }));
 cv.addEventListener('pointercancel', () => { rustleStop(); if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
 
 // ---------- dust motes + rising embers + warp streaks ----------
