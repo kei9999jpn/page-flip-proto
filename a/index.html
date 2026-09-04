@@ -84,12 +84,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 /* 2026-09-03 KEI: ハートはダサい→文字ボタン「お気に入りに登録」。栞ボタンは廃止(お気に入りの本は入口の「お気に入りを見る」から) */
 #favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 2vh);z-index:27;width:104px;box-sizing:border-box;
   display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.2em;text-indent:.2em;
-  color:#b8a98a;background:rgba(11,8,6,.6);border:1px solid rgba(201,162,74,.22);padding:8px 0 9px;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s,border-color .18s}
+  color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:80px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
 #favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:15px;letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal}
-#favListBtn{left:calc(50% - 164px)}
+#favListBtn{left:calc(50% - 160px)}
 #setBtn{left:calc(50% - 52px);display:none}
 #setBtn.show{display:flex}
-#favBtn{left:calc(50% + 60px)}
+#favBtn{left:calc(50% + 56px)}
 #favBtn.show,#favListBtn.show,#setBtn.show{opacity:.92;pointer-events:auto}
 /* 見た枚数(右上)・戻る(左上): 同じ言語 */
 #seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:27;color:#b8a98a;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
