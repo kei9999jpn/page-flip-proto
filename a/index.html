@@ -19,18 +19,24 @@ html,body{margin:0;overflow:hidden;background:#000;overscroll-behavior:none;heig
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.55) 100%)}
 #bg{z-index:0}
 /* v16: 栞の紐(本の裏=ページの間を通る。上から入って下から出る) */
-#ribbon{position:fixed;z-index:1;width:9px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
-  background:linear-gradient(90deg,#1e0906,#4a1a13 30%,#5e2418 50%,#4a1a13 70%,#1e0906),repeating-linear-gradient(180deg,rgba(0,0,0,.18) 0 2px,transparent 2px 5px);
-  background-blend-mode:multiply;border-radius:3px 3px 0 0;box-shadow:0 6px 10px rgba(0,0,0,.6);transform-origin:50% 100%}
+#ribbon{position:fixed;z-index:1;width:30px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
+  /* 赤い古紙の栞: 少し褪せた朱、紙の繊維、縁の擦れ */
+  background:
+    repeating-linear-gradient(112deg,rgba(255,235,210,.07) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(28deg,rgba(0,0,0,.06) 0 1px,transparent 1px 5px),
+    linear-gradient(180deg,#8f2a22,#a83a2e 30%,#9a3127 60%,#7c231c);
+  border-radius:2px 2px 0 0;box-shadow:0 3px 8px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,210,170,.14),inset 0 0 12px rgba(60,10,6,.55);transform-origin:50% 100%}
 #ribbon.show{opacity:1}
-#ribbon.sway{animation:ribbonSway 5.5s ease-in-out infinite alternate}
-@keyframes ribbonSway{from{transform:rotate(-.9deg)}to{transform:rotate(.9deg)}}
-#ribbon::after{content:"";position:absolute;left:-2px;right:-2px;top:-8px;height:10px;transform:scaleY(-1);background:linear-gradient(90deg,transparent,#3a1410 20%,#5a2018 50%,#3a1410 80%,transparent);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
+#ribbon.sway{animation:ribbonSway 6s ease-in-out infinite alternate}
+@keyframes ribbonSway{from{transform:rotate(-.4deg)}to{transform:rotate(.4deg)}}
+/* 紐: 栞の上端の穴から出て、上へ小さな輪 */
+#ribbon::before{content:"";position:absolute;left:50%;top:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#2a1008;box-shadow:inset 0 0 0 1px rgba(255,220,180,.25)}
+#ribbon::after{content:"";position:absolute;left:50%;top:-22px;width:14px;height:26px;margin-left:-7px;border:2px solid #4a2a16;border-bottom:none;border-radius:8px 8px 0 0;box-shadow:0 1px 2px rgba(0,0,0,.6)}
 /* v16: 読んでいる間はUIを闇へ溶かす(2.5秒操作なし)。画面の下側に触れれば戻る */
 body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #seen,body.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
-#book{position:fixed;left:50%;top:47%;transform:translate(-50%,-50%) scale(.97);z-index:2;box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
+#book{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97);z-index:2;box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
-#book.sway{top:47%}
+#book.sway{top:46%}
 /* v16: 本を閉じる時、ページの世界がゆっくり闇に沈む */
 #book.out{opacity:0 !important;transform:translate(-50%,-49%) scale(.94) !important;filter:blur(5px) brightness(.35) !important;animation:none !important;
   transition:opacity 1.4s cubic-bezier(.6,0,.9,.6),transform 1.4s cubic-bezier(.6,0,.9,.6),filter 1.4s cubic-bezier(.6,0,.9,.6) !important}
@@ -87,7 +93,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
   filter:blur(.6px);box-shadow:0 0 18px 6px rgba(255,150,60,.55),0 0 60px 22px rgba(255,120,40,.28)}
 #flameCore{position:absolute;left:50%;bottom:12px;width:8px;height:20px;margin-left:-4px;border-radius:50%;background:radial-gradient(#5aa8ff55,transparent 70%)}
 /* v23: 右下の皿ロウソク(ChatGPT生成の絵・黒背景を screen 合成で抜く)。画像が無ければ非表示 */
-#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) + 2vw);bottom:calc(env(safe-area-inset-bottom,0px) + 6.5vh);width:min(26vmin,150px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease}
+#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease}
 #candleImg.on{opacity:.95}
 #flameGlow{position:fixed;pointer-events:none;z-index:9;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;mix-blend-mode:screen;opacity:0;
   background:radial-gradient(circle at 50% 55%,rgba(255,232,170,.95) 0%,rgba(255,180,90,.55) 18%,rgba(255,130,50,.18) 42%,transparent 66%);filter:blur(1.5px)}
@@ -106,15 +112,15 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
 
 /* ---- favorites ---- */
 /* 2026-09-03 KEI: ハートはダサい→文字ボタン「お気に入りに登録」。栞ボタンは廃止(お気に入りの本は入口の「お気に入りを見る」から) */
-#favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 1.2vh);bottom:calc(env(safe-area-inset-bottom,0px) + 1.2dvh);z-index:27;width:84px;box-sizing:border-box;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:clamp(11px,3.1vmin,12.5px);letter-spacing:.16em;text-indent:.16em;
-  color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:56px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
-#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:clamp(13px,3.6vmin,15px);letter-spacing:0;text-indent:0;margin-bottom:1px;color:#c9a24a;font-weight:normal;height:16px;line-height:16px}
+#favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 1.2vh);bottom:calc(env(safe-area-inset-bottom,0px) + 1.2dvh);z-index:27;width:104px;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:clamp(11px,3.1vmin,13px);letter-spacing:.2em;text-indent:.2em;
+  color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:80px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
+#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:clamp(15px,4vmin,17px);letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal;height:18px;line-height:18px}
 #favListBtn b svg,#setBtn b svg{vertical-align:top}
-#favListBtn{left:calc(50% - 134px)}
-#setBtn{left:calc(50% - 42px);display:none}
+#favListBtn{left:calc(50% - 160px)}
+#setBtn{left:calc(50% - 52px);display:none}
 #setBtn.show{display:flex}
-#favBtn{left:calc(50% + 50px)}
+#favBtn{left:calc(50% + 56px)}
 #favBtn.show,#favListBtn.show,#setBtn.show{opacity:.92;pointer-events:auto}
 /* 見た枚数(右上)・戻る(左上): 同じ言語 */
 #seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 16px);z-index:27;color:#b8a98a;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:clamp(11px,3.1vmin,13px);letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
@@ -177,7 +183,7 @@ let W, H, DPR, TRAVEL;
 const EDGE = 8;
 function layout() {
   const vw = innerWidth, vh = innerHeight;
-  H = Math.min(vh * 0.74, vw * 0.92 * 4 / 3); W = H * 3 / 4;   // v22: 下のボタン列が本にかぶらない高さ
+  H = Math.min(vh * 0.72, vw * 0.92 * 4 / 3); W = H * 3 / 4;   // v22: 下のボタン列が本にかぶらない高さ
   DPR = Math.min(devicePixelRatio || 1, 1.75);
   cv.style.width = W + 'px'; cv.style.height = H + 'px';
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
@@ -311,7 +317,15 @@ function saveBookmark() {
 }
 favListBtn.addEventListener('click', () => {
   if (performance.now() - uiJustWoke < 400) return;
-  ensureAudio(); saveBookmark();
+  ensureAudio();
+  const bm0 = loadBookmark();
+  if (bm0 && bm0.index === index && bm0.deck[bm0.index] === deck[index]) {   // v25: もう一度押すと外れる
+    try { localStorage.removeItem('bookexp-bookmark'); } catch (e) {}
+    hideRibbon(); favListBtn.classList.remove('on'); sealSound(false); haptic(6); post('reader-bookmark', { off: true });
+    favListBtn.querySelector('span').textContent = '外した'; setTimeout(() => { favListBtn.querySelector('span').textContent = '栞'; }, 1600);
+    return;
+  }
+  saveBookmark();
   favListBtn.querySelector('span').textContent = '挟んだ';
   // 紐が上からスッと滑り込む(音+指先の手応え)
   showRibbon(true); ribbonSound(); haptic([10, 20, 15]);
@@ -653,7 +667,7 @@ function pageSound(strength, vel) {
   src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
   const g = ac.createGain(); const t0 = ac.currentTime;
-  const peak = Math.min(14, 8.0 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
+  const peak = Math.min(14, 6.4 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
   g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
   src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
@@ -673,10 +687,11 @@ function rustleStart() {
 }
 function rustleTick(speed) {   // speed: めくり量の変化(0..1/秒程度)
   if (!rustle) return;
-  const target = Math.min(0.30, Math.abs(speed) * 0.55) * SND.flip;
+  const sp = Math.abs(speed);
+  const target = Math.min(0.10, 0.025 + sp * 0.12) * curve(SND.flip);   // ゆっくりでも小さく鳴り、速いほど少し増す(上限=めくり音の半分以下)
   rustle.lvl += (target - rustle.lvl) * 0.25;
   rustle.g.gain.setTargetAtTime(rustle.lvl, ac.currentTime, 0.03);
-  rustle.bp.frequency.setTargetAtTime(2400 + Math.min(1, Math.abs(speed)) * 3000, ac.currentTime, 0.05);
+  rustle.bp.frequency.setTargetAtTime(1600 + Math.min(1, sp) * 2600, ac.currentTime, 0.05);   // ゆっくり=低くこもった「サァ…」
 }
 function rustleStop() {
   if (!rustle) return;
@@ -815,6 +830,7 @@ cv.addEventListener('pointermove', e => {
     if (!beginFlip(dir)) { pd = null; return; }
     pd.started = true; pd.tBase = flip.t;
     grab.fy = 0.30; grab.dy = 0;                    // KEI 2026-09-04: めくる場所は1箇所(右上の角)に固定。紙は丸めすぎない
+    rustleStart();                                   // v25 KEI: 擦れる音を小さく復活(めくり音の半分以下)
     startFollow();
   }
   pd.tTarget = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
@@ -828,6 +844,7 @@ function startFollow() {
     if (pd && pd.started && flip) {
       flip.t += ((pd.tTarget != null ? pd.tTarget : flip.t) - flip.t) * 0.55; // 指にビタ付き(わずかな柔らかさだけ残す)
       const now = performance.now(), sp = (flip.t - prevT) / Math.max(1, now - prevNow) * 1000; prevT = flip.t; prevNow = now;
+      rustleTick(sp);
       draw();
       followRaf = requestAnimationFrame(fstep);
     } else { followRaf = null; rustleStop(); }
