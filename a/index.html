@@ -15,17 +15,17 @@
 <style>
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;overflow:hidden;background:#000;overscroll-behavior:none;height:100%;height:-webkit-fill-available;height:100dvh}
-#bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.78) saturate(.95)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
-#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
+#bg{position:fixed;inset:0;background:url(../assets/hall-bg.jpg) center 45%/cover no-repeat;filter:brightness(.95) saturate(1)}   /* v17 KEI: 読書中は別の書斎(暖炉の間)を明るめに */   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.55) 100%)}
 #bg{z-index:0}
 /* v16: 栞の紐(本の裏=ページの間を通る。上から入って下から出る) */
 #ribbon{position:fixed;z-index:1;width:9px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
   background:linear-gradient(90deg,#1e0906,#4a1a13 30%,#5e2418 50%,#4a1a13 70%,#1e0906),repeating-linear-gradient(180deg,rgba(0,0,0,.18) 0 2px,transparent 2px 5px);
-  background-blend-mode:multiply;border-radius:0 0 3px 3px;box-shadow:0 6px 10px rgba(0,0,0,.6);transform-origin:50% 0}
+  background-blend-mode:multiply;border-radius:3px 3px 0 0;box-shadow:0 6px 10px rgba(0,0,0,.6);transform-origin:50% 100%}
 #ribbon.show{opacity:1}
 #ribbon.sway{animation:ribbonSway 5.5s ease-in-out infinite alternate}
 @keyframes ribbonSway{from{transform:rotate(-.9deg)}to{transform:rotate(.9deg)}}
-#ribbon::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-8px;height:10px;background:linear-gradient(90deg,transparent,#3a1410 20%,#5a2018 50%,#3a1410 80%,transparent);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
+#ribbon::after{content:"";position:absolute;left:-2px;right:-2px;top:-8px;height:10px;transform:scaleY(-1);background:linear-gradient(90deg,transparent,#3a1410 20%,#5a2018 50%,#3a1410 80%,transparent);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
 /* v16: 読んでいる間はUIを闇へ溶かす(2.5秒操作なし)。画面の下側に触れれば戻る */
 body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #seen,body.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
 #book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);z-index:2;box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
@@ -74,7 +74,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
   background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
 /* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
 #shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
-  background:radial-gradient(ellipse 66% 58% at 56% 50%,transparent 40%,rgba(0,0,0,.32) 72%,rgba(0,0,0,.72) 100%);   /* v11: 背景の書斎が見えるように縁の闇を弱める */
+  background:radial-gradient(ellipse 70% 62% at 56% 50%,transparent 44%,rgba(0,0,0,.20) 74%,rgba(0,0,0,.50) 100%);   /* v17: 書斎が見えるよう縁の闇をさらに弱める */
   transition:none}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 /* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
@@ -192,7 +192,7 @@ function placeRibbon(animate) {
   const tail = Math.round(Math.max(52, r.height * 0.11)), rh = Math.round(r.height * 0.96 + tail);
   ribbonEl.style.height = rh + 'px';
   ribbonEl.style.left = Math.round(r.left + r.width * 0.71) + 'px';
-  const top = Math.round(r.top + r.height + tail - rh);
+  const top = Math.round(r.top - tail);                              // 尻尾は上に出る(KEI 2026-09-04)
   if (animate) {
     ribbonEl.classList.remove('sway');
     ribbonEl.style.transition = 'none';
@@ -300,7 +300,7 @@ function exitFavBook() {
 }
 // 2026-09-03 KEI: 栞=「ここまで読んだ」を1か所だけ覚える(このブラウザ内)。次回「栞の続きから」で同じ並び・同じページから再開
 function saveBookmark() {
-  try { localStorage.setItem('bookexp-bookmark', JSON.stringify({ deck: deck, index: index, ts: Date.now(), fav: favMode })); } catch (e) {}
+  try { sessionStorage.setItem('bookexp-bookmark', JSON.stringify({ deck: deck, index: index, ts: Date.now(), fav: favMode })); } catch (e) {}   // v17: この訪問の間だけ(KEI 2026-09-04)
 }
 favListBtn.addEventListener('click', () => {
   if (performance.now() - uiJustWoke < 400) return;
@@ -312,7 +312,7 @@ favListBtn.addEventListener('click', () => {
   setTimeout(() => { favListBtn.querySelector('span').textContent = '栞を挟む'; }, 1600);
 });
 function loadBookmark() {
-  try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); if (b && Array.isArray(b.deck) && b.deck.length) return b; } catch (e) {}
+  try { const b = JSON.parse(sessionStorage.getItem('bookexp-bookmark')); if (b && Array.isArray(b.deck) && b.deck.length) return b; } catch (e) {}
   return null;
 }
 document.getElementById('favClose').addEventListener('click', () => { favPanel.style.display = 'none'; });
@@ -532,7 +532,8 @@ draw();
 let ac = null, flipBuf = null, cricketsOn = false;
 const bgm = document.getElementById('bgm'), rain = document.getElementById('rain');
 // 共有設定(intro/ の設定画面と同じキー)
-const SND_DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
+const SND_DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.5, flip:0.5, rainKind:'study', bgmVol:0.5 };
+function curve(x) { return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }   // 0.5=標準, 1.0=約3倍
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3',
                    window:'../assets/rain/window.mp3', storm:'../assets/rain/storm.mp3',
                    suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
@@ -560,8 +561,8 @@ addEventListener('storage', e => {
   try { SND = { ...SND_DEFAULTS, ...(JSON.parse(e.newValue) || {}) }; } catch (err) { return; }
   if (EMBED) { SND.bgm = false; SND.rain = false; }
   applyRainSrc();
-  rain.volume = SND.rain ? 0.34 * SND.amb : 0;
-  bgm.volume = SND.bgm ? 0.22 * SND.bgmVol : 0;
+  rain.volume = SND.rain ? Math.min(1, 0.5 * curve(SND.amb)) : 0;
+  bgm.volume = SND.bgm ? 0.075 * curve(SND.bgmVol) : 0;
 });
 function startCrickets() {
   if (!ac || cricketsOn) return;
@@ -605,6 +606,7 @@ function startCrackle() {
 }
 function ensureAudio() {
   if (EMBED && !_touched) { _touched = true; try { parent.postMessage({ type: 'reader-touch' }, '*'); } catch (e) {} }
+  if (ac && ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }   // v17: めくり音が鳴ったり鳴らなかったりする件(iOSの自動停止)
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
     if (ac) {
@@ -637,7 +639,7 @@ function pageSound(strength, vel) {
   src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
   const g = ac.createGain(); const t0 = ac.currentTime;
-  const peak = 2.2 * SND.flip * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2);
+  const peak = Math.min(6, 2.6 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));
   g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
   src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
@@ -668,6 +670,14 @@ function rustleStop() {
   r.g.gain.setTargetAtTime(0, ac.currentTime, 0.05);
   setTimeout(() => { try { r.src.stop(); } catch (e) {} }, 300);
 }
+// v17: ボタンの音(優しい「コッ」)
+function uiClick() {
+  if (!ac) return;
+  const t0 = ac.currentTime;
+  const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+  o.connect(g); g.connect(sfxOut || ac.destination); o.start(t0); o.stop(t0 + 0.1);
+}
 // v16: 金の印を押す「コトッ」／外す時は軽く
 function sealSound(on) {
   if (!ac) return;
@@ -688,7 +698,7 @@ function ribbonSound() {
   let b0 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.9 * b0 + w * 0.1; d[i] = (w * 0.3 + b0) * Math.sin(Math.PI * i / len); }
   const s = ac.createBufferSource(); s.buffer = nb;
   const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1; bp.frequency.setValueAtTime(3600, t0); bp.frequency.exponentialRampToValueAtTime(900, t0 + dur);
-  const g = ac.createGain(); g.gain.value = 0.10 * Math.max(0.3, SND.flip);
+  const g = ac.createGain(); g.gain.value = 0.10 * Math.max(0.3, curve(SND.flip));
   s.connect(bp); bp.connect(g); g.connect(sfxOut || ac.destination); s.start(t0);
 }
 function thump() {
@@ -1077,7 +1087,7 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
   if (location.hash === '#fav') enterFavBook();
   // 2026-09-03 KEI: 栞を挟んであれば、普通に開いても(#read)その並び・そのページのまま固定。栞が無ければ開くたびランダム。
   // #fresh = 並びを新しくシャッフルし直し、栞は外す
-  if (location.hash === '#fresh') { try { localStorage.removeItem('bookexp-bookmark'); } catch (e) {} }
+  if (location.hash === '#fresh') { try { sessionStorage.removeItem('bookexp-bookmark'); } catch (e) {} }
   if (location.hash === '#resume' || location.hash === '#read') {
     const b = loadBookmark();
     if (b) { const ok = b.deck.every(n => n >= 0 && n < N); if (ok) { deck = b.deck; index = Math.min(b.index, deck.length - 1); favMode = !!b.fav; draw(); updateFavUI(); } }
@@ -1101,6 +1111,7 @@ document.addEventListener('pointerdown', e => {
   else if (!document.body.classList.contains('uihide')) uiWake();     // 見えている間の操作は表示を延長するだけ
 }, { passive: true });
 [favBtn, favListBtn].forEach(el => el.addEventListener('click', uiWake));
+[document.getElementById('setBtn'), document.getElementById('backBtn'), document.getElementById('favClose')].forEach(el => el.addEventListener('click', () => { ensureAudio(); uiClick(); }));
 
 // ---------- v16: 本を閉じる儀式(シェルからの合図で、ページの世界が先に沈む) ----------
 function closeRitual() {

@@ -51,6 +51,9 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #talk.small .txt{font-size:clamp(18px,5vmin,24px)}
 /* v16: 読書中も本が語りかける(読書の上に重ねる) */
 body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 16vh);bottom:calc(env(safe-area-inset-bottom,0px) + 16dvh)}
+#talk.center{bottom:auto;top:50%;transform:translate(-50%,-50%);z-index:8}
+#talk.center .txt{font-size:clamp(14px,4vmin,19px)}
+#talk.slow{transition:opacity 2.6s ease}
 #talk .cur{opacity:.7;animation:blink 1s steps(1) infinite;margin-left:.15em}
 @keyframes blink{50%{opacity:0}}
 
@@ -102,7 +105,12 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 .box p b{color:var(--gold);font-weight:500;margin-right:.6em}
 .box hr{border:none;border-top:1px solid rgba(201,162,74,.22);margin:14px 0 12px}
 .box label{display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
-.box input[type=range]{width:120px;accent-color:var(--gold)}
+/* v17: 音量はタップ式(スマホで range が効かない件の対策)。10目盛り・タップかなぞりで決める */
+.volrow{display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
+.vol{display:flex;gap:4px;touch-action:none;padding:6px 0}
+.vol i{display:block;width:14px;height:22px;border:1px solid rgba(201,162,74,.45);background:rgba(0,0,0,.25);transition:background .12s,border-color .12s}
+.vol i.on{background:var(--gold);border-color:var(--gold2)}
+.vol i.mid{border-bottom-width:3px}
 .box input[type=checkbox]{accent-color:var(--gold);transform:scale(1.15)}
 .box select{background:rgba(0,0,0,.35);border:1px solid rgba(201,162,74,.35);color:var(--paper);font-family:var(--ui);font-size:13px;padding:5px 8px}
 .box .close{display:block;margin:18px auto 0;background:none;border:1px solid rgba(201,162,74,.45);color:var(--gold2);padding:8px 30px;letter-spacing:.4em;text-indent:.4em;font-family:var(--serif);cursor:pointer}
@@ -181,10 +189,11 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 <div class="ov" id="panel"><div class="box frame"><i class="c1"></i><i class="c2"></i>
   <h2>設定</h2><div class="rule"></div>
   <label>BGM <input type="checkbox" id="sBgm"></label>
-  <label>BGMの大きさ <input type="range" id="sBgmVol" min="0" max="1" step="0.05"></label>
-  <label>環境音 <input type="checkbox" id="sRain"></label>
-  <label>環境音の大きさ <input type="range" id="sAmb" min="0" max="1" step="0.05"></label>
+  <div class="volrow"><span>BGMの大きさ</span><div class="vol" data-key="bgmVol"></div></div>
+  <label>環境音(雨・暖炉) <input type="checkbox" id="sRain"></label>
+  <div class="volrow"><span>環境音の大きさ</span><div class="vol" data-key="amb"></div></div>
   <label>紙をめくる音 <input type="checkbox" id="sFlipOn"></label>
+  <div class="volrow"><span>めくる音の大きさ</span><div class="vol" data-key="flip"></div></div>
   <button class="close" id="panelClose">閉じる</button>
 </div></div>
 
@@ -205,7 +214,7 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v16';
+const BUILD = '20260904v17';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -217,12 +226,25 @@ if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; }
 if (!S.v4) { S.insects = false; S.candle = false; S.v4 = 1; }
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); notifyReader({ type:'settings' }); }
 S.rainKind = 'study';   // 環境音は1種類(KEI 2026-09-04)
-$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sAmb').value = S.amb; $('sBgmVol').value = S.bgmVol; $('sFlipOn').checked = S.flipOn !== false;
+if (!S.v5) { S.bgmVol = 0.5; S.amb = 0.5; S.flip = 0.5; S.v5 = 1; }   // v17: 真ん中=標準。上げ幅を大きく
+$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sFlipOn').checked = S.flipOn !== false;
+// 音量カーブ: 0.5で標準(1.0)、1.0で約3倍。0で無音
+function curve(x){ return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }
+document.querySelectorAll('.vol').forEach(bar => {
+  const key = bar.dataset.key;
+  for (let i = 0; i < 10; i++) { const c = document.createElement('i'); if (i === 4) c.className = 'mid'; bar.appendChild(c); }
+  const paint = () => { const n = Math.round((S[key] || 0) * 10); [...bar.children].forEach((c, i) => c.classList.toggle('on', i < n)); };
+  const setFrom = (clientX) => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(1, Math.round((clientX - r.left) / r.width * 10) / 10)); if (v !== S[key]) { S[key] = v; paint(); saveS(); uiClick(0.6); } };
+  let down = false;
+  bar.addEventListener('pointerdown', e => { down = true; try { bar.setPointerCapture(e.pointerId); } catch(err){} setFrom(e.clientX); });
+  bar.addEventListener('pointermove', e => { if (down) setFrom(e.clientX); });
+  bar.addEventListener('pointerup', () => { down = false; }); bar.addEventListener('pointercancel', () => { down = false; });
+  paint();
+});
 $('sFlipOn').onchange = e => { S.flipOn = e.target.checked; saveS(); };
 $('sBgm').onchange = e => { S.bgm = e.target.checked; saveS(); };
 $('sRain').onchange = e => { S.rain = e.target.checked; saveS(); };
-$('sAmb').oninput = e => { S.amb = +e.target.value; saveS(); };
-$('sBgmVol').oninput = e => { S.bgmVol = +e.target.value; saveS(); };
+document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => uiClick(1)));
 $('bSet').onclick = () => $('panel').classList.add('show');
 $('panelClose').onclick = () => $('panel').classList.remove('show');
 $('bAbout').onclick = () => $('about').classList.add('show');
@@ -242,166 +264,98 @@ $('bAbout').addEventListener('click', () => showTab(0));
 document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); }));
 
 // ============================================================ 音(シェルが一元管理: 画面が変わっても途切れない)
+// v17 (2026-09-04 KEI): 空間オーディオは撤去(左耳の爆音・変な音)。雨は <audio> そのまま。BGMは Web Audio で途切れないループ(曲を後から足せる)
 const rain = $('rain');
 let audioOn = false, bgmWanted = false;
-// BGM プレイリスト(Sunoの同じ日の10曲)。ランダム順・曲の終わり6秒前から次の曲へクロスフェード
-const BGM_N = 1, BGM_SRC = () => '../assets/bgm.mp3';   // 2026-09-04 KEI: 当初の1曲だけ(曲末6秒でクロスフェードして継ぎ目なくループ)
-const decks = [$('bgm'), $('bgm2')]; let deckIdx = 0, order = [], orderPos = 0, xfading = false;
-function shuffleOrder(){ order = Array.from({length: BGM_N}, (_, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [order[i], order[j]] = [order[j], order[i]]; } orderPos = 0; }
-shuffleOrder();
-function nextTrackSrc(){ if (orderPos >= order.length) shuffleOrder(); return BGM_SRC(order[orderPos++]); }
-const bgm = decks[0];   // 互換: 解錠処理などが参照
-// v16: ダッキング。めくる瞬間だけBGMを1〜2dB下げ、30秒操作がなければBGMを引っ込めて雨と部屋の音を前に出す
+// BGMの曲リスト。ここに足せば順に(2曲以上ならランダム順で)6秒クロスフェードで繋がる
+const BGM_LIST = ['../assets/bgm.mp3'];
+const BGM_XF = 6.0, BGM_BASE = 0.075;                      // クロスフェード秒 / 真ん中の音量
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
 function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
-function flipDuck(){ duck = 0.80; duckUntil = performance.now() + 550; }
-function bgmTargetVol(){ return (S.bgm && bgmWanted) ? 0.22 * S.bgmVol * duckCur : 0; }
-function bgmStart(){
-  const d = decks[deckIdx];
-  if (!d.src) d.src = nextTrackSrc();
-  d.volume = bgmTargetVol(); d.play().catch(()=>{});
-}
-function bgmTick(dt){
-  // ダッキングの追従(実時間)
-  if (duck < 1 && duckUntil && performance.now() > duckUntil && !idleQuiet) { duck = 1; duckUntil = 0; }
-  if (stage === 'read' && !idleQuiet && performance.now() - lastActivity > 30000) { idleQuiet = true; duck = 0.5; ambBoost = 1.3; }
-  duckCur += (duck - duckCur) * (1 - Math.exp(-dt / (duck < duckCur ? 0.12 : 0.9)));
-  ambBoostCur += (ambBoost - ambBoostCur) * (1 - Math.exp(-dt / 1.5));
-  if (audioOn) { const rv = S.rain ? Math.min(1, 0.34 * S.amb * ambBoostCur) : 0; if (Math.abs(rain.volume - rv) > 0.002) rain.volume = rv; }
-  const cur = decks[deckIdx];
-  if (!bgmWanted || !S.bgm || cur.paused || !cur.duration) return;
-  if (!xfading) { const tv = bgmTargetVol(); if (Math.abs(cur.volume - tv) > 0.002) cur.volume = tv; }
-  const remain = cur.duration - cur.currentTime;
-  if (remain < 6 && !xfading) {
-    xfading = true;
-    const nxt = decks[1 - deckIdx]; nxt.src = nextTrackSrc(); nxt.volume = 0; nxt.play().catch(()=>{});
-    const t0 = performance.now(), from = cur.volume;
-    (function step(){ const k = Math.min(1, (performance.now() - t0) / 5500); const to = bgmTargetVol(); cur.volume = from * (1 - k); nxt.volume = to * k;
-      if (k < 1) requestAnimationFrame(step); else { cur.pause(); cur.removeAttribute('src'); cur.load(); deckIdx = 1 - deckIdx; xfading = false; } })();
-  }
-}
-// BGMをゆっくり遠ざけて止める(本を閉じる時)
-function bgmFadeOut(ms){
-  const cur = decks[deckIdx]; bgmWanted = false;
-  const from = cur.volume, t0 = performance.now();
-  (function step(){ const k = Math.min(1, (performance.now() - t0) / ms); cur.volume = from * (1 - k) * (1 - k);
-    if (k < 1 && !bgmWanted) requestAnimationFrame(step); else if (!bgmWanted) decks.forEach(d => { if (!d.paused) d.pause(); }); })();
-}
+function flipDuck(){ duck = 0.82; duckUntil = performance.now() + 550; }
+function rainTarget(){ return S.rain ? Math.min(1, 0.5 * curve(S.amb) * ambBoostCur) : 0; }
 
-// ============================================================ v16 空間オーディオと効果音(Web Audio)
-// 部屋の配置(イヤホンで聴いた時、頭の中に部屋ができる):
-//   窓(雨)=左上やや奥 / 暖炉(火)=右下手前 / 書斎の主が書く音=左奥 / ページ=中央手前 / 雷=部屋全体(雨の録音に含まれる)
-let sx = null, sxMaster = null, fire = null, quill = null;
-function mkPanner(x, y, z, model){
-  const p = sx.createPanner(); p.panningModel = model || 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 1; p.rolloffFactor = 0.5;
-  if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z);
-  return p;
-}
+// ---- Web Audio(効果音・BGM・文字送り音)。最初のタップの中で作る ----
+let sx = null, sxMaster = null, bgmGain = null;
 function sxInit(){
   if (sx) { if (sx.state === 'suspended') sx.resume().catch(()=>{}); return; }
   try { sx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ sx = null; return; }
   sxMaster = sx.createGain(); sxMaster.gain.value = 1; sxMaster.connect(sx.destination);
-  // 雨 → 窓の方向。<audio>要素をグラフに繋ぐ(音量は要素の volume のまま効く)
-  try {
-    const rs = sx.createMediaElementSource(rain);
-    const p = mkPanner(-1.7, 0.8, -0.9, 'HRTF');
-    rs.connect(p); p.connect(sxMaster);
-  } catch(e){ /* 繋げない環境ではそのまま鳴る */ }
-  startFire(); startQuill();
+  bgmGain = sx.createGain(); bgmGain.gain.value = 0; bgmGain.connect(sxMaster);
 }
-// 暖炉(右下手前): 低い唸り + 爆ぜる音。録音の暖炉に「位置」を足す
-function startFire(){
-  if (fire) return;
-  const p = mkPanner(1.3, -0.7, 0.9, 'HRTF');
-  const g = sx.createGain(); g.gain.value = 0; g.connect(p); p.connect(sxMaster);
-  // 唸り(ブラウンノイズ→ローパス)
-  const len = sx.sampleRate * 3, buf = sx.createBuffer(1, len, sx.sampleRate), d = buf.getChannelData(0);
-  let b = 0; for (let i = 0; i < len; i++) { b = (b + (Math.random()*2-1) * 0.02) * 0.995; d[i] = b * 6; }
-  const src = sx.createBufferSource(); src.buffer = buf; src.loop = true;
-  const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 170; lp.Q.value = 0.5;
-  const rg = sx.createGain(); rg.gain.value = 0.9; src.connect(lp); lp.connect(rg); rg.connect(g); src.start();
-  // 爆ぜる(短いノイズ)
-  const pl = Math.floor(sx.sampleRate * 0.05), pop = sx.createBuffer(1, pl, sx.sampleRate), pd = pop.getChannelData(0);
-  for (let i = 0; i < pl; i++) pd[i] = (Math.random()*2-1) * Math.pow(1 - i/pl, 3);
-  fire = { g, p, pop, next: 0 };
-  (function loop(){
-    if (!sx) return;
-    if (audioOn && S.rain) {
-      const n = 1 + Math.floor(Math.random()*3), t0 = sx.currentTime + 0.02;
-      for (let i = 0; i < n; i++) {
-        const s = sx.createBufferSource(); s.buffer = pop; s.playbackRate.value = 0.5 + Math.random()*1.0;
-        const f = sx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500 + Math.random()*3000; f.Q.value = 0.9;
-        const pg = sx.createGain(); pg.gain.value = 0.35 + Math.random()*0.6;
-        s.connect(f); f.connect(pg); pg.connect(g); s.start(t0 + i * (0.03 + Math.random()*0.09));
-      }
-    }
-    setTimeout(loop, 350 + Math.random()*2400);
-  })();
+// ---- BGM: バッファ再生。曲末 BGM_XF 秒前に次の曲を重ねてフェード。1曲でも自分自身に繋いで途切れない ----
+const bgmBufs = {}; let bgmOrder = [], bgmPos = 0, bgmCur = null, bgmNext = null, bgmLoading = false;
+function bgmShuffle(){ bgmOrder = BGM_LIST.map((_, i) => i); for (let i = bgmOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [bgmOrder[i], bgmOrder[j]] = [bgmOrder[j], bgmOrder[i]]; } bgmPos = 0; }
+function bgmNextIdx(){ if (!bgmOrder.length || bgmPos >= bgmOrder.length) bgmShuffle(); return bgmOrder[bgmPos++]; }
+function bgmLoad(i){
+  if (bgmBufs[i]) return Promise.resolve(bgmBufs[i]);
+  return fetch(BGM_LIST[i]).then(r => r.arrayBuffer()).then(b => sx.decodeAudioData(b)).then(buf => { bgmBufs[i] = buf; return buf; });
 }
-// 書斎の主が左奥で書いている音(羽ペンの走り書き・とても小さく)
-function startQuill(){
-  if (quill) return;
-  const p = mkPanner(-1.4, 0.1, -2.0, 'HRTF');
-  const g = sx.createGain(); g.gain.value = 0; g.connect(p); p.connect(sxMaster);
-  quill = { g };
-  (function loop(){
-    if (!sx) return;
-    if (audioOn && S.rain) {
-      const strokes = 3 + Math.floor(Math.random()*6); let t = sx.currentTime + 0.05;
-      for (let i = 0; i < strokes; i++) {
-        const dur = 0.05 + Math.random()*0.11, len = Math.floor(sx.sampleRate * dur), b = sx.createBuffer(1, len, sx.sampleRate), d = b.getChannelData(0);
-        let hp = 0; for (let k = 0; k < len; k++) { const w = Math.random()*2-1; hp = 0.7*hp + w*0.3; d[k] = hp * Math.sin(Math.PI * k/len); }
-        const s = sx.createBufferSource(); s.buffer = b;
-        const f = sx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200 + Math.random()*2600; f.Q.value = 1.4;
-        const sg = sx.createGain(); sg.gain.value = 0.5 + Math.random()*0.5;
-        s.connect(f); f.connect(sg); sg.connect(g); s.start(t); t += dur + 0.03 + Math.random()*0.12;
-      }
-    }
-    setTimeout(loop, 5000 + Math.random()*11000);
-  })();
+function bgmPlayAt(i, buf, when, fadeIn){
+  const src = sx.createBufferSource(); src.buffer = buf;
+  const g = sx.createGain(); g.gain.setValueAtTime(fadeIn ? 0.0001 : 1, when); if (fadeIn) g.gain.linearRampToValueAtTime(1, when + BGM_XF);
+  src.connect(g); g.connect(bgmGain); src.start(when);
+  return { src, g, idx:i, start:when, end:when + buf.duration };
 }
-function sxTick(){
-  if (!sx || !fire) return;
-  const on = audioOn && S.rain;
-  const a = S.amb * ambBoostCur;
-  fire.g.gain.setTargetAtTime(on ? 0.16 * a : 0, sx.currentTime, 0.4);
-  quill.g.gain.setTargetAtTime(on ? 0.05 * a : 0, sx.currentTime, 0.4);
+function bgmStart(){
+  if (!sx || bgmCur || bgmLoading || !bgmWanted || !S.bgm) return;
+  bgmLoading = true;
+  const i = bgmNextIdx();
+  bgmLoad(i).then(buf => { bgmLoading = false; if (!bgmWanted || !S.bgm || bgmCur) return; bgmCur = bgmPlayAt(i, buf, sx.currentTime + 0.05, false); bgmGain.gain.setTargetAtTime(bgmTargetVol(), sx.currentTime, 0.3); }).catch(() => { bgmLoading = false; });
 }
+function bgmStop(ms){
+  if (!sx) return;
+  const t = sx.currentTime, sec = Math.max(0.05, (ms || 200) / 1000);
+  bgmGain.gain.cancelScheduledValues(t); bgmGain.gain.setValueAtTime(bgmGain.gain.value, t); bgmGain.gain.linearRampToValueAtTime(0.0001, t + sec);
+  const cur = bgmCur, nxt = bgmNext; bgmCur = null; bgmNext = null;
+  [cur, nxt].forEach(n => { if (n && n.src) { try { n.src.stop(t + sec + 0.05); } catch(e){} } });
+}
+function bgmTargetVol(){ return (S.bgm && bgmWanted) ? BGM_BASE * curve(S.bgmVol) * duckCur : 0; }
+function bgmTick(dt){
+  if (duck < 1 && duckUntil && performance.now() > duckUntil && !idleQuiet) { duck = 1; duckUntil = 0; }
+  if (stage === 'read' && !idleQuiet && performance.now() - lastActivity > 30000) { idleQuiet = true; duck = 0.55; ambBoost = 1.25; }
+  duckCur += (duck - duckCur) * (1 - Math.exp(-dt / (duck < duckCur ? 0.12 : 0.9)));
+  ambBoostCur += (ambBoost - ambBoostCur) * (1 - Math.exp(-dt / 1.5));
+  if (audioOn) { const rv = rainTarget(); if (Math.abs(rain.volume - rv) > 0.002) rain.volume = rv; }
+  if (!sx || !bgmCur) return;
+  const tv = bgmTargetVol(); if (Math.abs(bgmGain.gain.value - tv) > 0.002) bgmGain.gain.setTargetAtTime(tv, sx.currentTime, 0.25);
+  // 曲末の少し前に次を重ねる(先に読み込んでおく)
+  const now = sx.currentTime, xfAt = bgmCur.end - BGM_XF;
+  if (!bgmNext && now > xfAt - 12) {
+    const i = bgmNextIdx(); bgmNext = { pending:true, idx:i };
+    bgmLoad(i).then(buf => { if (!bgmNext || !bgmNext.pending || !bgmCur) return; const when = Math.max(sx.currentTime + 0.05, xfAt);
+      bgmCur.g.gain.setValueAtTime(1, when); bgmCur.g.gain.linearRampToValueAtTime(0.0001, when + BGM_XF);
+      bgmNext = bgmPlayAt(i, buf, when, true); }).catch(() => { bgmNext = null; });
+  }
+  if (bgmNext && !bgmNext.pending && now >= bgmCur.end - 0.05) { try { bgmCur.src.stop(now + 0.1); } catch(e){} bgmCur = bgmNext; bgmNext = null; }
+}
+function bgmFadeOut(ms){ bgmWanted = false; bgmStop(ms); }
+
+// ---- 効果音(合成・控えめ) ----
 // 革表紙が落ちる「ドスッ……」(低く、短く、重い)
 function thudHeavy(){
   if (!sx) return;
   const t0 = sx.currentTime;
   const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(82, t0); o.frequency.exponentialRampToValueAtTime(26, t0 + 0.34);
-  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.9, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.62);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.7, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.62);
   o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.7);
-  const o2 = sx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(54, t0); o2.frequency.exponentialRampToValueAtTime(30, t0 + 0.25);
-  const g2 = sx.createGain(); g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.35, t0 + 0.01); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
-  o2.connect(g2); g2.connect(sxMaster); o2.start(t0); o2.stop(t0 + 0.45);
   const len = Math.floor(sx.sampleRate * 0.22), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.2);
-  const s = sx.createBufferSource(); s.buffer = nb; const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
-  const g3 = sx.createGain(); g3.gain.value = 0.55; s.connect(lp); lp.connect(g3); g3.connect(sxMaster); s.start(t0);
+  const s = sx.createBufferSource(); s.buffer = nb; const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240;
+  const g3 = sx.createGain(); g3.gain.value = 0.4; s.connect(lp); lp.connect(g3); g3.connect(sxMaster); s.start(t0);
 }
-// 表紙が開く「ギィ……」(革と綴じ糸のきしみ)
-function creak(){
+// ボタンを押した時の音(優しく、派手でない: 木を軽く叩いたような「コッ」)
+function uiClick(k){
   if (!sx) return;
-  const t0 = sx.currentTime, dur = 1.5;
-  const o = sx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(74, t0); o.frequency.linearRampToValueAtTime(58, t0 + dur);
-  const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 2.5;
-  const tr = sx.createOscillator(); tr.frequency.value = 11; const tg = sx.createGain(); tg.gain.value = 0.06; tr.connect(tg); tg.connect(lp.frequency);
-  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.045, t0 + 0.25); g.gain.setValueAtTime(0.045, t0 + dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(lp); lp.connect(g); g.connect(sxMaster); o.start(t0); tr.start(t0); o.stop(t0 + dur); tr.stop(t0 + dur);
-  const len = Math.floor(sx.sampleRate * dur), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * (0.4 + 0.6*Math.sin(i/len*Math.PI));
-  const s = sx.createBufferSource(); s.buffer = nb; const bp = sx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 3;
-  const g2 = sx.createGain(); g2.gain.value = 0.03; s.connect(bp); bp.connect(g2); g2.connect(sxMaster); s.start(t0);
-}
-function softThud(){
-  if (!sx) return;
+  k = k == null ? 1 : k;
   const t0 = sx.currentTime;
-  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(34, t0 + 0.2);
-  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
-  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.35);
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t0); o.frequency.exponentialRampToValueAtTime(300, t0 + 0.06);
+  const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07 * k, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+  o.connect(g); g.connect(sxMaster); o.start(t0); o.stop(t0 + 0.1);
+  const len = Math.floor(sx.sampleRate * 0.02), nb = sx.createBuffer(1, len, sx.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 3);
+  const s = sx.createBufferSource(); s.buffer = nb; const bp = sx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 1.2;
+  const g2 = sx.createGain(); g2.gain.value = 0.05 * k; s.connect(bp); bp.connect(g2); g2.connect(sxMaster); s.start(t0);
 }
 function haptic(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch(e){} }
 function applyRainSrc(){
@@ -409,27 +363,26 @@ function applyRainSrc(){
   if (rain.getAttribute('src') === src) return;
   const was = !rain.paused;
   rain.setAttribute('src', src); rain.load();
-  if (was || (audioOn && S.rain)) { rain.volume = S.rain ? 0.34 * S.amb : 0; rain.play().catch(()=>{}); }
+  if (was || (audioOn && S.rain)) { rain.volume = rainTarget(); rain.play().catch(()=>{}); }
 }
 applyRainSrc();
 function applyAudio(){
   if (!audioOn) return;
-  rain.volume = S.rain ? 0.34 * S.amb : 0;
+  rain.volume = rainTarget();
   if (S.rain && rain.paused) rain.play().catch(()=>{});
   // BGMは本の中に入って最初のタッチから(KEI 2026-09-03)
-  if (S.bgm && bgmWanted) { if (!xfading) decks[deckIdx].volume = bgmTargetVol(); if (decks[deckIdx].paused) bgmStart(); }
-  else decks.forEach(d => { if (!d.paused) d.pause(); });
+  if (S.bgm && bgmWanted) { sxInit(); bgmStart(); }
+  else if (bgmCur) bgmStop(400);
 }
 let unlocked = false;
 function unlockAudio(){
-  // iOS/Safari: ユーザー操作の中で play() を呼んだ要素だけが後から鳴らせる。両方を一度鳴らして止める
+  // iOS/Safari: ユーザー操作の中で play() を呼んだ要素だけが後から鳴らせる。雨を一度鳴らして解錠、Web Audio もここで起こす
   if (unlocked) return; unlocked = true;
   sxInit();
   try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{}); } catch(e){}
-  if (!decks[0].src) decks[0].src = nextTrackSrc();
-  [rain, decks[0], decks[1]].forEach(a => { try { if (!a.src) a.src = BGM_SRC(0); const v = a.volume; a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { if (a !== rain) { a.pause(); } a.muted = false; a.volume = v; applyAudio(); }).catch(() => { a.muted = false; }); else { a.muted = false; } } catch(e){} });
+  try { const v = rain.volume; rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; rain.volume = v; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
 }
-function ensureAudio(){ unlockAudio(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
+function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
 
 // ============================================================ 没入(モバイル)
@@ -468,6 +421,8 @@ function say(line, done, opts){
   if (typing) { clearInterval(typing); typing = null; }
   if (talkHide) { clearTimeout(talkHide); talkHide = null; }
   talk.classList.toggle('small', !!opts.small);
+  talk.classList.toggle('center', !!opts.center);
+  talk.classList.remove('slow');
   talk.classList.add('show');
   talkTxt.textContent = '';
   let i = 0;
@@ -475,21 +430,19 @@ function say(line, done, opts){
   typing = setInterval(() => {
     talkTxt.textContent = line.slice(0, ++i);
     blip(i);
-    if (i >= line.length) { clearInterval(typing); typing = null; typingDone = null; if (done) done(); }
+    if (i >= line.length) { clearInterval(typing); typing = null; typingDone = null; if (done) done();
+      if (opts.hold) talkHide = setTimeout(() => { talk.classList.add('slow'); talk.classList.remove('show'); }, opts.hold); }   // 打ち終わってから静止→ゆっくり消える
   }, 55);
   if (opts.autoHide) talkHide = setTimeout(() => talk.classList.remove('show'), opts.autoHide);
 }
 // 文字送りの音(昔のゲームのテキスト音・うっすら)。解錠後だけ鳴る
-let blipCtx = null;
 function blip(i){
-  if (!unlocked || (!S.bgm && !S.rain)) return;
+  if (!sx || (!S.bgm && !S.rain)) return;
   try {
-    if (!blipCtx) blipCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (blipCtx.state === 'suspended') blipCtx.resume();
-    const t = blipCtx.currentTime, o = blipCtx.createOscillator(), g = blipCtx.createGain();
+    const t = sx.currentTime, o = sx.createOscillator(), g = sx.createGain();
     o.type = 'square'; o.frequency.value = 1180 + (i % 3) * 90;
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.012, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.032);
-    o.connect(g); g.connect(blipCtx.destination); o.start(t); o.stop(t + 0.04);
+    o.connect(g); g.connect(sxMaster); o.start(t); o.stop(t + 0.04);
   } catch(e){}
 }
 function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const f = typingDone; typingDone = null; if (f) f(); return true; } return false; }
@@ -513,7 +466,7 @@ let ST = { visits:0, lastVisit:0, pagesTotal:0, favSaid:false };
 try { ST = { ...ST, ...(JSON.parse(localStorage.getItem('bookexp-stats')) || {}) }; } catch(e){}
 function saveST(){ try { localStorage.setItem('bookexp-stats', JSON.stringify(ST)); } catch(e){} }
 const prevVisit = ST.lastVisit; ST.visits++; ST.lastVisit = Date.now(); saveST();
-let pagesSession = 0, flipTimes = [], rushSaidAt = 0;
+let pagesSession = 0, flipTimes = [], rushSeen = false;
 function favCount(){ try { return (JSON.parse(localStorage.getItem('bookexp-favs')) || []).length; } catch(e){ return 0; } }
 function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 // 着いた時の一言
@@ -529,13 +482,13 @@ function arrivalLine(){
 function returnLine(){
   const h = new Date().getHours();
   if (pagesSession >= 30) return pick(['随分と読みましたね', '随分と読みましたね　目を休めてくださいね', '随分と読みましたね　何か、残る言葉はありましたか']);
+  if (rushSeen && pagesSession >= 8) { rushSeen = false; return pick(['そんなに急がなくても、本は逃げませんよ', 'ゆっくりで、いいんですよ']); }
   if (!ST.favSaid && favCount() >= 10) { ST.favSaid = true; saveST(); return 'だいぶあなたの本らしくなってきましたね'; }
   if (h >= 0 && h < 4 && pagesSession >= 5) return pick(['随分遅い時間まで起きているんですね', 'もう遅い時間ですね　おやすみなさい']);
   if (pagesSession === 0) return pick(['また、気が向いたときに', 'いつでも、ここにありますから']);
   return pick(['お疲れさまでした', 'また、いつでもどうぞ', '良い言の葉は、ありましたか', 'また開いてくださいね']);
 }
 // 読んでいる最中の一言(読書の上に小さく)
-function readingLine(text){ say(text, null, { small:true, autoHide:6500 }); }
 
 // ============================================================ three.js 共通
 const canvas = $('c');
@@ -557,7 +510,8 @@ const candleB = new THREE.PointLight(0xffc98f, 1.6, 2.5, 2.0); candleB.position.
 const rimB = new THREE.DirectionalLight(0x7a86a8, 0.9); rimB.position.set(-0.5, 0.4, -0.6); sceneB.add(rimB);
 const pivot = new THREE.Group(); sceneB.add(pivot);
 let book = null, hinge = null, bookScale = 0, bookTarget = 0, ribbon = null;
-function hasBookmark(){ try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch(e){ return false; } }
+function hasBookmark(){ try { const b = JSON.parse(sessionStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch(e){ return false; } }
+try { localStorage.removeItem('bookexp-bookmark'); } catch(e){}   // 旧: 端末に残る栞は廃止(KEI 2026-09-04)
 const glbOverride = new URLSearchParams(location.search).get('glb');
 new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '../assets/book.glb?b=' + BUILD, g => {
   book = g.scene; book.rotation.z = 0.06; pivot.add(book);
@@ -584,12 +538,12 @@ function buildRibbon(){
   const len = bh * 0.24, w = bw * 0.032;
   const geo = new THREE.PlaneGeometry(w, len, 1, 8); geo.translate(0, -len / 2, 0);
   // 先端ほど少し反る
-  const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); const k = -y / len; pos.setZ(i, k * k * w * 1.2); }
-  geo.rotateX(-Math.PI / 2);                                        // -y(垂れ下がり) → +z、反り → +y(表紙側)
+  const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); const k = -y / len; pos.setZ(i, -k * k * w * 1.2); }
+  geo.rotateX(Math.PI / 2);                                         // -y(垂れ下がり) → -z(本の上端側)、反り → +y(表紙側)。KEI: 栞は本の上から
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ color:0x3a120c, roughness:0.94, metalness:0, side:THREE.DoubleSide });
   ribbon = new THREE.Mesh(geo, mat);
-  ribbon.position.set(bookBB.min.x + bw * 0.72, 0, bookBB.max.z - bh * 0.015);
+  ribbon.position.set(bookBB.min.x + bw * 0.72, 0, bookBB.min.z + bh * 0.015);
   ribbon.rotation.y = -0.06;
   book.add(ribbon);
   ribbon.visible = hasBookmark();
@@ -668,10 +622,10 @@ function beginRead(hash, title){
   $('ui').classList.remove('show'); talk.classList.remove('show');
   // 2026-09-04 KEI: ゆっくり開く → ぐーっと吸い込まれる → 暗転 → 暗い所から蝋燭の灯りが徐々にボワンと灯る
   $('readTitle').classList.add('show');
-  activity(); pagesSession = 0; flipTimes = [];
+  activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; creak(); }, 1700);              // ギィ……
-  setTimeout(() => { softThud(); haptic(12); }, 3800);              // パタン(表紙が開ききる)
+  setTimeout(() => { opening = true; }, 1700);
+  setTimeout(() => { haptic(12); }, 3800);              // 表紙が開ききる(音は KEI 2026-09-04 で撤去)
   setTimeout(() => { motesStart(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
   setTimeout(() => { $('fade').style.transition = 'opacity 1.4s ease-in'; $('fade').style.opacity = 1; }, 4000);
@@ -716,7 +670,7 @@ function closeBookDone(){
   ambBoost = 1;
   if (ribbon) ribbon.visible = hasBookmark();
   buildFavMarks();
-  setTimeout(() => { $('ui').classList.add('show'); say(returnLine(), null, { small:true, autoHide:8000 }); }, 650);
+  setTimeout(() => { $('ui').classList.add('show'); say(returnLine(), null, { small:true, center:true, hold:3000 }); }, 650);
 }
 let shake = 0;
 addEventListener('message', e => {
@@ -729,11 +683,10 @@ addEventListener('message', e => {
     activity(); flipDuck(); pagesSession++; ST.pagesTotal = (ST.pagesTotal || 0) + 1; saveST();
     // 数秒おきに高速でめくっていたら
     const now = performance.now(); flipTimes.push(now); while (flipTimes.length && now - flipTimes[0] > 9000) flipTimes.shift();
-    if (flipTimes.length >= 6 && now - rushSaidAt > 180000) { rushSaidAt = now; flipTimes = []; readingLine(pick(['そんなに急がなくても、本は逃げませんよ', 'ゆっくりで、いいんですよ'])); }
-    else if (pagesSession === 30) readingLine('随分と読みましたね');
-    else if (pagesSession === 100) readingLine('もう百ページですか　目を休めてくださいね');
+    // KEI 2026-09-04: 読書中は語りかけない。急ぎすぎは帰りの一言で拾う
+    if (flipTimes.length >= 6) { rushSeen = true; flipTimes = []; }
   }
-  if (d.type === 'reader-fav') { activity(); if (d.on && d.count === 10 && !ST.favSaid) { ST.favSaid = true; saveST(); readingLine('だいぶあなたの本らしくなってきましたね'); } }
+  if (d.type === 'reader-fav') { activity(); }
   if (d.type === 'reader-bookmark') { activity(); if (ribbon) ribbon.visible = true; }
   if (d.type === 'reader-close') closeBook();
 });
@@ -785,7 +738,6 @@ renderer.setAnimationLoop(() => {
     dust.visible = bookScale > 0.2;
     if (ribbon && ribbon.visible) ribbon.rotation.y = -0.06 + Math.sin(t * 0.7) * 0.03 + shake * Math.sin(t * 40) * 0.08;
     motesStep(wdt);
-    sxTick();
     const sx0 = shake * Math.sin(t * 57) * 0.012, sy0 = shake * Math.sin(t * 43 + 1) * 0.008;
     if (diving) {
       diveT += wdt; const k = Math.min(diveT/2.4, 1), e2 = k*k*k*(k*(6*k-15)+10);   // ゆっくり入って一気に吸い込まれる
