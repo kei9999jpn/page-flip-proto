@@ -656,9 +656,17 @@ const flipBufs = [];
 // v16: 速さに応じて音が変わる。ゆっくり=「サァ…」(こもって静か)、速い=「パサッ」(明るく重い)
 var _psCalls = 0, _psLast = null;
 window.__snd = { get bufs(){ return flipBufs.filter(Boolean).length; }, get on(){ return SND.flipOn; }, get flip(){ return SND.flip; }, get ac(){ return ac && ac.state; }, get calls(){ return _psCalls; }, get last(){ return _psLast; } };
+var _fbPool = [];   // v34: 代替の <audio>(最初に触った時に解錠しておく)
+function fbFlip(vel) {
+  try {
+    let a = _fbPool.find(x => x.paused || x.ended); if (!a) { a = new Audio('../assets/se/page-loud.mp3'); _fbPool.push(a); }
+    a.playbackRate = 0.92 + Math.random() * 0.16; a.currentTime = 0; a.play().catch(() => {});
+  } catch (e) {}
+}
 function pageSound(strength, vel) {
-  _psCalls++; _psLast = { ac: !!ac, on: SND.flipOn, bufs: flipBufs.filter(Boolean).length, strength };
-  if (!ac || SND.flipOn === false) return;
+  _psCalls++; _psLast = { ac: !!ac, on: SND.flipOn, bufs: flipBufs.filter(Boolean).length, strength, state: ac && ac.state };
+  if (SND.flipOn === false) return;
+  if (!ac || ac.state !== 'running' || !flipBufs.some(Boolean)) { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } fbFlip(vel); return; }   // v34: 眠っていたら代替で必ず鳴らす
   const avail = flipBufs.map((b, i) => b ? i : -1).filter(i => i >= 0);
   if (!avail.length) return;
   let bi = avail[Math.floor(Math.random() * avail.length)]; if (avail.length > 1 && bi === _lastBuf) bi = avail[(avail.indexOf(bi) + 1) % avail.length]; _lastBuf = bi;
@@ -879,7 +887,11 @@ function release(e) {
 }
 cv.addEventListener('pointerup', release);
 // v32: iPhone は touchend/click の中でしか AudioContext を確実に起こせない(めくり音が全く鳴らない件)
-['touchend', 'click'].forEach(ev => document.addEventListener(ev, () => { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } }, { passive: true }));
+['touchend', 'click'].forEach(ev => document.addEventListener(ev, () => {
+  if (!ac) ensureAudio();
+  if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
+  if (!_fbPool.length) { try { const a = new Audio('../assets/se/page-loud.mp3'); a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { a.pause(); a.muted = false; a.currentTime = 0; }).catch(() => { a.muted = false; }); _fbPool.push(a); } catch (e) {} }   // 代替要素の解錠
+}, { passive: true }));
 cv.addEventListener('pointercancel', () => { rustleStop(); if (pd && pd.started && flip) finishFlip(flip.dir > 0 ? 0 : 1, false); pd = null; });
 
 // ---------- dust motes + rising embers + warp streaks ----------
