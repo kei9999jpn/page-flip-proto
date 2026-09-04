@@ -174,35 +174,39 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <div class="rule"></div>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主・異世界の叡智が、集めた言の葉を綴じた魔法の本。</p>
+    <p>書斎の主・異世界の叡智が、長い歳月をかけて集めてきた言の葉。</p>
+    <p>そのすべてを一冊に綴じた、魔法の本です。</p>
     <p>名言、問い、ふとした気づき。</p>
-    <p>開くたびに、ページの並びが変わる。</p>
-    <p>だから今日は、今日の言葉が出てくる。</p>
-    <p>ページは今も、増え続けている。</p>
+    <p>心に残った言葉だけが、一枚ずつ挟まれています。</p>
+    <p>この本に、決まった順番はありません。</p>
+    <p>開くたびに、ページの並びが入れ替わります。</p>
+    <p>今日のあなたには、今日の言葉が出てきます。</p>
+    <p>言葉は今も集められ、本は日に日に厚くなっていきます。</p>
     <p class="h">読み方</p>
-    <p>右側を押すと、次のページ。</p>
-    <p>左側を押すと、前のページ。</p>
-    <p>右上の数字は、見たページの数。</p>
+    <p>右から左へなぞると、次のページへ。</p>
+    <p>左から右へなぞると、前のページへ戻ります。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>心に残ったページで「印」を押す。</p>
-    <p>ページの角に、金の印が押される。</p>
-    <p>印は消えない。また出た時もそこにある。</p>
-    <p>閉じた本の小口にも、金の印が増える。</p>
+    <p>心に残ったページで、下の「印」を押してください。</p>
+    <p>ページの角に、小さな金の印が押されます。</p>
+    <p>印は消えません。</p>
+    <p>並びが入れ替わって同じページが出てきても、印はそこにあります。</p>
+    <p>閉じた本の小口にも、金の印がひとつずつ増えていきます。</p>
     <p class="h">印のページだけを読む</p>
-    <p>本の画面で「印」を選ぶ。</p>
-    <p>印のページだけの一冊が開く。</p>
-    <p>もう一度「印」を押すと、外れる。</p>
+    <p>本の画面の「印」を押すと、印をつけたページだけを集めた一冊が開きます。</p>
+    <p>もう一度「印」を押すと、その印は外れます。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
-    <p>「栞を挟む」を押すと、紐が挟まる。</p>
-    <p>栞のある本は、並びが変わらない。</p>
-    <p>次は栞のページから、続きを読める。</p>
-    <p>閉じた本の上から、紐の先が覗く。</p>
-    <p>栞は一本。新しく挟むと、前のは外れる。</p>
-    <p>ブラウザを閉じても、栞は残る。</p>
-    <p class="h">並びを新しくしたい時</p>
-    <p>下の「新しく開き直す」を押す。栞は外れる。</p>
+    <p>読んでいる途中で、下の「栞」を押してください。</p>
+    <p>そのページに、紐の栞が挟まります。</p>
+    <p>栞を挟んだ本は、ページの並びがそのまま止まります。</p>
+    <p>本の画面の「栞」を押すと、栞のページから続きを読めます。</p>
+    <p>閉じた本の上から、紐の先が覗いているのが目印です。</p>
+    <p class="h">ご注意</p>
+    <p>栞を挟まずに本を閉じると、次に開いたとき中身がすべて入れ替わります。</p>
+    <p>続きから読みたいページには、必ず栞を挟んでください。</p>
+    <p>栞は一本だけ。新しく挟むと、前の栞は外れます。</p>
+    <p>並びを新しくしたいときは、下の「新しく開き直す」を押してください。</p>
     <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。栞は外れる</span></button>
   </div>
   </div>
@@ -228,7 +232,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v34';
+const BUILD = '20260905v35';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -596,7 +600,8 @@ function returnLine(){
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
 renderer.setClearColor(0x000000, 0);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));   // v35: スマホは描画解像度を抑える
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.72;
@@ -668,13 +673,13 @@ function buildFavMarks(){
   book.add(favMarks);
 }
 // 塵(本の周り)
-const dustGeo = new THREE.BufferGeometry(); const ND = 220, dpos = new Float32Array(ND*3), dspd = [];
+const dustGeo = new THREE.BufferGeometry(); const ND = MOBILE ? 120 : 220, dpos = new Float32Array(ND*3), dspd = [];
 for (let i = 0; i < ND; i++) { dpos[i*3] = (Math.random()-0.5)*1.4; dpos[i*3+1] = (Math.random()-0.5)*1.0; dpos[i*3+2] = (Math.random()-0.5)*1.4; dspd.push(0.008 + Math.random()*0.02); }
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3));
 const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color:0xd8b878, size:0.0035, transparent:true, opacity:0.55, depthWrite:false }));
 sceneB.add(dust);
 // 吸い込みの光の粒(2026-09-04 KEI: 貫通せず、粒がブワーッと出ながら中へ)
-const MN = 1600, mGeo = new THREE.BufferGeometry(), mPos = new Float32Array(MN*3), mVel = new Float32Array(MN*3), mLife = new Float32Array(MN);
+const MN = MOBILE ? 800 : 1600, mGeo = new THREE.BufferGeometry(), mPos = new Float32Array(MN*3), mVel = new Float32Array(MN*3), mLife = new Float32Array(MN);
 mGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
 const mTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,'rgba(255,240,200,1)'); r.addColorStop(0.35,'rgba(255,200,120,.6)'); r.addColorStop(1,'rgba(255,150,60,0)'); g.fillStyle = r; g.fillRect(0,0,64,64); const t = new THREE.CanvasTexture(c); return t; })();
 const motes = new THREE.Points(mGeo, new THREE.PointsMaterial({ size:0.016, map:mTex, transparent:true, opacity:0.95, depthWrite:false, blending:THREE.AdditiveBlending, color:0xffd9a0 }));
