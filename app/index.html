@@ -59,13 +59,13 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 #choices{display:none}
 #bookBtns{display:flex;flex-direction:column;align-items:center;gap:14px}
 .seal{font-family:var(--serif);font-size:clamp(14px,4.2vw,17px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
-  padding:15px 40px;background:linear-gradient(180deg,rgba(26,19,11,.94),rgba(11,8,6,.96));
+  width:284px;box-sizing:border-box;padding:15px 0;background:linear-gradient(180deg,rgba(26,19,11,.94),rgba(11,8,6,.96));
   transition:transform .18s ease,box-shadow .18s ease,color .18s}
 .seal:active{transform:translateY(1px) scale(.985);color:#fff2c4}
 .seal .c1,.seal .c2{display:block}
 .row{display:flex;gap:10px}
 .ico{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.22em;text-indent:.22em;color:var(--paper2);white-space:nowrap;cursor:pointer;
-  padding:9px 14px;background:rgba(11,8,6,.55);border:1px solid rgba(201,162,74,.22);transition:color .18s,border-color .18s,transform .18s}
+  width:88px;box-sizing:border-box;padding:9px 0;background:rgba(11,8,6,.55);border:1px solid rgba(201,162,74,.22);transition:color .18s,border-color .18s,transform .18s}
 .ico:active{color:var(--gold2);border-color:var(--gold-dim);transform:translateY(1px)}
 .ico b{display:block;font-family:var(--serif);font-size:15px;letter-spacing:0;text-indent:0;margin-bottom:3px;color:var(--gold)}
 
@@ -189,7 +189,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904i';
+const BUILD = '20260904j';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
