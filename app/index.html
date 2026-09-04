@@ -228,7 +228,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v29';
+const BUILD = '20260904v30';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -271,6 +271,7 @@ document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => {
 const rain = $('rain');
 let audioOn = false, bgmWanted = false;
 // BGMの曲リスト。ここに足せば順に(2曲以上ならランダム順で)6秒クロスフェードで繋がる
+const BGM_ENABLED = false;   // 2026-09-04 KEI: BGMは廃止。環境音(雨・暖炉)だけ
 const BGM_LIST = ['../assets/bgm-loop.mp3?b=' + BUILD];   // v28: ファイルを更に-6dB(合計-16dB)。KEI「BGMは半分でいい」
 const BGM_BASE = 0.5;   // v23: bgm-loop.mp3 を-10dBで作り直したぶん上げる                                     // 真ん中の音量(KEI v17「全く聞こえない」→上げた)
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
@@ -311,10 +312,10 @@ function bgmShuffle(){ bgmOrder = BGM_LIST.map((_, i) => i); for (let i = bgmOrd
 let bgmLast = -1;
 function bgmNextSrc(){ if (!bgmOrder.length || bgmPos >= bgmOrder.length) { bgmShuffle(); if (BGM_LIST.length > 1 && bgmOrder[0] === bgmLast) bgmOrder.push(bgmOrder.shift()); } const i = bgmOrder[bgmPos++]; bgmLast = i; return BGM_LIST[i]; }
 const bgm = decks[0];   // 互換(解錠処理などが参照)
-if (BGM_LIST.length === 1) { bgm.loop = true; bgm.src = BGM_LIST[0]; }
-function bgmTargetVol(){ return (S.bgm && bgmWanted) ? Math.min(1, BGM_BASE * curve(S.bgmVol) * duckCur) : 0; }
+if (BGM_ENABLED && BGM_LIST.length === 1) { bgm.loop = true; bgm.src = BGM_LIST[0]; }
+function bgmTargetVol(){ return (BGM_ENABLED && S.bgm && bgmWanted) ? Math.min(1, BGM_BASE * curve(S.bgmVol) * duckCur) : 0; }
 function bgmStart(){
-  if (!bgmWanted || !S.bgm) return;
+  if (!BGM_ENABLED || !bgmWanted || !S.bgm) return;
   if (bgmFade) { clearInterval(bgmFade); bgmFade = null; }
   const d = decks[dk];
   if (BGM_LIST.length > 1 && !d.src) { d.loop = false; d.src = bgmNextSrc(); }
@@ -454,7 +455,7 @@ function unlockAudio(){
   // 雨: ミュート再生→そのまま。BGM: ミュート再生→まだ要らなければ止める(要るなら続けて鳴らす。止め直しの競合を避ける)
   try { rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
   // iPhoneは volume が効かないので、ミュート解除の前に必ず止める(解除→停止の順だと一瞬「ドゥン」と鳴る・KEI 2026-09-04)
-  decks.forEach((d, i) => { try { if (!d.src) d.src = BGM_LIST[0]; setDeckVol(i, 0); d.muted = true; const p = d.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm || i !== dk) { d.pause(); try { d.currentTime = 0; } catch(e){} } d.muted = false; }).catch(() => { d.muted = false; }); else d.muted = false; } catch(e){} });
+  if (BGM_ENABLED) decks.forEach((d, i) => { try { if (!d.src) d.src = BGM_LIST[0]; setDeckVol(i, 0); d.muted = true; const p = d.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm || i !== dk) { d.pause(); try { d.currentTime = 0; } catch(e){} } d.muted = false; }).catch(() => { d.muted = false; }); else d.muted = false; } catch(e){} });
 }
 function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
@@ -754,7 +755,7 @@ function closeBookDone(){
 let shake = 0;
 addEventListener('message', e => {
   const d = e.data || {};
-  if (d.type === 'reader-touch') { bgmWanted = true; ensureAudio(); applyAudio(); activity(); }
+  if (d.type === 'reader-touch') { bgmWanted = BGM_ENABLED; ensureAudio(); applyAudio(); activity(); }
   if (d.type === 'reader-ready') { readerReady = true; }
   if (d.type === 'reader-sound') { toggleSound(); activity(); }
   if (d.type === 'reader-activity') { activity(); }
