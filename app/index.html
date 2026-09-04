@@ -211,12 +211,12 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v21';
+const BUILD = '20260904v23';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3', window:'../assets/rain/window.mp3',
-                   storm:'../assets/rain/storm.mp3', suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
+                   storm:'../assets/rain/storm.mp3', suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3?b=20260904v23' };   // v23: ファイル自体を-12dB(iPhoneは volume が効かないため)
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
 if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; }
@@ -255,11 +255,11 @@ const rain = $('rain');
 let audioOn = false, bgmWanted = false;
 // BGMの曲リスト。ここに足せば順に(2曲以上ならランダム順で)6秒クロスフェードで繋がる
 const BGM_LIST = ['../assets/bgm-loop.mp3?b=' + BUILD];
-const BGM_BASE = 0.16;                                     // 真ん中の音量(KEI v17「全く聞こえない」→上げた)
+const BGM_BASE = 0.5;   // v23: bgm-loop.mp3 を-10dBで作り直したぶん上げる                                     // 真ん中の音量(KEI v17「全く聞こえない」→上げた)
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
 function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
 function flipDuck(){ duck = 0.82; duckUntil = performance.now() + 550; }
-function rainTarget(){ return S.rain ? Math.min(1, 0.4 * curve(S.amb) * ambBoostCur) : 0; }   // v21 KEI: 環境音 -20%
+function rainTarget(){ return S.rain ? Math.min(1, 1.0 * curve(S.amb) * ambBoostCur) : 0; }   // v21 KEI: 環境音 -20%
 
 // ---- Web Audio(効果音・文字送り音だけ)。最初のタップの中で作る ----
 let sx = null, sxMaster = null;

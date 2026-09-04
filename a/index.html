@@ -86,6 +86,11 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
   background:radial-gradient(ellipse at 50% 80%,#fff8dc 0%,#ffd16a 25%,#ff8a1e 55%,rgba(255,80,0,.55) 78%,transparent 100%);
   filter:blur(.6px);box-shadow:0 0 18px 6px rgba(255,150,60,.55),0 0 60px 22px rgba(255,120,40,.28)}
 #flameCore{position:absolute;left:50%;bottom:12px;width:8px;height:20px;margin-left:-4px;border-radius:50%;background:radial-gradient(#5aa8ff55,transparent 70%)}
+/* v23: 右下の皿ロウソク(ChatGPT生成の絵・黒背景を screen 合成で抜く)。画像が無ければ非表示 */
+#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) + 2vw);bottom:calc(env(safe-area-inset-bottom,0px) + 6.5vh);width:min(26vmin,150px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease}
+#candleImg.on{opacity:.95}
+#flameGlow{position:fixed;pointer-events:none;z-index:9;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;mix-blend-mode:screen;opacity:0;
+  background:radial-gradient(circle at 50% 55%,rgba(255,232,170,.95) 0%,rgba(255,180,90,.55) 18%,rgba(255,130,50,.18) 42%,transparent 66%);filter:blur(1.5px)}
 #halo{position:fixed;right:0;bottom:0;width:120vmin;height:120vmin;pointer-events:none;z-index:7;mix-blend-mode:screen;
   transform:translate(35%,40%);background:radial-gradient(circle at 50% 50%,rgba(255,170,80,.42),rgba(255,120,40,.12) 35%,transparent 62%)}
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
@@ -140,6 +145,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
 <div id="candle"></div>
 <div id="shade"></div>
 <div id="halo"></div>
+<img id="candleImg" alt="" src="../assets/candle.png?b=20260904v23" onerror="this.style.display='none'"><div id="flameGlow"></div>
 <div id="flameWrap"><div id="wick"></div><div id="flame"></div><div id="flameCore"></div></div>
 <div id="veil"></div>
 <canvas id="dust"></canvas>
@@ -380,7 +386,8 @@ function lampOverlay() {
   const gu = _fl ? _fl.gust : 0, gj = gu * Math.sin((_fl ? _fl.t : 0) * 41) * 0.5 + gu * 0.5;
   const lv = Math.max(0, Math.min(1, lampLevel * (0.85 + n * 0.12 + cur * 0.35 + gj * 0.22)));
   const n2 = _fl ? _smoothNoise(_fl.t * 1.7 + 3.1) : 0;
-  const cx = pw * (0.58 + n * 0.05 + n2 * 0.02 + gu * Math.sin((_fl ? _fl.t : 0) * 33) * 0.05), cy = ph * (0.54 + n * 0.035 - gu * 0.03), r = Math.max(pw, ph) * (0.74 + n * 0.09 + cur * 0.15 + gj * 0.12);
+  // v23: 灯りは右下のロウソクから。中心は紙の右下寄り、揺れは炎と同じ _fl で同期
+  const cx = pw * (0.80 + n * 0.04 + n2 * 0.02 + gu * Math.sin((_fl ? _fl.t : 0) * 33) * 0.05), cy = ph * (0.82 + n * 0.03 - gu * 0.03), r = Math.max(pw, ph) * (1.05 + n * 0.10 + cur * 0.18 + gj * 0.12);
   ctx.save();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   sheen(pw, ph);
@@ -568,8 +575,8 @@ addEventListener('storage', e => {
   try { SND = { ...SND_DEFAULTS, ...(JSON.parse(e.newValue) || {}) }; } catch (err) { return; }
   if (EMBED) { SND.bgm = false; SND.rain = false; }
   applyRainSrc();
-  rain.volume = SND.rain ? Math.min(1, 0.4 * curve(SND.amb)) : 0;
-  bgm.volume = SND.bgm ? Math.min(1, 0.16 * curve(SND.bgmVol)) : 0;
+  rain.volume = SND.rain ? Math.min(1, 1.0 * curve(SND.amb)) : 0;
+  bgm.volume = SND.bgm ? Math.min(1, 0.5 * curve(SND.bgmVol)) : 0;
 });
 function startCrickets() {
   if (!ac || cricketsOn) return;
@@ -646,7 +653,7 @@ function pageSound(strength, vel) {
   src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
   const g = ac.createGain(); const t0 = ac.currentTime;
-  const peak = Math.min(10, 5.2 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
+  const peak = Math.min(14, 8.0 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
   g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
   src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
@@ -960,6 +967,10 @@ const veil = document.getElementById('veil');
 let veilTarget = 0;
 veil.style.transition = 'opacity 1.4s ease';
 const shade = document.getElementById('shade'), flame = document.getElementById('flame'), halo = document.getElementById('halo');
+// v23: ロウソク画像(あれば点ける)。炎の位置は画像内の比率(FLAME_X/Y)で合わせる
+const candleImg = document.getElementById('candleImg'), flameGlow = document.getElementById('flameGlow');
+var candleOn = false; const FLAME_X = 0.5, FLAME_Y = 0.22;
+candleImg.addEventListener('load', () => { candleOn = true; setTimeout(() => candleImg.classList.add('on'), 800); });
 // 2026-09-03 KEI: ピカピカ→「ゆっくり滑らかに、ぼやーっと変わる」灯り。乱数の飛びをやめ、遅い正弦の重ね合わせ+ゆるい目標追従
 var _fl = { t: 0, tgt: 0, cur: 0, next: 0, gust: 0 };   // var: 先に呼ばれる draw()/lampOverlay から参照されるため
 function _smoothNoise(t) {
@@ -986,6 +997,15 @@ let _flPrev = performance.now();
   flame.style.transform = 'scaleY(' + (0.92 + n * 0.10 + _fl.cur * 0.25).toFixed(3) + ') scaleX(' + (0.96 + n * 0.05).toFixed(3) + ') skewX(' + (dx * 4).toFixed(1) + 'deg)';
   flame.style.opacity = (0.9 + n * 0.08 + _fl.cur * 0.2).toFixed(3);
   halo.style.transform = 'translate(' + (35 + dx).toFixed(1) + '%,' + (40 + dy).toFixed(1) + '%) scale(' + (1 + n * 0.03).toFixed(3) + ')';
+  // v23: 炎のボヤボヤ(画像の炎の位置に重ねる)。紙の灯り・halo と同じ揺れ
+  if (candleOn) {
+    const r = candleImg.getBoundingClientRect();
+    const fx = r.left + r.width * FLAME_X, fy = r.top + r.height * FLAME_Y;
+    const fast = Math.sin(_fl.t * 9.1) * 0.5 + Math.sin(_fl.t * 13.7 + 1) * 0.3 + Math.sin(_fl.t * 23 + 2) * 0.2;
+    flameGlow.style.left = (fx + fast * 2.5 + gj * 6).toFixed(1) + 'px'; flameGlow.style.top = (fy + fast * 1.5).toFixed(1) + 'px';
+    flameGlow.style.opacity = Math.max(0, Math.min(1, 0.55 + n * 0.18 + _fl.cur * 0.35 + fast * 0.08 + gj * 0.3)).toFixed(3);
+    flameGlow.style.transform = 'scale(' + (0.9 + n * 0.12 + fast * 0.06 + gj * 0.25).toFixed(3) + ',' + (1.0 + n * 0.16 + fast * 0.10 + gj * 0.3).toFixed(3) + ')';
+  }
   if (glowBase > 0) {
     paperGlow.style.opacity = (glowBase * (0.95 + n * 0.20 + _fl.cur * 0.35)).toFixed(3);
     paperGlow.style.transform = 'translate(-50%,-50%) scale(' + (1 + n * 0.02).toFixed(3) + ')';
