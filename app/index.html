@@ -161,7 +161,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
     <button class="seal sub" id="bAbout">この本の説明</button>
     <div class="row">
       <button class="ico" id="bResume"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b>栞</button>
-      <button class="ico" id="bSound"><b></b>音量</button>
+      <button class="ico" id="bSound"><b></b>音</button>
       <button class="ico" id="bFav"><b>♡</b>印</button>
     </div>
   </div>
@@ -228,7 +228,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v30';
+const BUILD = '20260904v31';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -244,7 +244,7 @@ if (!S.v5) { S.bgmVol = 0.5; S.amb = 0.5; S.flip = 0.5; S.v5 = 1; }   // 音量�
 // v20 (2026-09-04 KEI): iPhoneで設定パネルが効かない → 設定を廃止し「音 ON/OFF」1つに(音楽・環境音・めくり音・効果音をまとめて)
 if (!S.v6) { S.sound = true; S.v6 = 1; }
 function curve(x){ return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }
-function applySound(){ S.bgm = S.rain = S.flipOn = !!S.sound; document.querySelectorAll('#bSound').forEach(b => { b.innerHTML = '<b>' + (S.sound ? SPK_ON : SPK_OFF) + '</b>音量'; }); }
+function applySound(){ S.bgm = S.rain = S.flipOn = !!S.sound; document.querySelectorAll('#bSound').forEach(b => { b.innerHTML = '<b>' + (S.sound ? SPK_ON : SPK_OFF) + '</b>音'; }); }
 const SPK_ON = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M15.5 6.5a5 5 0 0 1 0 7"/><path d="M18.5 4a9 9 0 0 1 0 12"/></svg>', SPK_OFF = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#8a7a58" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M16 7l5 6M21 7l-5 6"/></svg>';
 function toggleSound(){ S.sound = !S.sound; applySound(); saveS(); if (S.sound) uiClick(1); }
 applySound();
