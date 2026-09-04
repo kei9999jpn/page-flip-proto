@@ -409,7 +409,8 @@ function unlockAudio(){
   try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{}); } catch(e){}
   // 雨: ミュート再生→そのまま。BGM: ミュート再生→まだ要らなければ止める(要るなら続けて鳴らす。止め直しの競合を避ける)
   try { rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
-  try { setBgmVol(0); bgm.muted = true; const p = bgm.play(); if (p && p.then) p.then(() => { bgm.muted = false; if (!bgmWanted || !S.bgm) bgm.pause(); }).catch(() => { bgm.muted = false; }); else bgm.muted = false; } catch(e){}
+  // iPhoneは volume が効かないので、ミュート解除の前に必ず止める(解除→停止の順だと一瞬「ドゥン」と鳴る・KEI 2026-09-04)
+  try { setBgmVol(0); bgm.muted = true; const p = bgm.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm) { bgm.pause(); try { bgm.currentTime = 0; } catch(e){} } bgm.muted = false; }).catch(() => { bgm.muted = false; }); else bgm.muted = false; } catch(e){}
 }
 function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
