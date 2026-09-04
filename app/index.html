@@ -90,7 +90,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.png) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
   transition:transform .18s ease,box-shadow .18s ease,color .18s}
 .seal:active{transform:translateY(1px) scale(.985);color:#fff2c4}
-.seal.sub{width:200px;font-size:clamp(12px,3.4vmin,14px);letter-spacing:.3em;text-indent:.3em;padding:3px 0;border-width:11px;border-image-width:11px;color:var(--paper2);margin-top:-4px}
+.seal.sub{width:284px;font-size:clamp(12px,3.4vmin,14px);letter-spacing:.3em;text-indent:.3em;padding:3px 0;border-width:11px;border-image-width:11px;color:var(--paper2);margin-top:-4px}
 #bookBtns{gap:10px}
 .seal .c1,.seal .c2{display:block}
 .row{display:flex;gap:10px}
@@ -228,7 +228,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v25';
+const BUILD = '20260904v26';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -674,7 +674,7 @@ function beginRead(hash, title){
   $('readTitle').classList.add('show');
   activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; }, 1700);
+  setTimeout(() => { opening = true; thudHeavy(); haptic(12); }, 1700);   // v26 KEI: 開く時も閉じる時と同じ低い音
   setTimeout(() => { haptic(12); }, 3800);              // 表紙が開ききる(音は KEI 2026-09-04 で撤去)
   setTimeout(() => { motesStart(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
