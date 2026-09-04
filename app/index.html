@@ -180,7 +180,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904q';
+const BUILD = '20260904r';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -220,7 +220,7 @@ document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => {
 const rain = $('rain');
 let audioOn = false, bgmWanted = false;
 // BGM プレイリスト(Sunoの同じ日の10曲)。ランダム順・曲の終わり6秒前から次の曲へクロスフェード
-const BGM_N = 10, BGM_SRC = i => '../assets/bgm/bgm_' + String(i + 1).padStart(2, '0') + '.mp3';
+const BGM_N = 1, BGM_SRC = () => '../assets/bgm.mp3';   // 2026-09-04 KEI: 当初の1曲だけ(曲末6秒でクロスフェードして継ぎ目なくループ)
 const decks = [$('bgm'), $('bgm2')]; let deckIdx = 0, order = [], orderPos = 0, xfading = false;
 function shuffleOrder(){ order = Array.from({length: BGM_N}, (_, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [order[i], order[j]] = [order[j], order[i]]; } orderPos = 0; }
 shuffleOrder();
