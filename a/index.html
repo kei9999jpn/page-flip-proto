@@ -667,7 +667,7 @@ function pageSound(strength, vel) {
   src.playbackRate.value = V[0] * (0.96 + Math.random() * 0.08) * (0.97 + v * 0.06);
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (V[2] > 1 ? V[1] : V[1] * 1.2) * (0.8 + v * 0.3); lp.Q.value = 0.4;
   const g = ac.createGain(); const t0 = ac.currentTime;
-  const peak = Math.min(14, 6.4 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
+  const peak = Math.min(14, 0.64 * curve(SND.flip) * Math.min(1, strength + 0.35) * V[2] * (0.85 + v * 0.2));   // v21 KEI: めくり音 2倍
   g.gain.setValueAtTime(peak, t0); g.gain.setValueAtTime(peak, t0 + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan) pan.pan.value = (Math.random() - 0.5) * 0.16;
   src.connect(lp); lp.connect(g); if (pan) { g.connect(pan); pan.connect(sfxOut || ac.destination); } else g.connect(sfxOut || ac.destination);
@@ -830,7 +830,7 @@ cv.addEventListener('pointermove', e => {
     if (!beginFlip(dir)) { pd = null; return; }
     pd.started = true; pd.tBase = flip.t;
     grab.fy = 0.30; grab.dy = 0;                    // KEI 2026-09-04: めくる場所は1箇所(右上の角)に固定。紙は丸めすぎない
-    rustleStart();                                   // v25 KEI: 擦れる音を小さく復活(めくり音の半分以下)
+    // (擦れ音 rustleStart() は v27 KEI「シールが剥がれる音」で再び不採用)
     startFollow();
   }
   pd.tTarget = Math.max(0, Math.min(1, pd.tBase + (pd.x0 - pd.x) / TRAVEL));
