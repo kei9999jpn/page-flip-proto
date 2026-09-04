@@ -228,7 +228,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v32';
+const BUILD = '20260904v33';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -429,6 +429,29 @@ function diveSound(){
   const g2 = sx.createGain(); g2.gain.setValueAtTime(0.0001, t1); g2.gain.exponentialRampToValueAtTime(0.28, t1 + 0.05); g2.gain.exponentialRampToValueAtTime(0.0001, t1 + 1.3);
   o2.connect(g2); g2.connect(sxMaster); o2.start(t1); o2.stop(t1 + 1.4);
 }
+// v33 KEI: 表紙が開く音は「扉」ではなく「本」。紙のめくり録音を遅く重く鳴らし、革表紙の軽い着地を足す
+let pageBuf = null;
+function loadPageBuf(){ if (!sx || pageBuf) return; fetch('../assets/se/page-soft.mp3').then(r => r.arrayBuffer()).then(b => sx.decodeAudioData(b)).then(buf => { pageBuf = buf; }).catch(()=>{}); }
+function openBookSound(){
+  if (!sx || !S.sound) return;
+  const t0 = sx.currentTime;
+  if (pageBuf) {
+    // 大きな紙が「ふぁさ…」とめくれる: 遅く(0.55倍)・こもらせて・長め
+    const src = sx.createBufferSource(); src.buffer = pageBuf; src.playbackRate.value = 0.55;
+    const lp = sx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 0.5;
+    const g = sx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(2.4, t0 + 0.08); g.gain.setValueAtTime(2.4, t0 + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.9);
+    src.connect(lp); lp.connect(g); g.connect(sxMaster); src.start(t0); src.stop(t0 + 2.0);
+    // 2枚目(少し遅れて小さく): 束がほどける感じ
+    const s2 = sx.createBufferSource(); s2.buffer = pageBuf; s2.playbackRate.value = 0.7;
+    const g2 = sx.createGain(); g2.gain.setValueAtTime(0.0001, t0 + 0.55); g2.gain.exponentialRampToValueAtTime(1.1, t0 + 0.65); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+    const lp2 = sx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 2600;
+    s2.connect(lp2); lp2.connect(g2); g2.connect(sxMaster); s2.start(t0 + 0.55); s2.stop(t0 + 1.7);
+  }
+  // 革表紙が机に着く、軽く低い「トン」(閉じる時の「ドスッ」より軽い)
+  const o = sx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(96, t0 + 1.3); o.frequency.exponentialRampToValueAtTime(40, t0 + 1.55);
+  const og = sx.createGain(); og.gain.setValueAtTime(0.0001, t0 + 1.3); og.gain.exponentialRampToValueAtTime(0.3, t0 + 1.31); og.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.75);
+  o.connect(og); og.connect(sxMaster); o.start(t0 + 1.3); o.stop(t0 + 1.8);
+}
 function haptic(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch(e){} }
 function applyRainSrc(){
   const src = RAIN_SRC[S.rainKind] || RAIN_SRC.study;
@@ -457,7 +480,7 @@ function unlockAudio(){
   // iPhoneは volume が効かないので、ミュート解除の前に必ず止める(解除→停止の順だと一瞬「ドゥン」と鳴る・KEI 2026-09-04)
   if (BGM_ENABLED) decks.forEach((d, i) => { try { if (!d.src) d.src = BGM_LIST[0]; setDeckVol(i, 0); d.muted = true; const p = d.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm || i !== dk) { d.pause(); try { d.currentTime = 0; } catch(e){} } d.muted = false; }).catch(() => { d.muted = false; }); else d.muted = false; } catch(e){} });
 }
-function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
+function ensureAudio(){ unlockAudio(); sxInit(); loadPageBuf(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
 ['touchend','click','pointerup'].forEach(ev => addEventListener(ev, () => { if (sx && sx.state !== 'running') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); }, { passive:true }));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && sx && sx.state === 'suspended') sx.resume().catch(()=>{}); });
@@ -702,7 +725,8 @@ function beginRead(hash, title){
   $('readTitle').classList.add('show');
   activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; thudHeavy(); haptic(12); }, 1700);   // v26 KEI: 開く時も閉じる時と同じ低い音
+  setTimeout(() => { opening = true; openBookSound(); }, 1700);   // v33 KEI: 本が開く音(紙+革の軽い着地)
+  setTimeout(() => { haptic(12); }, 3000);
   setTimeout(() => { haptic(12); }, 3800);              // 表紙が開ききる(音は KEI 2026-09-04 で撤去)
   setTimeout(() => { motesStart(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
