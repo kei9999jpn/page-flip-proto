@@ -121,8 +121,10 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .tabs h2{margin:0;min-width:9em}
 .tarrow{background:none;border:1px solid rgba(201,162,74,.35);color:var(--gold);width:30px;height:30px;font-family:var(--serif);font-size:18px;line-height:1;cursor:pointer}
 .tarrow:active{color:#fff2c4;border-color:var(--gold)}
-.tabbody{height:min(46vh,300px);height:min(46dvh,300px);overflow:hidden}
-.tab p{min-height:0;white-space:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.04em;line-height:2.0;margin:0 0 6px}
+.tabbody{height:min(50vh,340px);height:min(50dvh,340px);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:2px}
+.tabbody::-webkit-scrollbar{display:none}
+.tab p{min-height:0;white-space:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.04em;line-height:1.95;margin:0 0 10px}
+.tab p b{display:block;color:var(--gold);font-weight:500;margin:0 0 2px;letter-spacing:.2em}
 .tab .mode{margin-top:10px;white-space:normal}
 .dots{display:flex;justify-content:center;gap:8px;margin:12px 0 0}
 .dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
@@ -162,22 +164,23 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <div class="rule"></div>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主が集めた言の葉を、すべて綴じた魔法の本。</p>
-    <p>開くたびに、ページの並びが変わる。</p>
-    <p>ページは今も増え続けている。</p>
-    <p>右上の数字は、見たページの数。</p>
+    <p>書斎の主が、長い年月をかけて集めた言の葉を一冊に綴じた魔法の本。名言、問い、ふとした気づき。心に残った言葉だけを、一枚ずつ挟んである。</p>
+    <p>この本には、決まった順番がない。開くたびに、ページの並びが入れ替わる。同じ本を開いても、二度と同じ順では読めない。だから今日のあなたには、今日の言葉が出てくる。</p>
+    <p>言葉は今も集められ続けていて、本は日に日に厚くなっていく。最後のページは、まだ誰も見たことがない。</p>
+    <p><b>読み方</b>ページの右側を押すか、右から左へなぞると次のページへ。左側を押すと、前のページへ戻る。右上の数字は、あなたが今日見たページの数。</p>
+    <p>主も、暇さえあればこの本を開いている。急がなくていい。本は逃げない。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>気に入ったページで「お気に入り」を押す。</p>
-    <p>そのページが、この本に挟まれる。</p>
-    <p>挟んだページだけの一冊は、「お気に入り」から開ける。</p>
-    <p>もう一度押すと、外れる。</p>
+    <p>読んでいて心に残ったページがあったら、下の「お気に入り」を押す。そのページの角に、小さな金の印が押される。</p>
+    <p>印は消えない。並びが入れ替わって、いつか同じページが出てきた時も、角の印はそこにある。閉じた本の小口にも、金の印が一つずつ増えていく。</p>
+    <p>印を押したページだけを集めた一冊が、あなたの本になる。本の画面で「お気に入り」を選ぶと、その一冊だけを開いて読める。</p>
+    <p>もう一度「お気に入り」を押すと、印は外れる。印はこの端末の中に記憶される。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
-    <p>「栞を挟む」を押すと、そのページに栞が挟まる。</p>
-    <p>次に開いたとき、栞のページから読める。</p>
-    <p>栞は一つ。新しく挟むと、前の栞は外れる。</p>
-    <p>「新しく開き直す」を押すと、並びが変わり、栞も外れる。</p>
+    <p>「栞を挟む」を押すと、今読んでいるページに、古い紐の栞が上から滑り込む。</p>
+    <p>栞を挟んだ本は、その並びのまま止まる。開くたびに入れ替わるはずのページが、栞のあるあいだは動かない。次に本を開いた時、栞のページから同じ続きを読める。閉じた本の上から紐の先が覗いているのが、その目印。</p>
+    <p>栞は一本だけ。新しく挟むと、前の栞は外れる。ブラウザを閉じても、栞は残る。</p>
+    <p>栞を外して、また入れ替わる本に戻したい時は「新しく開き直す」を押す。並びが変わり、栞も外れる。</p>
     <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。栞は外れる</span></button>
   </div>
   </div>
@@ -213,7 +216,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v18';
+const BUILD = '20260904v19';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -278,10 +281,28 @@ function rainTarget(){ return S.rain ? Math.min(1, 0.5 * curve(S.amb) * ambBoost
 // ---- Web Audio(効果音・文字送り音だけ)。最初のタップの中で作る ----
 let sx = null, sxMaster = null;
 function sxInit(){
-  if (sx) { if (sx.state === 'suspended') sx.resume().catch(()=>{}); return; }
+  if (sx) { if (sx.state === 'suspended') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); return; }
   try { sx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ sx = null; return; }
   sxMaster = sx.createGain(); sxMaster.gain.value = 1; sxMaster.connect(sx.destination);
+  if (sx.state === 'suspended') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute();
 }
+// v19: iPhone は <audio>.volume を変えられない(常に1)。AudioContext が「動いている」ことを確認してから、雨とBGMを GainNode 経由に切り替える。
+//      眠ったままなら切り替えず、そのまま普通に鳴る(v16/17 で無音になった原因=眠った経路に繋いでいた)
+let routed = false, rainG = null, bgmG = null, _rainV = 1, _bgmV = 1;
+function tryRoute(){
+  if (routed || !sx || sx.state !== 'running') return;
+  try {
+    const rs = sx.createMediaElementSource(rain), bs = sx.createMediaElementSource(bgm);
+    rainG = sx.createGain(); bgmG = sx.createGain();
+    rs.connect(rainG); rainG.connect(sxMaster); bs.connect(bgmG); bgmG.connect(sxMaster);
+    routed = true;
+    rainG.gain.value = _rainV; bgmG.gain.value = _bgmV; rain.volume = 1; bgm.volume = 1;
+  } catch(e){ routed = false; }
+}
+function setRainVol(v){ _rainV = v; if (routed) { rainG.gain.setTargetAtTime(v, sx.currentTime, 0.05); } else rain.volume = v; }
+function setBgmVol(v){ _bgmV = v; if (routed) { bgmG.gain.setTargetAtTime(v, sx.currentTime, 0.05); } else bgm.volume = v; }
+function getRainVol(){ return _rainV; }
+function getBgmVol(){ return _bgmV; }
 // ---- BGM: <audio loop>。ファイル側で曲末6秒を曲頭に重ねてあり(bgm-loop.mp3)、ループしても途切れない ----
 // 曲を増やす時: BGM_LIST に足すと ended で次へ(その場合は loop を外す)。当面は1曲ループ
 const bgm = $('bgm'); bgm.loop = true; bgm.src = BGM_LIST[0];
@@ -290,13 +311,13 @@ function bgmTargetVol(){ return (S.bgm && bgmWanted) ? Math.min(1, BGM_BASE * cu
 function bgmStart(){
   if (!bgmWanted || !S.bgm) return;
   if (bgmFade) { clearInterval(bgmFade); bgmFade = null; }
-  bgm.volume = bgmTargetVol();                              // 画面が裏でも(rAFが止まっていても)確実に音量が入る
+  setBgmVol(bgmTargetVol());                                // 画面が裏でも(rAFが止まっていても)確実に音量が入る
   if (bgm.paused) bgm.play().catch(()=>{});
 }
 function bgmStop(ms){
   if (bgmFade) clearInterval(bgmFade);
-  const from = bgm.volume, t0 = performance.now();
-  bgmFade = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / Math.max(50, ms || 200)); bgm.volume = from * (1 - k);
+  const from = getBgmVol(), t0 = performance.now();
+  bgmFade = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / Math.max(50, ms || 200)); setBgmVol(from * (1 - k));
     if (k >= 1) { clearInterval(bgmFade); bgmFade = null; bgm.pause(); } }, 30);   // rAFでなく interval(裏タブでも止まらない)
 }
 function bgmTick(dt){
@@ -304,10 +325,10 @@ function bgmTick(dt){
   if (stage === 'read' && !idleQuiet && performance.now() - lastActivity > 30000) { idleQuiet = true; duck = 0.55; ambBoost = 1.25; }
   duckCur += (duck - duckCur) * (1 - Math.exp(-dt / (duck < duckCur ? 0.12 : 0.9)));
   ambBoostCur += (ambBoost - ambBoostCur) * (1 - Math.exp(-dt / 1.5));
-  if (audioOn) { const rv = rainTarget(); if (Math.abs(rain.volume - rv) > 0.002) rain.volume = rv; }
+  if (audioOn) { const rv = rainTarget(); if (Math.abs(getRainVol() - rv) > 0.002) setRainVol(rv); }
   if (bgmFade || bgm.paused) return;
   const tv = bgmTargetVol();
-  if (Math.abs(bgm.volume - tv) > 0.002) bgm.volume += (tv - bgm.volume) * (1 - Math.exp(-dt / 0.6));   // ふわっと追従(出だしも0→目標へ)
+  if (Math.abs(getBgmVol() - tv) > 0.002) setBgmVol(getBgmVol() + (tv - getBgmVol()) * (1 - Math.exp(-dt / 0.6)));   // ふわっと追従
 }
 function bgmFadeOut(ms){ bgmWanted = false; bgmStop(ms); }
 
@@ -343,12 +364,12 @@ function applyRainSrc(){
   if (rain.getAttribute('src') === src) return;
   const was = !rain.paused;
   rain.setAttribute('src', src); rain.load();
-  if (was || (audioOn && S.rain)) { rain.volume = rainTarget(); rain.play().catch(()=>{}); }
+  if (was || (audioOn && S.rain)) { setRainVol(rainTarget()); rain.play().catch(()=>{}); }
 }
 applyRainSrc();
 function applyAudio(){
   if (!audioOn) return;
-  rain.volume = rainTarget();
+  setRainVol(rainTarget());
   if (S.rain && rain.paused) rain.play().catch(()=>{});
   // BGMは本の中に入って最初のタッチから(KEI 2026-09-03)
   if (S.bgm && bgmWanted) bgmStart();
@@ -362,10 +383,12 @@ function unlockAudio(){
   try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{}); } catch(e){}
   // 雨: ミュート再生→そのまま。BGM: ミュート再生→まだ要らなければ止める(要るなら続けて鳴らす。止め直しの競合を避ける)
   try { rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
-  try { bgm.volume = 0; bgm.muted = true; const p = bgm.play(); if (p && p.then) p.then(() => { bgm.muted = false; if (!bgmWanted || !S.bgm) bgm.pause(); }).catch(() => { bgm.muted = false; }); else bgm.muted = false; } catch(e){}
+  try { setBgmVol(0); bgm.muted = true; const p = bgm.play(); if (p && p.then) p.then(() => { bgm.muted = false; if (!bgmWanted || !S.bgm) bgm.pause(); }).catch(() => { bgm.muted = false; }); else bgm.muted = false; } catch(e){}
 }
 function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
+['touchend','click','pointerup'].forEach(ev => addEventListener(ev, () => { if (sx && sx.state !== 'running') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); }, { passive:true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && sx && sx.state === 'suspended') sx.resume().catch(()=>{}); });
 
 // ============================================================ 没入(モバイル)
 // Android Chrome は Fullscreen API でブラウザの枠を消せる。iOS Safari は文書の全画面がないので無視される
@@ -744,7 +767,7 @@ function listenTilt(){
   }, { passive:true });
 }
 try { if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) listenTilt(); } catch(e){}
-window.__app = { beginRead, closeBook, get dbg(){ return { bgmWanted, bgmFade, tv: bgmTargetVol(), duckCur, audioOn, sbgm: S.bgm, vol: S.bgmVol }; }, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
+window.__app = { beginRead, closeBook, get dbg(){ return { bgmWanted, bgmFade, tv: bgmTargetVol(), duckCur, audioOn, sbgm: S.bgm, vol: S.bgmVol, routed, sxState: sx && sx.state, rainV: getRainVol(), bgmV: getBgmVol() }; }, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
 </script>
 </body>
 </html>
