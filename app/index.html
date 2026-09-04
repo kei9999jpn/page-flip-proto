@@ -92,7 +92,9 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 .tabs h2{margin:0;min-width:9em}
 .tarrow{background:none;border:1px solid rgba(201,162,74,.35);color:var(--gold);width:30px;height:30px;font-family:var(--serif);font-size:18px;line-height:1;cursor:pointer}
 .tarrow:active{color:#fff2c4;border-color:var(--gold)}
-.tab p{min-height:0}
+.tabbody{height:min(46vh,300px);overflow:hidden}
+.tab p{min-height:0;white-space:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.04em;line-height:2.0;margin:0 0 6px}
+.tab .mode{margin-top:10px;white-space:normal}
 .dots{display:flex;justify-content:center;gap:8px;margin:12px 0 0}
 .dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
 .dots i.on{background:var(--gold);opacity:1}
@@ -130,25 +132,26 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 <div class="ov" id="about"><div class="box frame"><i class="c1"></i><i class="c2"></i>
   <div class="tabs"><button class="tarrow" id="tabPrev">‹</button><h2 id="tabTitle">名言の書</h2><button class="tarrow" id="tabNext">›</button></div>
   <div class="rule"></div>
+  <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主が集めた言の葉を、すべて綴じた魔法の本である。</p>
-    <p>開くたびに、ページの並びが入れ替わる。前に見た順で開くことはない。</p>
-    <p>ページは今も増え続けている。増えたぶん、本は分厚くなる。</p>
-    <p>右上の数字は、今までに見たページの数を示す。</p>
-    <p>ページの右上をつまんで左へ引くと次へ進む。右へ引くと前に戻る。</p>
+    <p>書斎の主が集めた言の葉を、すべて綴じた魔法の本。</p>
+    <p>開くたびに、ページの並びが変わる。</p>
+    <p>ページは今も増え続けている。</p>
+    <p>右上の数字は、見たページの数。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>気に入ったページで「お気に入り」を押す。そのページが挟まれる。</p>
-    <p>挟んだページだけを綴じた一冊は、本の画面の「お気に入り」から開ける。</p>
-    <p>もう一度押すと、挟みが外れる。</p>
-    <p>お気に入りは、この端末に保存される。</p>
+    <p>気に入ったページで「お気に入り」を押す。</p>
+    <p>そのページが、この本に挟まれる。</p>
+    <p>挟んだページだけの一冊は、「お気に入り」から開ける。</p>
+    <p>もう一度押すと、外れる。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
-    <p>読んでいる途中で「栞を挟む」を押す。その場所と、ページの並びが記憶される。</p>
-    <p>栞があるあいだ、この本は姿を変えない。次に開くと、同じ並びの続きから始まる。</p>
-    <p>「新しく開き直す」を選ぶと、並びが変わり、栞は外れる。</p>
-    <p>栞は一つだけ。この端末に保存される。</p>
-    <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。挟んだ栞は外れる</span></button>
+    <p>「栞を挟む」を押すと、そのページに栞が挟まる。</p>
+    <p>次に開いたとき、栞のページから読める。</p>
+    <p>栞は一つ。新しく挟むと、前の栞は外れる。</p>
+    <p>「新しく開き直す」を押すと、並びが変わり、栞も外れる。</p>
+    <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。栞は外れる</span></button>
+  </div>
   </div>
   <div class="dots"><i class="on"></i><i></i><i></i></div>
   <button class="close" id="aboutClose">閉じる</button>
@@ -160,6 +163,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
   <label>BGMの大きさ <input type="range" id="sBgmVol" min="0" max="1" step="0.05"></label>
   <label>環境音 <input type="checkbox" id="sRain"></label>
   <label>環境音の大きさ <input type="range" id="sAmb" min="0" max="1" step="0.05"></label>
+  <label>紙をめくる音 <input type="checkbox" id="sFlipOn"></label>
   <button class="close" id="panelClose">閉じる</button>
 </div></div>
 
@@ -180,12 +184,11 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904n';
+const BUILD = '20260904p';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
-const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
+const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3', window:'../assets/rain/window.mp3',
                    storm:'../assets/rain/storm.mp3', suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3' };
 let S = { ...DEFAULTS };
@@ -194,7 +197,8 @@ if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; }
 if (!S.v4) { S.insects = false; S.candle = false; S.v4 = 1; }
 function saveS(){ try { localStorage.setItem('bookexp-settings', JSON.stringify(S)); } catch(e){} applyAudio(); notifyReader({ type:'settings' }); }
 S.rainKind = 'study';   // 環境音は1種類(KEI 2026-09-04)
-$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sAmb').value = S.amb; $('sBgmVol').value = S.bgmVol;
+$('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sAmb').value = S.amb; $('sBgmVol').value = S.bgmVol; $('sFlipOn').checked = S.flipOn !== false;
+$('sFlipOn').onchange = e => { S.flipOn = e.target.checked; saveS(); };
 $('sBgm').onchange = e => { S.bgm = e.target.checked; saveS(); };
 $('sRain').onchange = e => { S.rain = e.target.checked; saveS(); };
 $('sAmb').oninput = e => { S.amb = +e.target.value; saveS(); };
@@ -371,10 +375,6 @@ function animFigure(t, dt, wdt){
 
 // ---------- 本(book) ----------
 const sceneB = new THREE.Scene();
-// v12: 環境反射(革の鈍い艶・金箔の照り返し)。部屋の環境マップを暗めに
-const pmrem = new THREE.PMREMGenerator(renderer);
-sceneB.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-sceneB.environmentIntensity = 0.28;
 const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
 const CAM_R = 1.55;   // KEI: 本を少し小さく
 let camTheta = 0.35, camPhi = 1.02;
@@ -388,18 +388,9 @@ const glbOverride = new URLSearchParams(location.search).get('glb');
 new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '../assets/book.glb?b=' + BUILD, g => {
   book = g.scene; book.rotation.z = 0.06; pivot.add(book);
   // 革は艶を殺して暗く(蝋燭光でオレンジに飛ばない)
-  book.traverse(o => { if (o.isMesh && o.material) { const m = o.material; m.metalness = 0; if (!m.roughnessMap) m.roughness = Math.max(m.roughness || 0, 0.9); m.envMapIntensity = 0.9; if (m.color) m.color.multiplyScalar(0.9); m.needsUpdate = true; } });
+  book.traverse(o => { if (o.isMesh && o.material) { o.material.roughness = Math.max(o.material.roughness || 0, 0.95); o.material.metalness = 0; if (o.material.color) o.material.color.multiplyScalar(0.86); } });
   const cover = book.getObjectByName('Cover_Front');
   if (cover) { const bb = new THREE.Box3().setFromObject(cover); hinge = new THREE.Group(); hinge.position.set(bb.min.x, (bb.min.y+bb.max.y)/2, 0); book.add(hinge); hinge.attach(cover); }
-  // 栞のリボン: 栞を挟んでいる時だけ小口から垂れる(KEI 2026-09-04)
-  const bb = new THREE.Box3().setFromObject(book);
-  // 小口の少し上から、絹のリボンが一本垂れる(深紅・細い・艶なし)
-  const ribMat = new THREE.MeshStandardMaterial({ color:0x2e0808, roughness:0.95, metalness:0 });
-  const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.0009, 0.062, 0.011), ribMat);          // 小口の面に沿って垂れる(X=厚み方向は極薄)
-  rib2.position.set(bb.max.x + 0.0007, bb.max.y * 0.5 - 0.028, 0.012); rib2.rotation.y = 0.02;
-  const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.0009, 0.011), ribMat);           // 頁の間から少し顔を出す部分
-  rib1.position.set(bb.max.x - 0.009, bb.max.y * 0.5 + 0.0006, 0.012);
-  ribbon = new THREE.Group(); ribbon.add(rib1); ribbon.add(rib2); ribbon.visible = hasBookmark(); book.add(ribbon);
   pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
   $('ui').classList.add('show');
   setTimeout(() => say(TIPS[Math.floor(Math.random()*TIPS.length)], null, { small:true, autoHide:9000 }), 900);
@@ -473,14 +464,14 @@ function preloadReader(hash){
   readerReady = false;
   reader.src = '../a/?embed=1&b=' + BUILD + (hash || '#read');
 }
-function beginRead(hash){
+function beginRead(hash, title){
   if (opening || diving || stage !== 'book') return;
+  document.querySelector('#readTitle .main').textContent = title || '名言の書';
   ensureAudio();
   document.querySelectorAll('.ov').forEach(o => o.classList.remove('show'));
   preloadReader(hash);
   $('ui').classList.remove('show'); talk.classList.remove('show');
   // 2026-09-04 KEI: ゆっくり開く → ぐーっと吸い込まれる → 暗転 → 暗い所から蝋燭の灯りが徐々にボワンと灯る
-  while (camTheta > Math.PI) camTheta -= Math.PI * 2; while (camTheta < -Math.PI) camTheta += Math.PI * 2;
   $('readTitle').classList.add('show');
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
   setTimeout(() => { opening = true; }, 1700);
@@ -496,7 +487,7 @@ function beginRead(hash){
   }, 5900);
 }
 $('bOpen').onclick = () => beginRead('#read');
-$('bFav').onclick = () => beginRead('#fav');
+$('bFav').onclick = () => beginRead('#fav', 'お気に入り');
 $('mFresh').onclick = () => beginRead('#fresh');
 
 // 読書側からの合図
@@ -511,7 +502,7 @@ addEventListener('message', e => {
     $('fade').style.opacity = 1;
     setTimeout(() => {
       reader.classList.remove('show'); reader.src = 'about:blank'; $('bgDim').style.opacity = 0;
-      setStage('book'); bookTarget = 1; $('ui').classList.add('show'); if (ribbon) ribbon.visible = hasBookmark();
+      setStage('book'); bookTarget = 1; $('ui').classList.add('show');
       setTimeout(() => { $('fade').style.opacity = 0; }, 200);
     }, 1100);
   }
@@ -549,7 +540,7 @@ renderer.setAnimationLoop(() => {
     motesStep(wdt);
     if (diving) {
       diveT += wdt; const k = Math.min(diveT/2.4, 1), e2 = k*k*k*(k*(6*k-15)+10);   // ゆっくり入って一気に吸い込まれる
-      const r = CAM_R*(1-e2) + 0.19*e2, th = camTheta*(1-e2), ph = camPhi*(1-e2) + 0.12*e2;   // 本を貫通しない(手前で止まり、暗転と光の粒で中へ)
+      const r = CAM_R*(1-e2) + 0.19*e2, th = camTheta, ph = camPhi*(1-e2) + 0.12*e2;   // 回転角はそのまま(巻き戻すと本が回って見える)。貫通しない
       camB.position.set(r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph), r*Math.sin(ph)*Math.cos(th)); camB.lookAt(0, 0.01, 0);
     } else {
       camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta), CAM_R*Math.cos(camPhi), CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(0, 0, 0);
