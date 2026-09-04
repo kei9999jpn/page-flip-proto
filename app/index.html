@@ -259,7 +259,7 @@ const BGM_BASE = 0.16;                                     // 真ん中の音量
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
 function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
 function flipDuck(){ duck = 0.82; duckUntil = performance.now() + 550; }
-function rainTarget(){ return S.rain ? Math.min(1, 0.5 * curve(S.amb) * ambBoostCur) : 0; }
+function rainTarget(){ return S.rain ? Math.min(1, 0.4 * curve(S.amb) * ambBoostCur) : 0; }   // v21 KEI: 環境音 -20%
 
 // ---- Web Audio(効果音・文字送り音だけ)。最初のタップの中で作る ----
 let sx = null, sxMaster = null;
