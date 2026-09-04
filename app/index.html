@@ -41,18 +41,16 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 @media (prefers-reduced-motion:reduce){#grain{animation:none}}
 
 /* ---- 字幕(主の声): 金の細字 + 薄い墨の帯。下1/3 ---- */
-#talk{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 25vh);bottom:calc(env(safe-area-inset-bottom,0px) + 25dvh);transform:translateX(-50%);
-  width:min(92vw,620px);box-sizing:border-box;padding:0 max(env(safe-area-inset-right,0px),env(safe-area-inset-left,0px));
-  text-align:center;z-index:6;opacity:0;transition:opacity .9s;pointer-events:none}
+#talk{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);
+  width:min(96vw,640px);box-sizing:border-box;padding:0 max(env(safe-area-inset-right,0px),env(safe-area-inset-left,0px));
+  text-align:center;z-index:8;opacity:0;transition:opacity .9s;pointer-events:none}
 #talk.show{opacity:1}
 #talk .name{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.5em;text-indent:.5em;color:var(--gold);margin-bottom:8px}
-#talk .txt{min-height:1.6em;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:var(--t-lg);line-height:1.7;letter-spacing:.08em;font-weight:500;color:var(--gold2);
+/* v18 KEI: 本にかぶってよい。20%小さく、必ず1行(長い文は文言を短くする) */
+#talk .txt{min-height:1.6em;white-space:nowrap;font-size:clamp(13px,3.6vmin,19px);line-height:1.7;letter-spacing:.06em;font-weight:500;color:var(--gold2);
   text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
-#talk.small .txt{font-size:clamp(18px,5vmin,24px)}
+#talk.small .txt{font-size:clamp(13px,3.6vmin,19px)}
 /* v16: 読書中も本が語りかける(読書の上に重ねる) */
-body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 16vh);bottom:calc(env(safe-area-inset-bottom,0px) + 16dvh)}
-#talk.center{bottom:auto;top:50%;transform:translate(-50%,-50%);z-index:8}
-#talk.center .txt{font-size:clamp(14px,4vmin,19px)}
 #talk.slow{transition:opacity 2.6s ease}
 #talk .cur{opacity:.7;animation:blink 1s steps(1) infinite;margin-left:.15em}
 @keyframes blink{50%{opacity:0}}
@@ -105,12 +103,13 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 .box p b{color:var(--gold);font-weight:500;margin-right:.6em}
 .box hr{border:none;border-top:1px solid rgba(201,162,74,.22);margin:14px 0 12px}
 .box label{display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
-/* v17: 音量はタップ式(スマホで range が効かない件の対策)。10目盛り・タップかなぞりで決める */
+/* v18: 音量スライダー(見た目は元のつまみ式・中身は pointer 駆動でスマホでも確実に動く) */
 .volrow{display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
-.vol{display:flex;gap:4px;touch-action:none;padding:6px 0}
-.vol i{display:block;width:14px;height:22px;border:1px solid rgba(201,162,74,.45);background:rgba(0,0,0,.25);transition:background .12s,border-color .12s}
-.vol i.on{background:var(--gold);border-color:var(--gold2)}
-.vol i.mid{border-bottom-width:3px}
+.volrow span{flex:none;margin-right:12px}
+.sl{position:relative;width:130px;height:30px;touch-action:none;cursor:pointer;flex:none}
+.sl .tr{position:absolute;left:0;right:0;top:13px;height:4px;background:rgba(201,162,74,.28);border-radius:2px}
+.sl .fl{position:absolute;left:0;top:13px;height:4px;background:var(--gold);border-radius:2px;width:50%}
+.sl .th{position:absolute;top:6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--gold2);box-shadow:0 1px 4px rgba(0,0,0,.7);left:50%}
 .box input[type=checkbox]{accent-color:var(--gold);transform:scale(1.15)}
 .box select{background:rgba(0,0,0,.35);border:1px solid rgba(201,162,74,.35);color:var(--paper);font-family:var(--ui);font-size:13px;padding:5px 8px}
 .box .close{display:block;margin:18px auto 0;background:none;border:1px solid rgba(201,162,74,.45);color:var(--gold2);padding:8px 30px;letter-spacing:.4em;text-indent:.4em;font-family:var(--serif);cursor:pointer}
@@ -189,11 +188,11 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 <div class="ov" id="panel"><div class="box frame"><i class="c1"></i><i class="c2"></i>
   <h2>設定</h2><div class="rule"></div>
   <label>BGM <input type="checkbox" id="sBgm"></label>
-  <div class="volrow"><span>BGMの大きさ</span><div class="vol" data-key="bgmVol"></div></div>
+  <div class="volrow"><span>BGMの大きさ</span><div class="sl" data-key="bgmVol"><i class="tr"></i><i class="fl"></i><b class="th"></b></div></div>
   <label>環境音(雨・暖炉) <input type="checkbox" id="sRain"></label>
-  <div class="volrow"><span>環境音の大きさ</span><div class="vol" data-key="amb"></div></div>
+  <div class="volrow"><span>環境音の大きさ</span><div class="sl" data-key="amb"><i class="tr"></i><i class="fl"></i><b class="th"></b></div></div>
   <label>紙をめくる音 <input type="checkbox" id="sFlipOn"></label>
-  <div class="volrow"><span>めくる音の大きさ</span><div class="vol" data-key="flip"></div></div>
+  <div class="volrow"><span>めくる音の大きさ</span><div class="sl" data-key="flip"><i class="tr"></i><i class="fl"></i><b class="th"></b></div></div>
   <button class="close" id="panelClose">閉じる</button>
 </div></div>
 
@@ -214,7 +213,7 @@ body.stage-read #talk{z-index:26;bottom:calc(env(safe-area-inset-bottom,0px) + 1
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904v17';
+const BUILD = '20260904v18';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -230,15 +229,16 @@ if (!S.v5) { S.bgmVol = 0.5; S.amb = 0.5; S.flip = 0.5; S.v5 = 1; }   // v17: �
 $('sBgm').checked = S.bgm; $('sRain').checked = S.rain; $('sFlipOn').checked = S.flipOn !== false;
 // 音量カーブ: 0.5で標準(1.0)、1.0で約3倍。0で無音
 function curve(x){ return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }
-document.querySelectorAll('.vol').forEach(bar => {
-  const key = bar.dataset.key;
-  for (let i = 0; i < 10; i++) { const c = document.createElement('i'); if (i === 4) c.className = 'mid'; bar.appendChild(c); }
-  const paint = () => { const n = Math.round((S[key] || 0) * 10); [...bar.children].forEach((c, i) => c.classList.toggle('on', i < n)); };
-  const setFrom = (clientX) => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(1, Math.round((clientX - r.left) / r.width * 10) / 10)); if (v !== S[key]) { S[key] = v; paint(); saveS(); uiClick(0.6); } };
+document.querySelectorAll('.sl').forEach(bar => {
+  const key = bar.dataset.key, fl = bar.querySelector('.fl'), th = bar.querySelector('.th');
+  const paint = () => { const v = S[key] || 0; fl.style.width = (v * 100) + '%'; th.style.left = (v * 100) + '%'; };
+  const setFrom = (clientX) => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(1, Math.round((clientX - r.left) / r.width * 20) / 20)); if (v !== S[key]) { S[key] = v; paint(); saveS(); } };
   let down = false;
-  bar.addEventListener('pointerdown', e => { down = true; try { bar.setPointerCapture(e.pointerId); } catch(err){} setFrom(e.clientX); });
+  bar.addEventListener('pointerdown', e => { down = true; try { bar.setPointerCapture(e.pointerId); } catch(err){} setFrom(e.clientX); e.preventDefault(); });
   bar.addEventListener('pointermove', e => { if (down) setFrom(e.clientX); });
-  bar.addEventListener('pointerup', () => { down = false; }); bar.addEventListener('pointercancel', () => { down = false; });
+  const up = () => { if (down) uiClick(0.6); down = false; };
+  bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+  bar.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
   paint();
 });
 $('sFlipOn').onchange = e => { S.flipOn = e.target.checked; saveS(); };
@@ -268,66 +268,46 @@ document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => {
 const rain = $('rain');
 let audioOn = false, bgmWanted = false;
 // BGMの曲リスト。ここに足せば順に(2曲以上ならランダム順で)6秒クロスフェードで繋がる
-const BGM_LIST = ['../assets/bgm.mp3'];
-const BGM_XF = 6.0, BGM_BASE = 0.075;                      // クロスフェード秒 / 真ん中の音量
+const BGM_LIST = ['../assets/bgm-loop.mp3?b=' + BUILD];
+const BGM_BASE = 0.16;                                     // 真ん中の音量(KEI v17「全く聞こえない」→上げた)
 let duck = 1, duckCur = 1, ambBoost = 1, ambBoostCur = 1, duckUntil = 0, lastActivity = performance.now(), idleQuiet = false;
 function activity(){ lastActivity = performance.now(); if (idleQuiet) { idleQuiet = false; duck = 1; ambBoost = 1; } }
 function flipDuck(){ duck = 0.82; duckUntil = performance.now() + 550; }
 function rainTarget(){ return S.rain ? Math.min(1, 0.5 * curve(S.amb) * ambBoostCur) : 0; }
 
-// ---- Web Audio(効果音・BGM・文字送り音)。最初のタップの中で作る ----
-let sx = null, sxMaster = null, bgmGain = null;
+// ---- Web Audio(効果音・文字送り音だけ)。最初のタップの中で作る ----
+let sx = null, sxMaster = null;
 function sxInit(){
   if (sx) { if (sx.state === 'suspended') sx.resume().catch(()=>{}); return; }
   try { sx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ sx = null; return; }
   sxMaster = sx.createGain(); sxMaster.gain.value = 1; sxMaster.connect(sx.destination);
-  bgmGain = sx.createGain(); bgmGain.gain.value = 0; bgmGain.connect(sxMaster);
 }
-// ---- BGM: バッファ再生。曲末 BGM_XF 秒前に次の曲を重ねてフェード。1曲でも自分自身に繋いで途切れない ----
-const bgmBufs = {}; let bgmOrder = [], bgmPos = 0, bgmCur = null, bgmNext = null, bgmLoading = false;
-function bgmShuffle(){ bgmOrder = BGM_LIST.map((_, i) => i); for (let i = bgmOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [bgmOrder[i], bgmOrder[j]] = [bgmOrder[j], bgmOrder[i]]; } bgmPos = 0; }
-function bgmNextIdx(){ if (!bgmOrder.length || bgmPos >= bgmOrder.length) bgmShuffle(); return bgmOrder[bgmPos++]; }
-function bgmLoad(i){
-  if (bgmBufs[i]) return Promise.resolve(bgmBufs[i]);
-  return fetch(BGM_LIST[i]).then(r => r.arrayBuffer()).then(b => sx.decodeAudioData(b)).then(buf => { bgmBufs[i] = buf; return buf; });
-}
-function bgmPlayAt(i, buf, when, fadeIn){
-  const src = sx.createBufferSource(); src.buffer = buf;
-  const g = sx.createGain(); g.gain.setValueAtTime(fadeIn ? 0.0001 : 1, when); if (fadeIn) g.gain.linearRampToValueAtTime(1, when + BGM_XF);
-  src.connect(g); g.connect(bgmGain); src.start(when);
-  return { src, g, idx:i, start:when, end:when + buf.duration };
-}
+// ---- BGM: <audio loop>。ファイル側で曲末6秒を曲頭に重ねてあり(bgm-loop.mp3)、ループしても途切れない ----
+// 曲を増やす時: BGM_LIST に足すと ended で次へ(その場合は loop を外す)。当面は1曲ループ
+const bgm = $('bgm'); bgm.loop = true; bgm.src = BGM_LIST[0];
+let bgmFade = null;
+function bgmTargetVol(){ return (S.bgm && bgmWanted) ? Math.min(1, BGM_BASE * curve(S.bgmVol) * duckCur) : 0; }
 function bgmStart(){
-  if (!sx || bgmCur || bgmLoading || !bgmWanted || !S.bgm) return;
-  bgmLoading = true;
-  const i = bgmNextIdx();
-  bgmLoad(i).then(buf => { bgmLoading = false; if (!bgmWanted || !S.bgm || bgmCur) return; bgmCur = bgmPlayAt(i, buf, sx.currentTime + 0.05, false); bgmGain.gain.setTargetAtTime(bgmTargetVol(), sx.currentTime, 0.3); }).catch(() => { bgmLoading = false; });
+  if (!bgmWanted || !S.bgm) return;
+  if (bgmFade) { clearInterval(bgmFade); bgmFade = null; }
+  bgm.volume = bgmTargetVol();                              // 画面が裏でも(rAFが止まっていても)確実に音量が入る
+  if (bgm.paused) bgm.play().catch(()=>{});
 }
 function bgmStop(ms){
-  if (!sx) return;
-  const t = sx.currentTime, sec = Math.max(0.05, (ms || 200) / 1000);
-  bgmGain.gain.cancelScheduledValues(t); bgmGain.gain.setValueAtTime(bgmGain.gain.value, t); bgmGain.gain.linearRampToValueAtTime(0.0001, t + sec);
-  const cur = bgmCur, nxt = bgmNext; bgmCur = null; bgmNext = null;
-  [cur, nxt].forEach(n => { if (n && n.src) { try { n.src.stop(t + sec + 0.05); } catch(e){} } });
+  if (bgmFade) clearInterval(bgmFade);
+  const from = bgm.volume, t0 = performance.now();
+  bgmFade = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / Math.max(50, ms || 200)); bgm.volume = from * (1 - k);
+    if (k >= 1) { clearInterval(bgmFade); bgmFade = null; bgm.pause(); } }, 30);   // rAFでなく interval(裏タブでも止まらない)
 }
-function bgmTargetVol(){ return (S.bgm && bgmWanted) ? BGM_BASE * curve(S.bgmVol) * duckCur : 0; }
 function bgmTick(dt){
   if (duck < 1 && duckUntil && performance.now() > duckUntil && !idleQuiet) { duck = 1; duckUntil = 0; }
   if (stage === 'read' && !idleQuiet && performance.now() - lastActivity > 30000) { idleQuiet = true; duck = 0.55; ambBoost = 1.25; }
   duckCur += (duck - duckCur) * (1 - Math.exp(-dt / (duck < duckCur ? 0.12 : 0.9)));
   ambBoostCur += (ambBoost - ambBoostCur) * (1 - Math.exp(-dt / 1.5));
   if (audioOn) { const rv = rainTarget(); if (Math.abs(rain.volume - rv) > 0.002) rain.volume = rv; }
-  if (!sx || !bgmCur) return;
-  const tv = bgmTargetVol(); if (Math.abs(bgmGain.gain.value - tv) > 0.002) bgmGain.gain.setTargetAtTime(tv, sx.currentTime, 0.25);
-  // 曲末の少し前に次を重ねる(先に読み込んでおく)
-  const now = sx.currentTime, xfAt = bgmCur.end - BGM_XF;
-  if (!bgmNext && now > xfAt - 12) {
-    const i = bgmNextIdx(); bgmNext = { pending:true, idx:i };
-    bgmLoad(i).then(buf => { if (!bgmNext || !bgmNext.pending || !bgmCur) return; const when = Math.max(sx.currentTime + 0.05, xfAt);
-      bgmCur.g.gain.setValueAtTime(1, when); bgmCur.g.gain.linearRampToValueAtTime(0.0001, when + BGM_XF);
-      bgmNext = bgmPlayAt(i, buf, when, true); }).catch(() => { bgmNext = null; });
-  }
-  if (bgmNext && !bgmNext.pending && now >= bgmCur.end - 0.05) { try { bgmCur.src.stop(now + 0.1); } catch(e){} bgmCur = bgmNext; bgmNext = null; }
+  if (bgmFade || bgm.paused) return;
+  const tv = bgmTargetVol();
+  if (Math.abs(bgm.volume - tv) > 0.002) bgm.volume += (tv - bgm.volume) * (1 - Math.exp(-dt / 0.6));   // ふわっと追従(出だしも0→目標へ)
 }
 function bgmFadeOut(ms){ bgmWanted = false; bgmStop(ms); }
 
@@ -371,8 +351,8 @@ function applyAudio(){
   rain.volume = rainTarget();
   if (S.rain && rain.paused) rain.play().catch(()=>{});
   // BGMは本の中に入って最初のタッチから(KEI 2026-09-03)
-  if (S.bgm && bgmWanted) { sxInit(); bgmStart(); }
-  else if (bgmCur) bgmStop(400);
+  if (S.bgm && bgmWanted) bgmStart();
+  else if (!bgm.paused) bgmStop(400);
 }
 let unlocked = false;
 function unlockAudio(){
@@ -380,7 +360,9 @@ function unlockAudio(){
   if (unlocked) return; unlocked = true;
   sxInit();
   try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{}); } catch(e){}
-  try { const v = rain.volume; rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; rain.volume = v; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
+  // 雨: ミュート再生→そのまま。BGM: ミュート再生→まだ要らなければ止める(要るなら続けて鳴らす。止め直しの競合を避ける)
+  try { rain.muted = true; const p = rain.play(); if (p && p.then) p.then(() => { rain.muted = false; applyAudio(); }).catch(() => { rain.muted = false; }); else rain.muted = false; } catch(e){}
+  try { bgm.volume = 0; bgm.muted = true; const p = bgm.play(); if (p && p.then) p.then(() => { bgm.muted = false; if (!bgmWanted || !S.bgm) bgm.pause(); }).catch(() => { bgm.muted = false; }); else bgm.muted = false; } catch(e){}
 }
 function ensureAudio(){ unlockAudio(); sxInit(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
@@ -421,7 +403,6 @@ function say(line, done, opts){
   if (typing) { clearInterval(typing); typing = null; }
   if (talkHide) { clearTimeout(talkHide); talkHide = null; }
   talk.classList.toggle('small', !!opts.small);
-  talk.classList.toggle('center', !!opts.center);
   talk.classList.remove('slow');
   talk.classList.add('show');
   talkTxt.textContent = '';
@@ -448,17 +429,17 @@ function blip(i){
 function skipTyping(){ if (typing) { clearInterval(typing); typing = null; const f = typingDone; typingDone = null; if (f) f(); return true; } return false; }
 
 // 主の一言(本が出た時・ランダム・2026-09-03 KEI)
-const TIPS = [   // 2026-09-04 KEI確定 10本
-  '何か良い言の葉に出会えると良いですね',
-  '私が今まで集めてきた言の葉が、全てこの本に入っています',
-  'この本は、開くたびに中身が変わる不思議な本です',
-  '私はあちらで執筆を続けますので、気が済むまで、好きに読んでいてください',
-  '今日は、どんな言の葉が出てくるでしょうね',
-  '気に入った言の葉があれば、お気に入りにしておいてください　あとで読み返せます',
-  '私も、暇さえあればこの本を開いていますよ',
-  '悩みがあるときにこの本を開くと、解決のヒントになる言葉が出てきます',
-  '栞を挟んでおけば、次はその続きから読めますよ',
-  '眠くなったら、閉じてください　本は逃げませんから'
+const TIPS = [   // 2026-09-04 KEI確定10本 → v18: 1行に収まる長さ(16字前後)に短縮
+  '良い言の葉に出会えますように',
+  '集めた言の葉は、全てこの本に',
+  '開くたびに中身が変わる本です',
+  '気の済むまで、どうぞご自由に',
+  '今日は、どんな言の葉でしょうね',
+  '気に入ったら、お気に入りへ',
+  '私も、暇さえあれば開いていますよ',
+  '悩んだ時ほど、良い言葉が出ます',
+  '栞を挟めば、次はその続きからです',
+  '眠くなったら、閉じてください'
 ];
 // ============================================================ v16 本が語りかける(この端末での記録から一言を選ぶ)
 // localStorage 'bookexp-stats' = { visits, lastVisit, pagesTotal, favSaid }
@@ -473,18 +454,18 @@ function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 function arrivalLine(){
   const h = new Date().getHours();
   const days = prevVisit ? (Date.now() - prevVisit) / 86400000 : 0;
-  if (prevVisit && days >= 3) return pick(['お久しぶりですね', 'お久しぶりですね　本は、ずっとここにありましたよ', days >= 14 ? 'お久しぶりですね　随分と時間が経ちましたね' : 'お久しぶりですね　また来てくださって嬉しいです']);
-  if (h >= 0 && h < 4) return pick(['随分遅い時間まで起きているんですね', 'こんな時間まで起きているんですね　無理はなさらずに', '夜更かしですね　静かな時間には、言葉がよく染みますよ']);
+  if (prevVisit && days >= 3) return pick(['お久しぶりですね', 'お待ちしていましたよ', days >= 14 ? '随分と、経ちましたね' : 'また来てくださいましたね']);
+  if (h >= 0 && h < 4) return pick(['随分遅い時間まで起きているんですね', 'こんな時間まで、無理はなさらずに', '静かな夜は、言葉がよく染みますよ']);
   if (!ST.favSaid && favCount() >= 10) { ST.favSaid = true; saveST(); return 'だいぶあなたの本らしくなってきましたね'; }
   return pick(TIPS);
 }
 // 本を閉じて戻ってきた時の一言
 function returnLine(){
   const h = new Date().getHours();
-  if (pagesSession >= 30) return pick(['随分と読みましたね', '随分と読みましたね　目を休めてくださいね', '随分と読みましたね　何か、残る言葉はありましたか']);
+  if (pagesSession >= 30) return pick(['随分と読みましたね', '随分と読みましたね　目を休めて', '何か、残る言葉はありましたか']);
   if (rushSeen && pagesSession >= 8) { rushSeen = false; return pick(['そんなに急がなくても、本は逃げませんよ', 'ゆっくりで、いいんですよ']); }
   if (!ST.favSaid && favCount() >= 10) { ST.favSaid = true; saveST(); return 'だいぶあなたの本らしくなってきましたね'; }
-  if (h >= 0 && h < 4 && pagesSession >= 5) return pick(['随分遅い時間まで起きているんですね', 'もう遅い時間ですね　おやすみなさい']);
+  if (h >= 0 && h < 4 && pagesSession >= 5) return pick(['随分遅い時間まで起きているんですね', 'もう遅いですね　おやすみなさい']);
   if (pagesSession === 0) return pick(['また、気が向いたときに', 'いつでも、ここにありますから']);
   return pick(['お疲れさまでした', 'また、いつでもどうぞ', '良い言の葉は、ありましたか', 'また開いてくださいね']);
 }
@@ -510,8 +491,7 @@ const candleB = new THREE.PointLight(0xffc98f, 1.6, 2.5, 2.0); candleB.position.
 const rimB = new THREE.DirectionalLight(0x7a86a8, 0.9); rimB.position.set(-0.5, 0.4, -0.6); sceneB.add(rimB);
 const pivot = new THREE.Group(); sceneB.add(pivot);
 let book = null, hinge = null, bookScale = 0, bookTarget = 0, ribbon = null;
-function hasBookmark(){ try { const b = JSON.parse(sessionStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch(e){ return false; } }
-try { localStorage.removeItem('bookexp-bookmark'); } catch(e){}   // 旧: 端末に残る栞は廃止(KEI 2026-09-04)
+function hasBookmark(){ try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch(e){ return false; } }   // v18 KEI: 栞はブラウザを閉じても残す
 const glbOverride = new URLSearchParams(location.search).get('glb');
 new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '../assets/book.glb?b=' + BUILD, g => {
   book = g.scene; book.rotation.z = 0.06; pivot.add(book);
@@ -522,7 +502,7 @@ new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '
   pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
   buildRibbon(); buildFavMarks();
   $('ui').classList.add('show');
-  setTimeout(() => say(arrivalLine(), null, { small:true, autoHide:9000 }), 900);
+  setTimeout(() => say(arrivalLine(), null, { small:true, hold:4000 }), 900);
   setTimeout(maybeHint, 1400);
 });
 // v16: 栞の紐(本の下から尻尾が出ている)と、お気に入りの金の印(小口に小さく)。localStorage が世界の物体に変わる
@@ -670,7 +650,7 @@ function closeBookDone(){
   ambBoost = 1;
   if (ribbon) ribbon.visible = hasBookmark();
   buildFavMarks();
-  setTimeout(() => { $('ui').classList.add('show'); say(returnLine(), null, { small:true, center:true, hold:3000 }); }, 650);
+  setTimeout(() => { $('ui').classList.add('show'); say(returnLine(), null, { small:true, hold:3000 }); }, 650);
 }
 let shake = 0;
 addEventListener('message', e => {
@@ -764,7 +744,7 @@ function listenTilt(){
   }, { passive:true });
 }
 try { if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) listenTilt(); } catch(e){}
-window.__app = { beginRead, closeBook, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
+window.__app = { beginRead, closeBook, get dbg(){ return { bgmWanted, bgmFade, tv: bgmTargetVol(), duckCur, audioOn, sbgm: S.bgm, vol: S.bgmVol }; }, get stage(){ return stage; }, get bb(){ return bookBB; }, get book(){ return book; }, get ribbon(){ return ribbon; }, get favMarks(){ return favMarks; } };
 </script>
 </body>
 </html>
