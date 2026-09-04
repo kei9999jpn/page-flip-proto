@@ -14,9 +14,10 @@
   --gold:#c9a24a; --gold2:#e9cf7e; --gold-dim:rgba(201,162,74,.42); --ember:#e0742a;
   --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
   --ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
-  --t-lg:clamp(20px,5.4vw,28px); --t-md:15px; --t-sm:11.5px;
+  --t-lg:clamp(19px,5.2vw,27px); --t-md:clamp(13px,3.9vw,16px); --t-sm:clamp(10px,2.9vw,12px);
 }
 @font-face{font-family:"Soukou Mincho";src:url(../assets/fonts/SoukouMincho.ttf) format("truetype");font-display:swap}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;font-size:clamp(13px,3.9vw,17px)}
 html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-tap-highlight-color:transparent;color:var(--paper);
   background:var(--ink) url(../assets/app-bg.jpg) center 40%/cover no-repeat}
 #bgDim{position:fixed;inset:0;background:#000;opacity:0;transition:opacity 1.6s ease;pointer-events:none;z-index:1}
@@ -57,7 +58,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 #ui.show{opacity:1;pointer-events:auto}
 #choices{display:none}
 #bookBtns{display:flex;flex-direction:column;align-items:center;gap:14px}
-.seal{font-family:var(--serif);font-size:16px;letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
+.seal{font-family:var(--serif);font-size:clamp(14px,4.2vw,17px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
   padding:15px 40px;background:linear-gradient(180deg,rgba(26,19,11,.94),rgba(11,8,6,.96));
   transition:transform .18s ease,box-shadow .18s ease,color .18s}
 .seal:active{transform:translateY(1px) scale(.985);color:#fff2c4}
@@ -75,7 +76,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
   background:linear-gradient(180deg,#1c140b,#0f0a05);padding:26px 24px 20px}
 .box h2{font-family:var(--serif);font-size:15px;letter-spacing:.45em;text-indent:.45em;margin:0 0 6px;font-weight:500;text-align:center;color:var(--gold2)}
 .box .rule{width:70px;height:1px;margin:0 auto 18px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.box p{font-size:14px;line-height:2.05;letter-spacing:.06em;margin:0 0 8px;color:var(--paper)}
+.box p{font-size:var(--t-md);line-height:2.05;letter-spacing:.06em;margin:0 0 8px;color:var(--paper)}
 .box p b{color:var(--gold);font-weight:500;margin-right:.6em}
 .box hr{border:none;border-top:1px solid rgba(201,162,74,.22);margin:14px 0 12px}
 .box label{display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:14px;letter-spacing:.12em;font-family:var(--ui)}
@@ -87,6 +88,14 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
   color:var(--paper);background:rgba(0,0,0,.28);border:1px solid rgba(201,162,74,.3);font-family:var(--serif);font-size:14px;letter-spacing:.2em;cursor:pointer;text-align:left}
 .mode span{font-family:var(--ui);font-size:11px;letter-spacing:.08em;color:var(--paper2);margin-top:3px}
 
+.tabs{display:flex;align-items:center;justify-content:center;gap:10px}
+.tabs h2{margin:0;min-width:9em}
+.tarrow{background:none;border:1px solid rgba(201,162,74,.35);color:var(--gold);width:30px;height:30px;font-family:var(--serif);font-size:18px;line-height:1;cursor:pointer}
+.tarrow:active{color:#fff2c4;border-color:var(--gold)}
+.tab p{min-height:0}
+.dots{display:flex;justify-content:center;gap:8px;margin:12px 0 0}
+.dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
+.dots i.on{background:var(--gold);opacity:1}
 /* ---- 演出 ---- */
 #burst{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .55s ease;z-index:20;
   background:radial-gradient(circle at 50% 52%,rgba(255,238,200,.95) 0%,rgba(255,210,130,.55) 30%,transparent 68%)}
@@ -119,14 +128,29 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 </div>
 
 <div class="ov" id="about"><div class="box frame"><i class="c1"></i><i class="c2"></i>
-  <h2>名言の書</h2><div class="rule"></div>
-  <p>書斎の主が集めてきた言の葉を、すべて綴じた魔法の本。開くたびに、中身が入れ替わる。</p>
-  <p>この本は、日に日に分厚くなっているそうだ。</p>
-  <hr>
-  <p><b>お気に入り</b>　気に入ったページで「お気に入り」を押すと、あとでそれだけの一冊を読める。</p>
-  <p><b>栞</b>　「栞を挟む」で、その場所と並びを覚える。栞があれば続きから、なければ開くたびに新しい並びになる。</p>
-  <hr>
-  <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。挟んだ栞は外れる</span></button>
+  <div class="tabs"><button class="tarrow" id="tabPrev">‹</button><h2 id="tabTitle">名言の書</h2><button class="tarrow" id="tabNext">›</button></div>
+  <div class="rule"></div>
+  <div class="tab" data-tab="0">
+    <p>書斎の主が集めた言の葉を、すべて綴じた魔法の本である。</p>
+    <p>開くたびに、ページの並びが入れ替わる。前に見た順で開くことはない。</p>
+    <p>ページは今も増え続けている。増えたぶん、本は分厚くなる。</p>
+    <p>右上の数字は、今までに見たページの数を示す。</p>
+    <p>ページの右上をつまんで左へ引くと次へ進む。右へ引くと前に戻る。</p>
+  </div>
+  <div class="tab" data-tab="1" hidden>
+    <p>気に入ったページで「お気に入り」を押す。そのページが挟まれる。</p>
+    <p>挟んだページだけを綴じた一冊は、本の画面の「お気に入り」から開ける。</p>
+    <p>もう一度押すと、挟みが外れる。</p>
+    <p>お気に入りは、この端末に保存される。</p>
+  </div>
+  <div class="tab" data-tab="2" hidden>
+    <p>読んでいる途中で「栞を挟む」を押す。その場所と、ページの並びが記憶される。</p>
+    <p>栞があるあいだ、この本は姿を変えない。次に開くと、同じ並びの続きから始まる。</p>
+    <p>「新しく開き直す」を選ぶと、並びが変わり、栞は外れる。</p>
+    <p>栞は一つだけ。この端末に保存される。</p>
+    <button class="mode" id="mFresh">新しく開き直す<span>並びをシャッフルし直す。挟んだ栞は外れる</span></button>
+  </div>
+  <div class="dots"><i class="on"></i><i></i><i></i></div>
   <button class="close" id="aboutClose">閉じる</button>
 </div></div>
 
@@ -165,7 +189,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--serif);-webkit-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260904h';
+const BUILD = '20260904i';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, rainKind:'study', bgmVol:0.5 };
@@ -188,6 +212,18 @@ $('bSet').onclick = () => $('panel').classList.add('show');
 $('panelClose').onclick = () => $('panel').classList.remove('show');
 $('bAbout').onclick = () => $('about').classList.add('show');
 $('aboutClose').onclick = () => $('about').classList.remove('show');
+// 説明のタブ(この本とは / お気に入り / 栞)
+const TAB_TITLES = ['名言の書', 'お気に入り', '栞'];
+let tabIdx = 0;
+function showTab(n){
+  tabIdx = (n + 3) % 3;
+  document.querySelectorAll('#about .tab').forEach(el => { el.hidden = +el.dataset.tab !== tabIdx; });
+  document.querySelectorAll('#about .dots i').forEach((el, k) => el.classList.toggle('on', k === tabIdx));
+  $('tabTitle').textContent = TAB_TITLES[tabIdx];
+}
+$('tabPrev').onclick = () => showTab(tabIdx - 1);
+$('tabNext').onclick = () => showTab(tabIdx + 1);
+$('bAbout').addEventListener('click', () => showTab(0));
 document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); }));
 
 // ============================================================ 音(シェルが一元管理: 画面が変わっても途切れない)
@@ -210,8 +246,14 @@ function applyAudio(){
   if (S.bgm && bgmWanted && bgm.paused) bgm.play().catch(()=>{});
   if (!(S.bgm && bgmWanted) && !bgm.paused) bgm.pause();
 }
-function ensureAudio(){ if (audioOn) return; audioOn = true; applyAudio(); }
-addEventListener('pointerdown', ensureAudio);
+let unlocked = false;
+function unlockAudio(){
+  // iOS/Safari: ユーザー操作の中で play() を呼んだ要素だけが後から鳴らせる。両方を一度鳴らして止める
+  if (unlocked) return; unlocked = true;
+  [rain, bgm].forEach(a => { try { const v = a.volume; a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { if (a === bgm) { a.pause(); } a.muted = false; a.volume = v; applyAudio(); }).catch(() => { a.muted = false; }); else { a.muted = false; } } catch(e){} });
+}
+function ensureAudio(){ unlockAudio(); if (audioOn) return; audioOn = true; applyAudio(); }
+['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
 
 // ============================================================ 字幕
 const talk = $('talk'), talkTxt = $('talkTxt');
@@ -338,6 +380,27 @@ for (let i = 0; i < ND; i++) { dpos[i*3] = (Math.random()-0.5)*1.4; dpos[i*3+1] 
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3));
 const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color:0xd8b878, size:0.0035, transparent:true, opacity:0.55, depthWrite:false }));
 sceneB.add(dust);
+// 吸い込みの光の粒(2026-09-04 KEI: 貫通せず、粒がブワーッと出ながら中へ)
+const MN = 900, mGeo = new THREE.BufferGeometry(), mPos = new Float32Array(MN*3), mVel = new Float32Array(MN*3), mLife = new Float32Array(MN);
+mGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
+const mTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,'rgba(255,240,200,1)'); r.addColorStop(0.35,'rgba(255,200,120,.6)'); r.addColorStop(1,'rgba(255,150,60,0)'); g.fillStyle = r; g.fillRect(0,0,64,64); const t = new THREE.CanvasTexture(c); return t; })();
+const motes = new THREE.Points(mGeo, new THREE.PointsMaterial({ size:0.028, map:mTex, transparent:true, opacity:0.95, depthWrite:false, blending:THREE.AdditiveBlending, color:0xffd9a0 }));
+motes.visible = false; sceneB.add(motes);
+let motesOn = false, moteT = 0;
+function moteSpawn(i){ const a = Math.random()*Math.PI*2, r0 = Math.random()*0.05; mPos[i*3] = Math.cos(a)*r0; mPos[i*3+1] = 0.06 + Math.random()*0.02; mPos[i*3+2] = Math.sin(a)*r0;
+  const sp = 0.25 + Math.random()*0.55; mVel[i*3] = (Math.random()-0.5)*0.35; mVel[i*3+1] = sp; mVel[i*3+2] = (Math.random()-0.5)*0.35; mLife[i] = 0.4 + Math.random()*1.2; }
+function motesStart(){ motesOn = true; moteT = 0; motes.visible = true; for (let i = 0; i < MN; i++) { moteSpawn(i); mLife[i] *= Math.random(); } }
+function motesStop(){ motesOn = false; motes.visible = false; }
+function motesStep(dt){
+  if (!motesOn) return; moteT += dt;
+  for (let i = 0; i < MN; i++) {
+    mLife[i] -= dt;
+    if (mLife[i] <= 0) { moteSpawn(i); continue; }
+    mPos[i*3] += mVel[i*3]*dt; mPos[i*3+1] += mVel[i*3+1]*dt*(1 + moteT*0.6); mPos[i*3+2] += mVel[i*3+2]*dt;
+  }
+  mGeo.attributes.position.needsUpdate = true;
+  motes.material.opacity = Math.min(0.95, moteT * 1.2);
+}
 // ドラッグで回す(本の画面だけ)
 let dragging = false, lastX = 0, lastY = 0, idleT = 0, downXY = null;
 canvas.addEventListener('pointerdown', e => { if (stage !== 'book' || opening || diving) return; dragging = true; lastX = e.clientX; lastY = e.clientY; downXY = [e.clientX, e.clientY]; });
@@ -388,14 +451,14 @@ function beginRead(hash){
   $('readTitle').classList.add('show');
   setTimeout(() => $('readTitle').classList.remove('show'), 2400);
   setTimeout(() => { opening = true; }, 1700);
+  setTimeout(() => { motesStart(); }, 2600);
   setTimeout(() => { diving = true; }, 3300);
-  setTimeout(() => { $('burst').style.opacity = 1; }, 5300);
-  setTimeout(() => { $('fade').style.opacity = 1; }, 5700);
+  setTimeout(() => { $('fade').style.transition = 'opacity 1.6s ease-in'; $('fade').style.opacity = 1; }, 5000);
   setTimeout(() => {
     setStage('read'); $('bgDim').style.opacity = 1;
     reader.classList.add('show');                                   // 読書側は暗い所から rampGlow で灯る
-    setTimeout(() => { $('burst').style.opacity = 0; }, 200);
-    setTimeout(() => { $('fade').style.opacity = 0; }, 900);
+    motesStop();
+    setTimeout(() => { $('fade').style.transition = 'opacity 2.2s ease'; $('fade').style.opacity = 0; }, 700);   // 暗い所からボワボワと
     opening = false; diving = false; openT = 0; diveT = 0; if (hinge) hinge.rotation.z = 0;
   }, 6900);
 }
@@ -449,9 +512,10 @@ renderer.setAnimationLoop(() => {
     for (let i = 0; i < ND; i++) { p[i*3+1] += dspd[i]*dt; if (p[i*3+1] > 0.55) p[i*3+1] = -0.55; }
     dustGeo.attributes.position.needsUpdate = true;
     dust.visible = bookScale > 0.2;
+    motesStep(wdt);
     if (diving) {
       diveT += wdt; const k = Math.min(diveT/2.4, 1), e2 = k*k*k*(k*(6*k-15)+10);   // ゆっくり入って一気に吸い込まれる
-      const r = CAM_R*(1-e2) + 0.06*e2, th = camTheta*(1-e2), ph = camPhi*(1-e2) + 0.10*e2;
+      const r = CAM_R*(1-e2) + 0.19*e2, th = camTheta*(1-e2), ph = camPhi*(1-e2) + 0.12*e2;   // 本を貫通しない(手前で止まり、暗転と光の粒で中へ)
       camB.position.set(r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph), r*Math.sin(ph)*Math.cos(th)); camB.lookAt(0, 0.01, 0);
     } else {
       camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta), CAM_R*Math.cos(camPhi), CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(0, 0, 0);

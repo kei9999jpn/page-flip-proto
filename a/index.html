@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&display=swap">
 <style>
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavior:none}
 #bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.6) saturate(.9)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
@@ -839,7 +840,7 @@ if (location.hash === '#fav' || location.hash === '#read' || location.hash === '
   opening = true;
   cover.remove(); title.remove();
   cv.classList.add('in'); cv.classList.add('sway');
-  rampGlow(1.0, EMBED ? 2800 : 900);    // 埋め込み時は暗い所から徐々に灯る(KEI 2026-09-04)
+  rampGlow(1.0, EMBED ? 3600 : 900);    // 埋め込み時は暗い所から徐々に灯る(KEI 2026-09-04)
   pagesReady.then(() => { draw(); updateFavUI(); if (EMBED) { try { parent.postMessage({ type: 'reader-ready' }, '*'); } catch (e) {} }
     // 2026-09-03: 初回表示が暗いまま固まる(Chromeの合成キャッシュ)→ 少し後に layout+draw をやり直すと直る
     [300, 1200, 2600].forEach(ms => setTimeout(() => { dispatchEvent(new Event('resize')); }, ms));
