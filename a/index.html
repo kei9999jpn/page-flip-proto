@@ -11,7 +11,7 @@
 <style>
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavior:none}
-#bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.6) saturate(.9)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
+#bg{position:fixed;inset:0;background:url(../assets/app-bg.jpg) center 40%/cover no-repeat;filter:brightness(.78) saturate(.95)}   /* 2026-09-04: 読書中も書斎(貴族版)を見せる */
 #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 18%,rgba(0,0,0,.8) 100%)}
 #book{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
@@ -52,11 +52,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 
 /* ---- ambience overlays ---- */
 /* ろうそくの暖色オーバーレイ(KEIお気に入りの雰囲気)。Claude in Chromeのスクショでは暗く写るが実機は正常 */
-#candle{position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;z-index:5;
+#candle{display:none;position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;z-index:5;
   background:radial-gradient(ellipse 72% 58% at 50% 42%,rgba(255,176,88,.85),rgba(255,140,60,.25) 55%,transparent 75%)}
 /* 蝋燭の影: 縁が暗く、灯りの位置が揺れて影が動く */
 #shade{position:fixed;inset:-12%;pointer-events:none;z-index:6;
-  background:radial-gradient(ellipse 60% 52% at 56% 50%,transparent 36%,rgba(0,0,0,.5) 70%,rgba(0,0,0,.94) 100%);   /* v5: 中央は灯りで明るく、縁は闇 */
+  background:radial-gradient(ellipse 66% 58% at 56% 50%,transparent 40%,rgba(0,0,0,.32) 72%,rgba(0,0,0,.72) 100%);   /* v11: 背景の書斎が見えるように縁の闇を弱める */
   transition:none}
 #dust{position:fixed;inset:0;pointer-events:none;z-index:26}
 /* 手前のろうそく(2026-09-02 KEI: 灯りで読んでいる感を見せる) */
@@ -85,7 +85,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 #favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 2vh);z-index:27;width:104px;box-sizing:border-box;
   display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:11px;letter-spacing:.2em;text-indent:.2em;
   color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:80px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
-#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:15px;letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal}
+#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:15px;letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal;height:18px;line-height:18px}
+#favListBtn b svg{vertical-align:top}
 #favListBtn{left:calc(50% - 160px)}
 #setBtn{left:calc(50% - 52px);display:none}
 #setBtn.show{display:flex}
@@ -128,7 +129,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;overscroll-behavi
 <div id="seen"></div>
 <div id="backBtn">‹ 戻る</div>
 <div id="favBtn"><b>♡</b><span>お気に入り</span></div>
-<div id="favListBtn"><b>⌇</b><span>栞を挟む</span></div>
+<div id="favListBtn"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b><span>栞を挟む</span></div>
 <div id="setBtn"><b>⚙</b><span>設定</span></div>
 <div id="favPanel"><div class="box"><h2>お気に入り</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ何も挟まれていない</div><button class="close" id="favClose">閉じる</button></div></div>
@@ -295,7 +296,8 @@ function lampOverlay() {
   const pw = W - EDGE, ph = H - EDGE;
   const n = _fl ? _smoothNoise(_fl.t) : 0, cur = _fl ? _fl.cur : 0;
   const lv = Math.max(0, Math.min(1, lampLevel * (0.85 + n * 0.12 + cur * 0.35)));
-  const cx = pw * (0.56 + n * 0.02), cy = ph * (0.52 + n * 0.015), r = Math.max(pw, ph) * (0.78 + n * 0.05);
+  const n2 = _fl ? _smoothNoise(_fl.t * 1.7 + 3.1) : 0;
+  const cx = pw * (0.58 + n * 0.05 + n2 * 0.02), cy = ph * (0.54 + n * 0.035), r = Math.max(pw, ph) * (0.74 + n * 0.09 + cur * 0.15);
   ctx.save();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   // 縁を闇に沈める(乗算)
@@ -309,8 +311,8 @@ function lampOverlay() {
   // 中心に暖色の灯り(オーバーレイ)
   ctx.globalCompositeOperation = 'overlay';
   g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.75);
-  g.addColorStop(0, 'rgba(255,190,110,0.55)');
-  g.addColorStop(0.5, 'rgba(255,150,70,0.18)');
+  g.addColorStop(0, 'rgba(255,196,120,' + (0.62 + n2 * 0.12).toFixed(3) + ')');
+  g.addColorStop(0.5, 'rgba(255,150,70,0.20)');
   g.addColorStop(1, 'rgba(255,120,40,0)');
   ctx.globalAlpha = lv;
   ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
@@ -743,7 +745,7 @@ let _flPrev = performance.now();
     const vt = _fl.cur < -0.15 ? 0.10 : 0.02;
     if (vt !== veilTarget) { veilTarget = vt; veil.style.opacity = vt.toFixed(3); }
   }
-  if (lampLevel > 0.001 && !flip && (++_lampTick % 3 === 0)) draw();
+  if (lampLevel > 0.001 && !flip && (++_lampTick % 2 === 0)) draw();
   requestAnimationFrame(flicker);
 })(performance.now());
 
