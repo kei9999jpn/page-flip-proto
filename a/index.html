@@ -436,6 +436,20 @@ function lampOverlay() {
   g.addColorStop(1, 'rgba(255,120,40,0)');
   ctx.globalAlpha = lv;
   ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
+  if (PAPER) {
+    // v39: ロウソク側(右下)だけ暖かく当たり、反対側(左上)は静かに沈む。揺れは炎と同期
+    const ax = pw * (0.98 + gu * 0.02), ay = ph * (0.96 - n * 0.02);
+    let lg = ctx.createLinearGradient(ax, ay, pw * 0.15, ph * 0.05);
+    lg.addColorStop(0, 'rgba(255,178,80,' + (0.30 + n * 0.05 + cur * 0.12 + gj * 0.10).toFixed(3) + ')');
+    lg.addColorStop(0.45, 'rgba(255,160,70,0.08)'); lg.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = lv; ctx.fillStyle = lg; ctx.fillRect(0, 0, pw, ph);
+    lg = ctx.createLinearGradient(pw * 0.05, ph * 0.05, ax, ay);
+    lg.addColorStop(0, 'rgba(28,18,10,' + (0.34 - cur * 0.10).toFixed(3) + ')'); lg.addColorStop(0.55, 'rgba(28,18,10,0.06)'); lg.addColorStop(1, 'rgba(28,18,10,0)');
+    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = lv; ctx.fillStyle = lg; ctx.fillRect(0, 0, pw, ph);
+    // 紙の右端(ロウソク側)にほんの細い明るい縁
+    const eg = ctx.createLinearGradient(pw - 18, 0, pw, 0); eg.addColorStop(0, 'rgba(255,220,160,0)'); eg.addColorStop(1, 'rgba(255,220,160,' + (0.22 + gj * 0.15).toFixed(3) + ')');
+    ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = lv * 0.8; ctx.fillStyle = eg; ctx.fillRect(pw - 18, 0, 18, ph);
+  }
   ctx.restore();
 }
 // v16: 綴じ目(ノド)の影。めくり中は紙がしなって影が深くなる
@@ -584,6 +598,7 @@ let SND = SND_DEFAULTS;
 try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (e) {}
 // 2026-09-04: 埋め込みモード(app/ の中)。音楽と環境音は親(シェル)が鳴らすので、ここでは鳴らさない
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+const PAPER = new URLSearchParams(location.search).get('paper') !== '0';   // v39: 紙にロウソク側の光(?paper=0 で無し)
 let _touched = false;
 if (EMBED) { SND.bgm = false; SND.rain = false; }
 function applyRainSrc() {

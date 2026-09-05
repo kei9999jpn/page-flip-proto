@@ -250,7 +250,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260906v38';
+const BUILD = '20260906v39';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -658,7 +658,10 @@ function layoutBg(){
   if (!QUALITY) return;
   const h = 2 * BG_DIST * Math.tan(THREE.MathUtils.degToRad(camB.fov) / 2), w = h * camB.aspect;
   // 絵の縦横比で cover 合わせ(絵の中心やや上を見せる: 元CSSの center 40%)
-  let pw = w, ph = w / BG_IMG_ASPECT; if (ph < h) { ph = h; pw = h * BG_IMG_ASPECT; }
+  let pw = w, ph = w / BG_IMG_ASPECT; if (ph < h) { ph = h; pw = h * BG_IMG_ASPECT; }   // cover
+  if (camB.aspect < 0.72 && QP.get('bg') !== 'cover') {                                    // v39 KEI: 縦画面は部屋を遠く(絵の全体が入る)
+    const k = Math.min(w / pw, h / ph) * 1.06; pw *= k; ph *= k;                          // contain より6%だけ寄せる(端の黒を減らす)
+  }
   bgPlane.scale.set(pw, ph, 1); bgPlane.position.y = (ph - h) * 0.10;
   bgPlane.visible = bgReady;
 }
@@ -793,7 +796,7 @@ const reader = $('reader');
 let readerReady = false, opening = false, openT = 0, diving = false, diveT = 0;
 function preloadReader(hash){
   readerReady = false;
-  reader.src = '../a/?embed=1&b=' + BUILD + (hash || '#read');
+  reader.src = '../a/?embed=1&b=' + BUILD + (QP.get('paper') === '0' ? '&paper=0' : '') + (hash || '#read');
 }
 function beginRead(hash, title){
   if (opening || diving || stage !== 'book') return;
