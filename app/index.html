@@ -12,20 +12,20 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
 <link rel="icon" href="icon-192.png?v=3" type="image/png">
 <title>名言の書 — 異世界の叡智</title>
-<meta name="description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
+<meta name="description" content="異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="異世界の叡智">
 <meta property="og:title" content="名言の書 — 異世界の叡智">
-<meta property="og:description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
+<meta property="og:description" content="異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
 <meta property="og:url" content="https://kei9999jpn.github.io/page-flip-proto/app/">
-<meta property="og:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=2">
+<meta property="og:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="名言の書 — 異世界の叡智">
-<meta name="twitter:description" content="書斎の主・異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
-<meta name="twitter:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=2">
+<meta name="twitter:description" content="異世界の叡智が、これまでに集めた言の葉をすべて綴じた魔法の本。">
+<meta name="twitter:image" content="https://kei9999jpn.github.io/page-flip-proto/app/og.jpg?v=3">
 <style>
 /* ============================================================
    名言の書 v8 デザインシステム (2026-09-04)
@@ -174,7 +174,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   <div class="rule"></div>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>書斎の主・異世界の叡智が、長い歳月をかけて集めてきた言の葉。</p>
+    <p>異世界の叡智が、長い歳月をかけて集めてきた言の葉。</p>
     <p>そのすべてを一冊に綴じた、魔法の本です。</p>
     <p>名言、問い、ふとした気づき。</p>
     <p>心に残った言葉だけが、一枚ずつ挟まれています。</p>
@@ -232,7 +232,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260905v35';
+const BUILD = '20260905v36';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -250,7 +250,11 @@ if (!S.v6) { S.sound = true; S.v6 = 1; }
 function curve(x){ return x <= 0 ? 0 : Math.pow(x / 0.5, 1.6); }
 function applySound(){ S.bgm = S.rain = S.flipOn = !!S.sound; document.querySelectorAll('#bSound').forEach(b => { b.innerHTML = '<b>' + (S.sound ? SPK_ON : SPK_OFF) + '</b>音'; }); }
 const SPK_ON = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M15.5 6.5a5 5 0 0 1 0 7"/><path d="M18.5 4a9 9 0 0 1 0 12"/></svg>', SPK_OFF = '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#8a7a58" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M16 7l5 6M21 7l-5 6"/></svg>';
-function toggleSound(){ S.sound = !S.sound; applySound(); saveS(); if (S.sound) uiClick(1); }
+function toggleSound(){
+  S.sound = !S.sound; applySound(); saveS();
+  if (S.sound) { audioOn = false; ensureAudio(); if (sx && sx.state !== 'running') sx.resume().catch(()=>{}); setRainVol(rainTarget()); rain.play().catch(()=>{}); uiClick(1); }
+  else { try { rain.pause(); } catch(e){} decks.forEach(d => { try { d.pause(); } catch(e){} }); if (sx && sx.state === 'running') sx.suspend().catch(()=>{}); }   // v36: OFF は音を完全に手放す
+}
 applySound();
 document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => uiClick(1)));
 $('bSound').addEventListener('click', toggleSound);
@@ -484,10 +488,11 @@ function unlockAudio(){
   // iPhoneは volume が効かないので、ミュート解除の前に必ず止める(解除→停止の順だと一瞬「ドゥン」と鳴る・KEI 2026-09-04)
   if (BGM_ENABLED) decks.forEach((d, i) => { try { if (!d.src) d.src = BGM_LIST[0]; setDeckVol(i, 0); d.muted = true; const p = d.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm || i !== dk) { d.pause(); try { d.currentTime = 0; } catch(e){} } d.muted = false; }).catch(() => { d.muted = false; }); else d.muted = false; } catch(e){} });
 }
-function ensureAudio(){ unlockAudio(); sxInit(); loadPageBuf(); goFullscreen(); activity(); if (audioOn) return; audioOn = true; applyAudio(); }
+function ensureAudio(){ goFullscreen(); activity(); if (!S.sound) return;   // v36: 音OFFの間は音に一切触らない(YouTube等の裏再生を止めない)
+  unlockAudio(); sxInit(); loadPageBuf(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
-['touchend','click','pointerup'].forEach(ev => addEventListener(ev, () => { if (sx && sx.state !== 'running') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); }, { passive:true }));
-document.addEventListener('visibilitychange', () => { if (!document.hidden && sx && sx.state === 'suspended') sx.resume().catch(()=>{}); });
+['touchend','click','pointerup'].forEach(ev => addEventListener(ev, () => { if (!S.sound || !sx) return; if (sx.state !== 'running') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); }, { passive:true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.sound && sx && sx.state === 'suspended') sx.resume().catch(()=>{}); });
 
 // ============================================================ 没入(モバイル)
 // Android Chrome は Fullscreen API でブラウザの枠を消せる。iOS Safari は文書の全画面がないので無視される

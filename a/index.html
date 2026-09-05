@@ -597,7 +597,7 @@ applyRainSrc();
 // 別タブ(設定画面)で雨の種類が変わったら追従する
 addEventListener('message', e => {
   const d = e.data || {};
-  if (d.type === 'settings') { try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (err) {} if (EMBED) { SND.bgm = false; SND.rain = false; } paintSound(); }
+  if (d.type === 'settings') { try { SND = { ...SND_DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch (err) {} if (EMBED) { SND.bgm = false; SND.rain = false; } paintSound(); if (ac) { try { if (SND.flipOn === false) ac.suspend(); else ac.resume(); } catch (e) {} } }   // v36: OFFは音を手放す
 });
 addEventListener('storage', e => {
   if (e.key !== 'bookexp-settings') return;
@@ -649,6 +649,7 @@ function startCrackle() {
 }
 function ensureAudio() {
   if (EMBED && !_touched) { _touched = true; try { parent.postMessage({ type: 'reader-touch' }, '*'); } catch (e) {} }
+  if (SND.flipOn === false) return;   // v36: 音OFFの間は AudioContext を作らない
   if (ac && ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }   // v17: めくり音が鳴ったり鳴らなかったりする件(iOSの自動停止)
   if (!ac) {
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
@@ -903,6 +904,7 @@ function release(e) {
 cv.addEventListener('pointerup', release);
 // v32: iPhone は touchend/click の中でしか AudioContext を確実に起こせない(めくり音が全く鳴らない件)
 ['touchend', 'click'].forEach(ev => document.addEventListener(ev, () => {
+  if (SND.flipOn === false) return;   // v36: OFFの間は音に触らない
   if (!ac) ensureAudio();
   if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
   if (!_fbPool.length) { try { const a = new Audio('../assets/se/page-loud.mp3'); a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { a.pause(); a.muted = false; a.currentTime = 0; }).catch(() => { a.muted = false; }); _fbPool.push(a); } catch (e) {} }   // 代替要素の解錠
