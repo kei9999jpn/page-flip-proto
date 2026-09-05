@@ -42,7 +42,9 @@
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;font-size:clamp(14px,4.1vmin,18px)}
 html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--serif);-webkit-tap-highlight-color:transparent;color:var(--paper);
   background:var(--ink) url(../assets/app-bg.jpg) center 40%/cover no-repeat;
+  /* v38: 部屋の絵は three.js 側で描くので、読み込み後は CSS の絵を消す */
   height:100%;height:-webkit-fill-available;height:100dvh}
+body.q3d{background-image:none !important}
 #bgDim{position:fixed;inset:0;background:#000;opacity:0;transition:opacity 1.6s ease;pointer-events:none;z-index:1}
 #c{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;z-index:2}
 /* 画面全体の統一: ビネット + フィルムグレイン(3) */
@@ -240,8 +242,15 @@ window.track = (name, params) => { try { if (window.gtag) gtag('event', name, pa
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260905v37';
+const BUILD = '20260906v38';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -620,15 +629,39 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.72;
 renderer.autoClear = false;
+// v38 (2026-09-06 KEI「最高傑作を」): 仕上げの光。?classic=1 で旧描画に戻せる
+const QUALITY = !new URLSearchParams(location.search).has('classic');
+if (QUALITY) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 
 // ---------- 本(book) ----------
 const sceneB = new THREE.Scene();
-const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
+const camB = new THREE.PerspectiveCamera(38, 1, 0.01, 10); sceneB.add(camB);
 const CAM_R = 1.55;   // KEI: 本を少し小さく
 let camTheta = 0.35, camPhi = 1.02;
-sceneB.add(new THREE.AmbientLight(0x2a2018, 1.0));
-const candleB = new THREE.PointLight(0xffc98f, 1.6, 2.5, 2.0); candleB.position.set(0.28, 0.34, 0.30); sceneB.add(candleB);
-const rimB = new THREE.DirectionalLight(0x7a86a8, 0.9); rimB.position.set(-0.5, 0.4, -0.6); sceneB.add(rimB);
+sceneB.add(new THREE.AmbientLight(0x2a2018, QUALITY ? 0.75 : 1.0));
+const CANDLE_I = QUALITY ? 2.0 : 1.6;
+const candleB = new THREE.PointLight(0xffc98f, CANDLE_I, 2.5, 2.0); candleB.position.set(0.28, 0.34, 0.30); sceneB.add(candleB);
+const rimB = new THREE.DirectionalLight(QUALITY ? 0x6f80b8 : 0x7a86a8, QUALITY ? 0.55 : 0.9); rimB.position.set(-0.8, 0.9, -0.6); sceneB.add(rimB);
+// v38: 暖炉の光(部屋の絵では左)。ゆっくり揺れる。蝋燭は影を落とす
+const fireB = new THREE.PointLight(0xff6a22, QUALITY ? 0.9 : 0, 4.0, 2.0); fireB.position.set(-1.25, -0.05, 0.45); sceneB.add(fireB);
+if (QUALITY) { candleB.castShadow = true; candleB.shadow.mapSize.set(MOBILE ? 512 : 1024, MOBILE ? 512 : 1024); candleB.shadow.bias = -0.003; candleB.shadow.radius = 4; }
+// v38: 部屋の絵を「舞台の奥」に置く(後処理のぼけ・にじみ・色が部屋にも掛かり、本が浮かない)
+const bgTex = new THREE.TextureLoader().load('../assets/app-bg.jpg', t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; bgReady = true; layoutBg(); document.body.classList.add('q3d'); });
+let bgReady = false;
+const BG_DIST = 3.0, BG_IMG_ASPECT = 941 / 1672;
+const QP = new URLSearchParams(location.search);
+const BG_GAIN = +(QP.get('q_gain') || 3.0);   // ACES(露出0.72)で沈む分を戻し、元のCSS表示と同じ明るさに
+const bgMat = new THREE.MeshBasicMaterial({ map: bgTex, depthWrite: false, toneMapped: true, color: new THREE.Color().setScalar(BG_GAIN) });
+const bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), bgMat); bgPlane.position.set(0, 0, -BG_DIST); bgPlane.renderOrder = -10; bgPlane.visible = false;
+if (QUALITY) camB.add(bgPlane);
+function layoutBg(){
+  if (!QUALITY) return;
+  const h = 2 * BG_DIST * Math.tan(THREE.MathUtils.degToRad(camB.fov) / 2), w = h * camB.aspect;
+  // 絵の縦横比で cover 合わせ(絵の中心やや上を見せる: 元CSSの center 40%)
+  let pw = w, ph = w / BG_IMG_ASPECT; if (ph < h) { ph = h; pw = h * BG_IMG_ASPECT; }
+  bgPlane.scale.set(pw, ph, 1); bgPlane.position.y = (ph - h) * 0.10;
+  bgPlane.visible = bgReady;
+}
 const pivot = new THREE.Group(); sceneB.add(pivot);
 let book = null, hinge = null, bookScale = 0, bookTarget = 0, ribbon = null;
 function hasBookmark(){ try { const b = JSON.parse(localStorage.getItem('bookexp-bookmark')); return !!(b && b.deck && b.deck.length); } catch(e){ return false; } }   // v18 KEI: 栞はブラウザを閉じても残す
@@ -636,15 +669,45 @@ const glbOverride = new URLSearchParams(location.search).get('glb');
 new GLTFLoader().load(glbOverride ? '../' + glbOverride + '?_=' + Date.now() : '../assets/book.glb?b=' + BUILD, g => {
   book = g.scene; book.rotation.z = 0.06; pivot.add(book);
   // 革は艶を殺して暗く(蝋燭光でオレンジに飛ばない)
-  book.traverse(o => { if (o.isMesh && o.material) { o.material.roughness = Math.max(o.material.roughness || 0, 0.95); o.material.metalness = 0; if (o.material.color) o.material.color.multiplyScalar(0.86); } });
+  book.traverse(o => { if (o.isMesh && o.material) { o.material.roughness = Math.max(o.material.roughness || 0, 0.95); o.material.metalness = 0; if (o.material.color) o.material.color.multiplyScalar(0.86); if (QUALITY) { o.castShadow = true; o.receiveShadow = true; o.material.envMapIntensity = 0.22; } } });
+  if (QUALITY) applyLeather(book);
   const cover = book.getObjectByName('Cover_Front');
   if (cover) { const bb = new THREE.Box3().setFromObject(cover); hinge = new THREE.Group(); hinge.position.set(bb.min.x, (bb.min.y+bb.max.y)/2, 0); book.add(hinge); hinge.attach(cover); }
   pivot.scale.setScalar(1); bookScale = 1; bookTarget = 1;
-  buildRibbon(); buildFavMarks();
+  buildRibbon(); buildFavMarks(); if (QUALITY) buildStage();
   $('ui').classList.add('show');
   whenVisible(() => setTimeout(() => say(arrivalLine(), null, { small:true, hold:4000 }), 900));   // v21: 裏で開かれた時はタップまで凍る→見えてから出す
   setTimeout(maybeHint, 1400);
 });
+// v38: 革の凹凸と艶ムラ(cover-texture から生成した normal/roughness)。GLTF の UV 規約に合わせ flipY=false
+function applyLeather(root){
+  const tl = new THREE.TextureLoader();
+  const nrm = tl.load('../assets/cover-normal.jpg'); nrm.flipY = false; nrm.colorSpace = THREE.NoColorSpace;
+  const rgh = tl.load('../assets/cover-rough.jpg'); rgh.flipY = false; rgh.colorSpace = THREE.NoColorSpace;
+  root.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    if (/Cover_Front|Cover_Back/.test(o.name)) { const m = o.material; m.normalMap = nrm; m.normalScale = new THREE.Vector2(0.55, 0.55); m.roughnessMap = rgh; m.roughness = 1.0; m.envMapIntensity = 0.35; m.needsUpdate = true; }
+  });
+}
+// v38: 舞台 = 本の下の見えない机(影だけ受ける) + 接地の柔らかい影
+let stageGroup = null;
+function buildStage(){
+  if (!book || !bookBB || stageGroup) return;
+  stageGroup = new THREE.Group();
+  const y = bookBB.min.y - 0.004;
+  const desk = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.ShadowMaterial({ opacity: 0.5, color: 0x000000 }));
+  desk.rotation.x = -Math.PI / 2; desk.position.y = y; desk.receiveShadow = true; stageGroup.add(desk);
+  // 接地の影(放射状のぼかし)
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  const r = g.createRadialGradient(128, 128, 20, 128, 128, 128); r.addColorStop(0, 'rgba(0,0,0,.85)'); r.addColorStop(0.55, 'rgba(0,0,0,.35)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c);
+  const bw = bookBB.max.x - bookBB.min.x, bz = bookBB.max.z - bookBB.min.z;
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(bw * 1.55, bz * 1.45), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.9 }));
+  contact.rotation.x = -Math.PI / 2; contact.position.set((bookBB.min.x + bookBB.max.x) / 2 + bw * 0.03, y + 0.001, (bookBB.min.z + bookBB.max.z) / 2); contact.renderOrder = -1;
+  stageGroup.add(contact);
+  book.add(stageGroup);
+}
 // v16: 栞の紐(本の下から尻尾が出ている)と、お気に入りの金の印(小口に小さく)。localStorage が世界の物体に変わる
 let bookBB = null, favMarks = null;
 function buildRibbon(){
@@ -697,7 +760,7 @@ const MN = MOBILE ? 800 : 1600, mGeo = new THREE.BufferGeometry(), mPos = new Fl
 mGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
 const mTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,'rgba(255,240,200,1)'); r.addColorStop(0.35,'rgba(255,200,120,.6)'); r.addColorStop(1,'rgba(255,150,60,0)'); g.fillStyle = r; g.fillRect(0,0,64,64); const t = new THREE.CanvasTexture(c); return t; })();
 const motes = new THREE.Points(mGeo, new THREE.PointsMaterial({ size:0.016, map:mTex, transparent:true, opacity:0.95, depthWrite:false, blending:THREE.AdditiveBlending, color:0xffd9a0 }));
-motes.visible = false; camB.add(motes); sceneB.add(camB);   // カメラ座標に置き、画面全体から湧かせる
+motes.visible = false; camB.add(motes);   // カメラ座標に置き、画面全体から湧かせる
 let motesOn = false, moteT = 0;
 function moteSpawn(i){ // 画面全体(カメラ前方の板)からランダムに湧き、手前へ流れてくる
   const z = -(0.35 + Math.random()*1.4), spread = 0.62 * (-z);
@@ -817,12 +880,58 @@ addEventListener('message', e => {
 function notifyReader(msg){ try { reader.contentWindow && reader.contentWindow.postMessage(msg, '*'); } catch(e){} }
 
 // ============================================================ ループ
-function resize(){ renderer.setSize(innerWidth, innerHeight, false); camB.aspect = innerWidth/innerHeight; camB.updateProjectionMatrix(); }
+function resize(){ renderer.setSize(innerWidth, innerHeight, false); camB.aspect = innerWidth/innerHeight; camB.updateProjectionMatrix(); layoutBg(); if (composer) { composer.setSize(innerWidth, innerHeight); if (bloomPass) bloomPass.resolution.set(innerWidth / 2, innerHeight / 2); } }
+// ---- v38 後処理: ぼけ(机上にピント) → 光のにじみ → 色の締め・周辺減光・粒子 → 出力 ----
+let composer = null, bloomPass = null, bokehPass = null, gradePass = null;
+let perfN = 0, perfT = 0, perfDone = false;
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 0.30 }, uGrain: { value: 0.018 }, uCA: { value: 0.0012 }, uWarm: { value: 1.0 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float uTime, uVig, uGrain, uCA, uWarm; varying vec2 vUv;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
+    void main(){
+      vec2 uv = vUv; vec2 d = uv - 0.5; float r2 = dot(d, d);
+      // ごく薄い色ずれ(端だけ)
+      vec2 off = d * uCA * r2 * 8.0;
+      vec4 c; c.r = texture2D(tDiffuse, uv + off).r; c.g = texture2D(tDiffuse, uv).g; c.b = texture2D(tDiffuse, uv - off).b; c.a = texture2D(tDiffuse, uv).a;
+      // 色の締め: 暗部は青黒く、明部は琥珀へ
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      vec3 shadowTint = vec3(0.95, 0.96, 1.04), lightTint = vec3(1.03, 1.0, 0.96);
+      c.rgb *= mix(shadowTint, lightTint, smoothstep(0.05, 0.75, l));
+      c.rgb = mix(vec3(l), c.rgb, 1.04);                             // 彩度ほんの少し
+      c.rgb = pow(max(c.rgb, 0.0), vec3(1.0 / uWarm));
+      // 周辺減光
+      float vig = 1.0 - uVig * smoothstep(0.15, 0.95, r2 * 2.2);
+      c.rgb *= vig;
+      // 粒子
+      float g = (hash(uv * vec2(1920.0, 1080.0) + fract(uTime)) - 0.5) * uGrain;
+      c.rgb += g * (0.35 + 0.65 * (1.0 - l));
+      gl_FragColor = c;
+    }`
+};
+function buildComposer(){
+  if (!QUALITY || QP.get('q_post') === '0') return;
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(sceneB, camB));
+  // 本は常に鮮明・奥だけ僅かにぼける
+  if (!MOBILE) { bokehPass = new BokehPass(sceneB, camB, { focus: CAM_R, aperture: 0.00004, maxblur: 0.0045 }); composer.addPass(bokehPass); }
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), MOBILE ? 0.32 : 0.42, 0.65, 0.80);
+  composer.addPass(bloomPass);
+  gradePass = new ShaderPass(GradeShader); if (QP.get('q_vig')) gradePass.uniforms.uVig.value = +QP.get('q_vig'); if (MOBILE) { gradePass.uniforms.uGrain.value = 0.012; gradePass.uniforms.uCA.value = 0.0; } composer.addPass(gradePass);
+  composer.addPass(new OutputPass());
+  // 部屋の反射(弱く)
+  const pmrem = new THREE.PMREMGenerator(renderer); sceneB.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose();
+}
+buildComposer();
 addEventListener('resize', resize); resize();
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const raw = clock.getDelta(), dt = Math.min(raw, 0.05), wdt = Math.min(raw, 0.5), t = clock.elapsedTime;   // wdt=実時間ベース(フェード/出現用。裏タブや低fpsでも遅れない)
   bgmTick(wdt);
+  if (stage === 'read' && !closing && !diving) return;   // v38: 読書中は3Dを描かない(電池)
+  // v38: 重い端末では自動で軽くする(最初の8秒の平均fpsが低ければ後処理と影を外す)
+  if (composer && !perfDone) { perfN++; perfT += raw; if (perfT > 8) { perfDone = true; const fps = perfN / perfT; if (fps < 22) { composer = null; renderer.shadowMap.enabled = false; candleB.castShadow = false; console.log('quality: auto-lite', fps.toFixed(1)); } } }
   renderer.clear();
   // --- 本 ---
   if (book) {
@@ -855,7 +964,14 @@ renderer.setAnimationLoop(() => {
     // 端末の傾きで灯りの位置が変わり、革と金の反射が動く
     tiltCur.x += (tiltRaw.x - tiltCur.x) * 0.08; tiltCur.y += (tiltRaw.y - tiltCur.y) * 0.08;
     candleB.position.set(0.28 + tiltCur.x * 0.22, 0.34 + tiltCur.y * 0.12, 0.30 - tiltCur.y * 0.15);
-    candleB.intensity = 1.6 + Math.sin(t*0.71)*0.18 + Math.sin(t*1.63+1.1)*0.11 + Math.sin(t*0.29+2.4)*0.14 + shake * 0.6;
+    candleB.intensity = CANDLE_I + Math.sin(t*0.71)*0.18 + Math.sin(t*1.63+1.1)*0.11 + Math.sin(t*0.29+2.4)*0.14 + shake * 0.6;
+    if (QUALITY) {
+      const fl = Math.sin(t*1.9)*0.5 + Math.sin(t*3.7+0.8)*0.3 + Math.sin(t*0.53+2.0)*0.2;   // 暖炉: 少し速い揺れ
+      fireB.intensity = 0.9 + fl * 0.22 + shake * 0.4;
+      const bgF = BG_GAIN * (0.97 + fl * 0.025 + (candleB.intensity - CANDLE_I) * 0.03); bgMat.color.setScalar(bgF);   // 部屋の絵も一緒に息をする
+      if (gradePass) gradePass.uniforms.uTime.value = t;
+      if (bokehPass) bokehPass.uniforms['focus'].value = camB.position.length();           // ピントは常に本
+    }
     const p = dustGeo.attributes.position.array;
     for (let i = 0; i < ND; i++) { p[i*3+1] += dspd[i]*dt; if (p[i*3+1] > 0.55) p[i*3+1] = -0.55; }
     dustGeo.attributes.position.needsUpdate = true;
@@ -871,9 +987,10 @@ renderer.setAnimationLoop(() => {
       const r = closeCam.r, ph = closeCam.ph, th = camTheta;
       camB.position.set(r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph), r*Math.sin(ph)*Math.cos(th)); camB.lookAt(0, 0.01, 0);
     } else {
-      camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta) + sx0, CAM_R*Math.cos(camPhi) + sy0, CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(tiltCur.x * 0.02, tiltCur.y * 0.015, 0);
+      const hx = QUALITY ? Math.sin(t*0.37)*0.004 + Math.sin(t*0.91+1.0)*0.002 : 0, hy = QUALITY ? Math.sin(t*0.53+1.0)*0.003 : 0;   // v38: 手持ちの微かな揺れ
+      camB.position.set(CAM_R*Math.sin(camPhi)*Math.sin(camTheta) + sx0, CAM_R*Math.cos(camPhi) + sy0, CAM_R*Math.sin(camPhi)*Math.cos(camTheta)); camB.lookAt(tiltCur.x * 0.02 + hx, tiltCur.y * 0.015 + hy, 0);
     }
-    if (bookScale > 0.002) renderer.render(sceneB, camB);
+    if (bookScale > 0.002) { if (composer) composer.render(); else renderer.render(sceneB, camB); }
   }
 });
 // v16: 端末の傾き(iOSは最初のタップで許可を取る)
