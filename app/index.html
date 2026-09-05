@@ -250,7 +250,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260906v39';
+const BUILD = '20260906v40';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
@@ -796,7 +796,7 @@ const reader = $('reader');
 let readerReady = false, opening = false, openT = 0, diving = false, diveT = 0;
 function preloadReader(hash){
   readerReady = false;
-  reader.src = '../a/?embed=1&b=' + BUILD + (QP.get('paper') === '0' ? '&paper=0' : '') + (hash || '#read');
+  reader.src = '../a/?embed=1&b=' + BUILD + ((QP.get('paper') === '0' || !QUALITY) ? '&paper=0' : '') + (hash || '#read');   // classic は紙の光も無し
 }
 function beginRead(hash, title){
   if (opening || diving || stage !== 'book') return;

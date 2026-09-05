@@ -1036,7 +1036,9 @@ const shade = document.getElementById('shade'), flame = document.getElementById(
 // v23: ロウソク画像(あれば点ける)。炎の位置は画像内の比率(FLAME_X/Y)で合わせる
 const candleImg = document.getElementById('candleImg'), flameGlow = document.getElementById('flameGlow');
 var candleOn = false; const FLAME_X = 0.43, FLAME_Y = 0.23;
-candleImg.addEventListener('load', () => { candleOn = true; setTimeout(() => candleImg.classList.add('on'), 800); });
+function candleLit() { if (candleOn) return; candleOn = true; setTimeout(() => candleImg.classList.add('on'), 800); }
+candleImg.addEventListener('load', candleLit);
+if (candleImg.complete && candleImg.naturalWidth > 0) candleLit();   // v40: キャッシュ済みだと load が来ず、ロウソクが点かなかった(KEI 2026-09-06)
 // 2026-09-03 KEI: ピカピカ→「ゆっくり滑らかに、ぼやーっと変わる」灯り。乱数の飛びをやめ、遅い正弦の重ね合わせ+ゆるい目標追従
 var _fl = { t: 0, tgt: 0, cur: 0, next: 0, gust: 0 };   // var: 先に呼ばれる draw()/lampOverlay から参照されるため
 function _smoothNoise(t) {
