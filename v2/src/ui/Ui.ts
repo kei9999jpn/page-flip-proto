@@ -46,34 +46,27 @@ export class Ui {
 <div class="ov" id="menu"><div class="box frame">
   <h2>名言の書</h2>
   <div class="rule"></div>
-  <p class="h" id="tabTitle">この本の説明</p>
+  <p class="h" id="tabTitle">この本について</p>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>異世界の叡智が、これまでに集めた言葉をすべて綴じた一冊。</p>
-    <p>開くたびに、ページの並びが変わる。</p>
-    <p>同じ順で読めることは、二度とないらしい。</p>
-    <p>どのページから読んでも、ひとつの言葉で完結している。</p>
-    <p>言葉は、今も増え続けている。</p>
+    <p>異世界の叡智が、これまでに集めてきた言の葉が、すべて入っている魔法の本。</p>
+    <p>この本は、開くたびに中身が変わる。</p>
+    <p>今もなお、中身のページは増え続けている。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
-    <p>本の画面を2回タップすると、本が開く。</p>
-    <p>右から左になぞると、次のページ。</p>
-    <p>左から右になぞると、前のページ。</p>
-    <p>読んでいる間、ボタンは闇に溶ける。</p>
+    <p>本を2回タップすると、開く。</p>
+    <p>左右になぞると、ページがめくれる。</p>
+    <p>読んでいる間、ボタンは姿を消す。</p>
     <p>画面の下に触れると、戻ってくる。</p>
-    <p>「戻る」で、本を閉じる。</p>
   </div>
   <div class="tab" data-tab="2" hidden>
-    <p>気に入ったページで「印」を押す。</p>
-    <p>ページの角に、金の印がつく。</p>
-    <p>本の画面の「印」を押すと、印のページだけを綴じた本が開く。</p>
-    <p>もう一度「印」を押すと、印は外れる。</p>
+    <p>気に入った言の葉に「印」を押すと、ページの角に金の印がつく。</p>
+    <p>印をつけた言の葉だけを、あとで一冊にして読める。</p>
+    <p>もう一度押せば、印は外れる。</p>
   </div>
   <div class="tab" data-tab="3" hidden>
-    <p>読んでいる途中で「栞」を押す。</p>
-    <p>そのページに栞が挟まり、本は一度閉じる。</p>
-    <p>次に本を開くと、栞のページから続きが読める。</p>
-    <p>めくった枚数も、そのまま残る。</p>
+    <p>「栞」を押すと、そのページに栞が挟まり、本は閉じる。</p>
+    <p>次に開くとき、本は栞のページから始まる。</p>
     <p>栞は一本だけ。</p>
     <p>新しく挟むと、前の栞は外れる。</p>
   </div>
@@ -152,7 +145,7 @@ export class Ui {
     this.tabIdx = (n + 4) % 4;
     document.querySelectorAll<HTMLElement>('#menu .tab').forEach(el => { el.hidden = +(el.dataset.tab || '0') !== this.tabIdx; });
     document.querySelectorAll<HTMLElement>('#menu .dots i').forEach((el, k) => el.classList.toggle('on', k === this.tabIdx));
-    (document.getElementById('tabTitle') as HTMLElement).textContent = ['この本の説明', '操作説明', '印の使い方', '栞の使い方'][this.tabIdx];
+    (document.getElementById('tabTitle') as HTMLElement).textContent = ['この本について', '読み方', '印', '栞'][this.tabIdx];
   }
 
   paintSound(on: boolean): void {
