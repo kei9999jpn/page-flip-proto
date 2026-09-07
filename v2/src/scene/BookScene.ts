@@ -24,6 +24,8 @@ const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
 const CANDLE_I = QUALITY ? 2.0 : 1.6;
 const DIVE_DUR = 1.6;                     // ページの間へ潜る時間（秒）
+/** 開く演出の光の強さの係数。2026-09-07 KEI: 光が強すぎる→半分 */
+export const FLARE_GAIN = 0.5;
 
 const GradeShader = {
   uniforms: {
@@ -531,13 +533,13 @@ export class BookScene {
     // 表紙の箔に光が走る
     if (this.titleDecal) {
       const mat = this.titleDecal.material as THREE.MeshStandardMaterial;
-      mat.emissiveIntensity = this.gild * 0.55 + this.openFlare * 0.35;
+      mat.emissiveIntensity = (this.gild * 0.55 + this.openFlare * 0.35) * FLARE_GAIN;   // 2026-09-07 KEI: 光が強すぎる→半分
       if (this.titleSweep && this.sweepTex) {
         const on = this.gild > 0.001;
         this.titleSweep.visible = on;
         if (on) {
           const sm = this.titleSweep.material as THREE.MeshBasicMaterial;
-          sm.opacity = Math.min(1, Math.sin(Math.PI * Math.min(1, this.gild)) * 1.6);
+          sm.opacity = Math.min(1, Math.sin(Math.PI * Math.min(1, this.gild)) * 1.6) * FLARE_GAIN;   // 2026-09-07 KEI: 光が強すぎる→半分
           this.sweepTex.offset.x = -0.5 + this.gild * 1.15;
         }
       }

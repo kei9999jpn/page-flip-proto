@@ -165,7 +165,7 @@ export class Reader {
    */
   open(mode: string, opts?: { bg?: string; matchCut?: boolean; dawn?: boolean }): void {
     this.opened = true;                                  // これ以降だけ画像を落とす
-    if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp'));
+    if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp') + '?v=2');
     if (!this.backTex) this.loadImg(asset('backside.jpg')).then(im => { this.backTex = im; });
     setTimeout(() => { if (!this.imgs[this.deck[this.index]]) this.firstReady(); }, 6000);
     const bgEl = this.root.querySelector<HTMLElement>('#bg')!;

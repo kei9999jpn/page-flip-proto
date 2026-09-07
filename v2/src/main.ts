@@ -4,7 +4,7 @@
 // iframe は廃止し、読書は同一ページの全画面レイヤー（reader/Reader.ts）。
 // ============================================================
 import * as THREE from 'three';
-import { BookScene } from './scene/BookScene';
+import { BookScene, FLARE_GAIN } from './scene/BookScene';
 import { Reader } from './reader/Reader';
 import { Ui } from './ui/Ui';
 import {
@@ -184,7 +184,7 @@ function openEnvelope(): { r: number; ph: number } | null {
   let f = 0;
   if (ot > T_SOUND) f = Math.min(1, (ot - T_SOUND) / (0.70 * OK));
   if (ot > 2.20 * OK) f = Math.max(0.35, 1 - (ot - 2.20 * OK) / (0.55 * OK));
-  scene.openFlare = f;
+  scene.openFlare = f * FLARE_GAIN;   // 2026-09-07 KEI: 光が強すぎる→半分
   // 表紙が5°持ち上がる（0.15 → 0.80）。開きはじめたら hinge は下のループに任せる
   if (!opening && scene.hinge) {
     const k = Math.max(0, Math.min(1, (ot - 0.15 * OK) / (0.65 * OK)));

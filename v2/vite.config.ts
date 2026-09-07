@@ -40,7 +40,7 @@ export default defineConfig({
             urlPattern: /\/assets\/(book\.glb|.*\.(jpg|png|webp|mp3|webm))$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'shell-assets-v1',
+              cacheName: 'shell-assets-v2',
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 180 },
               cacheableResponse: { statuses: [0, 200] },
             },
