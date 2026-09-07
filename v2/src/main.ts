@@ -129,10 +129,10 @@ onSoundChange(on => { ui.paintSound(on); reader.paintSound(on); });
 //   1.45 ページの間へドリー（視野が歪む）
 //   2.15 革が着地する重い音に合わせて光が最大
 //   2.42 暗転せずに読書画面へマッチカット（同じ位置・同じ明るさの紙／背景は直前の3D画面）
-// 2026-09-07 夜 KEI「開いて潜るまで5秒かけていい」→ 台本を OK 倍に引き伸ばす（上の秒数×OK）
-const OK = 2.0;
+// 2026-09-07 夜 KEI: 5秒は遅い→「表紙はパタッと気持ちよく、そこからスーッと潜る」。台本は OK 倍・表紙の開きは短く固定
+const OK = 1.5;
 const OPEN_LIFT = 0.09;              // 表紙が持ち上がる角度（rad ≈ 5°）
-const OPEN_DUR = 1.15 * OK;          // 表紙が開ききるまで
+const OPEN_DUR = 0.95;               // 表紙が開ききるまで（パタッ）
 const T_SOUND = 0.85 * OK, T_MOTES = 1.00 * OK, T_DIVE = 1.45 * OK, T_CUT = 2.42 * OK;
 const T_SFX = T_SOUND + OPEN_DUR - 1.30;   // 革の着地音(呼び出し+1.30s)が表紙の着地と合う時刻
 let openT0 = 0, lifting = false;

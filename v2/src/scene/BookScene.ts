@@ -23,7 +23,7 @@ import { RoomBackground } from './RoomBackground';
 const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
 const CANDLE_I = QUALITY ? 2.0 : 1.6;
-const DIVE_DUR = 2.0;                     // ページの間へ潜る時間（秒）2026-09-07 夜: 台本2倍に合わせて延長
+const DIVE_DUR = 1.6;                     // ページの間へ潜る時間（秒）
 
 const GradeShader = {
   uniforms: {
@@ -564,7 +564,8 @@ export class BookScene {
     const cam = this.camera;
     if (opts.diving) {
       const k = Math.min(opts.diveT / DIVE_DUR, 1), e2 = k * k * k * (k * (6 * k - 15) + 10);
-      const r = CAM_R * (1 - e2) + 0.155 * e2, th = this.camTheta, ph = this.camPhi * (1 - e2) + 0.12 * e2;
+      // 潜りは「表紙が開く間に寄せた距離」(CAM_R-0.26) から始める。CAM_R から始めると一瞬引いてガクッとなる（2026-09-07 夜 KEI指摘）
+      const r = (CAM_R - 0.26) * (1 - e2) + 0.155 * e2, th = this.camTheta, ph = this.camPhi * (1 - e2) + 0.12 * e2;
       cam.position.set(r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph), r * Math.sin(ph) * Math.cos(th));
       cam.lookAt(0, 0.01, 0);
       // 本の中へ潜るほど視野が広がる（覗き込む歪み）

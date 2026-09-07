@@ -34,11 +34,11 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #talk.slow{transition:opacity 2.6s ease}
 
 /* ---- 最初の一言（表示から5秒後・細い金の罫線1本＋一文） ---- */
-#hint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;pointer-events:none;text-align:center;
+#hint{position:fixed;left:50%;top:35%;transform:translate(-50%,-50%);display:flex;flex-direction:column-reverse;z-index:9;pointer-events:none;text-align:center;
   opacity:0;transition:opacity 1.6s ease}
 #hint.show{opacity:1}
-#hint .rule{width:min(46vw,260px);height:1px;margin:0 auto 14px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-#hint .txt{font-family:var(--serif);font-size:clamp(12px,3.3vmin,16px);letter-spacing:.34em;text-indent:.34em;font-weight:400;color:var(--gold2);
+#hint .rule{width:min(46vw,260px);height:1px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+#hint .txt{font-family:var(--serif);font-size:clamp(14px,4vmin,19px);letter-spacing:.34em;text-indent:.34em;font-weight:400;color:var(--gold2);
   white-space:nowrap;text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
 
 /* ---- 枠（唯一の部品）: ChatGPT生成の革と真鍮の9スライス ---- */
@@ -198,7 +198,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #favBtn.on,#favListBtn.on{color:#e9cf7e;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6)) brightness(1.35)}
 #favListBtn.on b svg{fill:#c9a24a;stroke:#e9cf7e}
 #favBtn.on b{color:#e9cf7e}
-#toast{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:28;pointer-events:none;text-align:center;white-space:nowrap;
+#toast{position:fixed;left:50%;top:35%;transform:translate(-50%,-50%);z-index:28;pointer-events:none;text-align:center;white-space:nowrap;
   font-family:var(--serif);font-size:clamp(15px,4.2vmin,21px);letter-spacing:.14em;color:#e9cf7e;text-shadow:0 0 18px rgba(233,207,126,.55),0 2px 10px rgba(0,0,0,.9);
   opacity:0;filter:blur(10px);transition:opacity .5s ease,filter .5s ease}
 #toast.show{opacity:1;filter:blur(0)}
