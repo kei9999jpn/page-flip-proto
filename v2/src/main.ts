@@ -151,14 +151,14 @@ function beginRead(mode: string, title?: string): void {
   at(T_MOTES, () => scene.motesStart());
   at(T_DIVE, () => { diving = true; });
   at(2.10, () => haptic(16));                               // 革が着地する直前
-  at(2.15, () => { flash.style.transition = 'opacity .22s ease-out'; flash.style.opacity = '.82'; });
+  // 2026-09-07 夜 KEI: 光で切り替えず、ページの間へ潜ったら真っ暗になる。そこからろうそくが灯り、紙が浮かんでくる
+  at(2.12, () => { fade.style.transition = 'opacity .3s ease-in'; fade.style.opacity = '1'; });
   // 2026-09-07 KEI: 読書の背景は3Dスクショでなく書斎の絵(hall-bg.jpg)に戻す。スクショは撮らない
   at(T_CUT, () => {
     setStage('read');
     $('bgDim').style.opacity = '1';
-    reader.open(mode, { matchCut: true });
-    flash.style.transition = 'opacity 1.05s ease';
-    flash.style.opacity = '0';
+    reader.open(mode, { matchCut: true, dawn: true });
+    setTimeout(() => { fade.style.transition = 'opacity .6s ease-out'; fade.style.opacity = '0'; }, 350);
     setTimeout(() => {
       scene.motesStop(); scene.resetOpenFX();
       setAmbBoost(1);                                         // 引いた環境音を読書の部屋の音として戻す

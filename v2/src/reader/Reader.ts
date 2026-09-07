@@ -40,6 +40,8 @@ export interface ReaderHooks {
   onSoundToggle: () => void;
 }
 
+function bgOf(root: HTMLElement): HTMLElement { return root.querySelector<HTMLElement>('#bg')!; }
+
 export class Reader {
   readonly root: HTMLDivElement;
   private cv!: HTMLCanvasElement;
@@ -158,7 +160,10 @@ export class Reader {
    * opts.bg : 開く直前の3D画面のスクショ（data URL）。紙の後ろに暗くぼかして敷き、
    *           3D→読書のマッチカットで景色が途切れないようにする（KEI 2026-09-07 B）。
    */
-  open(mode: string, opts?: { bg?: string; matchCut?: boolean }): void {
+  /**
+   * opts.dawn : 本に潜った直後は真っ暗。ろうそくがボワッと灯り、2〜3秒かけてページが見えてくる（2026-09-07 夜 KEI）
+   */
+  open(mode: string, opts?: { bg?: string; matchCut?: boolean; dawn?: boolean }): void {
     this.opened = true;                                  // これ以降だけ画像を落とす
     if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp'));
     if (!this.backTex) this.loadImg(asset('backside.jpg')).then(im => { this.backTex = im; });
@@ -170,7 +175,7 @@ export class Reader {
     this.root.classList.toggle('matchcut', mc);
     this.root.classList.add('show');
     this.cv.classList.add('in'); this.cv.classList.add('sway');
-    this.rampGlow(1.0, mc ? 1100 : 3600);                // マッチカットは同じ明るさから現れる
+    if (opts && opts.dawn) this.dawn(); else this.rampGlow(1.0, mc ? 1100 : 3600);
     this.pagesReady.then(() => {
       this.draw(); this.updateFavUI();
       [300, 1200, 2600].forEach(ms => setTimeout(() => { this.layout(); this.draw(); this.placeRibbon(false); }, ms));
@@ -189,6 +194,22 @@ export class Reader {
     this.opened = true;
     this.uiWake();
     this.pump();
+  }
+  /** 闇からの夜明け：紙と背景は真っ黒から、ろうそくは0.4秒後に灯り、灯りは3.2秒かけて満ちる */
+  private dawn(): void {
+    const dark = [this.cv, bgOf(this.root)];
+    dark.forEach(el => { el.style.transition = 'none'; el.style.filter = 'brightness(0)'; });
+    this.el.candleImg.classList.remove('on');
+    this.glowBase = 0; this.lampLevel = 0; this.draw();
+    void this.cv.offsetHeight;
+    setTimeout(() => this.root.classList.add('uihide'), 0);                 // ボタンは紙が見えるまで出さない
+    setTimeout(() => { this.el.candleImg.classList.add('on'); }, 400);    // まずろうそくが灯る（2秒かけて）
+    setTimeout(() => this.rampGlow(1.0, 3600), 900);                       // 灯りが紙へ満ちていく
+    setTimeout(() => {                                                     // 紙と部屋が闇から浮かぶ（3.8秒）
+      dark.forEach(el => { el.style.transition = 'filter 3.8s ease-in-out'; el.style.filter = ''; });
+      setTimeout(() => dark.forEach(el => { el.style.transition = ''; }), 4000);
+    }, 1400);
+    setTimeout(() => this.uiWake(), 5000);
   }
   /** 本を閉じる儀式（ページの世界が先に沈む） */
   closeRitual(): void {
