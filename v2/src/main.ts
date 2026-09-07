@@ -155,6 +155,7 @@ function beginRead(mode: string, title?: string): void {
     flash.style.opacity = '0';
     setTimeout(() => {
       scene.motesStop(); scene.resetOpenFX();
+      setAmbBoost(1);                                         // 引いた環境音を読書の部屋の音として戻す
       opening = false; diving = false; lifting = false; openT = 0; diveT = 0;
       if (scene.hinge) scene.hinge.rotation.z = 0;
     }, 600);
