@@ -51,7 +51,7 @@ const GradeShader = {
     }`,
 };
 
-const RIB_YAW = Math.PI - 0.06;   // 栞タブの向き（手前端から覗く）
+const RIB_YAW = -0.06;   // 栞タブの向き（本の上端＝奥端から覗く。2026-09-07 夜 KEI「本の上に挟む」）
 
 export class BookScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -377,9 +377,9 @@ export class BookScene {
       map: tex, color: 0xe8ddc6, transparent: true, alphaTest: 0.42, roughness: 0.96, metalness: 0, side: THREE.DoubleSide,
     });
     this.ribbon = new THREE.Mesh(geo, mat);
-    // 手前側の端（max.z）から覗かせる。奥端(min.z)だと本体に隠れて見えない（2026-09-07 実測）
-    this.ribbon.position.set(bb.min.x + bw * 0.58, (bb.max.y - bb.min.y) * 0.12, bb.max.z + peek);
-    this.ribbon.rotation.x = -0.16;         // わずかに起こして面をカメラへ向ける
+    // 本の上端（奥端 min.z）から覗かせる。表紙のすぐ下に挟み、先端を起こして本体に隠れないようにする
+    this.ribbon.position.set(bb.min.x + bw * 0.58, bb.max.y - (bb.max.y - bb.min.y) * 0.22, bb.min.z - peek);
+    this.ribbon.rotation.x = 0.30;          // 先端を持ち上げて面をカメラへ向ける
     this.ribbon.rotation.y = RIB_YAW;
     book.add(this.ribbon);
     this.ribbon.visible = hasBookmark();

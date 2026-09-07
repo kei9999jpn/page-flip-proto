@@ -178,7 +178,8 @@ export class Reader {
     this.showButtons();
     if (mode === 'fresh') clearBookmark();
     if (mode === 'fav') this.enterFavBook();
-    if (mode === 'resume' || mode === 'read') {
+    // 'read'（ダブルタップ）は栞を復元しない。栞のページから再開するのは 'resume'（本の画面の「栞」）だけ（2026-09-07 夜 KEI）
+    if (mode === 'resume') {
       const b = loadBookmark();
       if (b && b.deck.every(n => n >= 0 && n < N)) {
         this.deck = b.deck; this.index = Math.min(b.index, this.deck.length - 1); this.favMode = !!b.fav;
@@ -297,7 +298,13 @@ export class Reader {
   private showRibbon(animate: boolean): void {
     if (this.ribbonShown && !animate) return;
     this.ribbonShown = true; this.placeRibbon(animate);
-    if (!animate) this.el.ribbon.classList.add('show', 'sway');
+    if (!animate) {
+      // 栞のページへ戻ってきた：差し込みでなく、その場でじゅわっと浮かぶ
+      const el = this.el.ribbon;
+      el.classList.add('soft');
+      requestAnimationFrame(() => el.classList.add('show', 'sway'));
+      setTimeout(() => el.classList.remove('soft'), 1200);
+    }
   }
   private hideRibbon(animate = false): void {
     if (!this.ribbonShown) return;
@@ -321,7 +328,7 @@ export class Reader {
   private updateFavUI(): void {
     this.updateSeen();
     const bm = loadBookmark();
-    const bmHere = !!(bm && bm.index === this.index && bm.deck[bm.index] === this.deck[this.index]);
+    const bmHere = !!(bm && bm.deck[bm.index] === this.deck[this.index]);   // 同じ言葉のページなら並びが違っても栞は現れる
     this.el.favListBtn.classList.toggle('on', bmHere);
     if (bmHere) this.showRibbon(false); else this.hideRibbon();
     const on = this.favs.includes(this.deck[this.index]);
@@ -833,7 +840,7 @@ export class Reader {
       if (performance.now() - this.uiJustWoke < 400) return;
       this.firstTouch();
       const bm0 = loadBookmark();
-      if (bm0 && bm0.index === this.index && bm0.deck[bm0.index] === this.deck[this.index]) {
+      if (bm0 && bm0.deck[bm0.index] === this.deck[this.index]) {
         clearBookmark();
         this.hideRibbon(true); this.el.favListBtn.classList.remove('on');
         sealSound(false); haptic(6); this.hooks.onBookmark({ off: true });
