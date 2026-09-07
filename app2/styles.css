@@ -117,18 +117,15 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #reader #bg.snap{filter:blur(9px);opacity:.62;transform:scale(1.08)}
 #reader #bg.snap::after{background:none}
 #reader #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.55) 100%)}
-/* 栞の紐（本の裏＝ページの間を通る。上から入って下から出る） */
-#ribbon{position:fixed;z-index:1;width:30px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
-  background:
-    repeating-linear-gradient(112deg,rgba(255,235,210,.07) 0 1px,transparent 1px 4px),
-    repeating-linear-gradient(28deg,rgba(0,0,0,.06) 0 1px,transparent 1px 5px),
-    linear-gradient(180deg,#8f2a22,#a83a2e 30%,#9a3127 60%,#7c231c);
-  border-radius:2px 2px 0 0;box-shadow:0 3px 8px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,210,170,.14),inset 0 0 12px rgba(60,10,6,.55);transform-origin:50% 100%}
+/* 栞（羊皮紙のタブ＋麻紐。本に挟まり、上端のマークだけが紙の上端から覗く） */
+#ribbon{position:fixed;z-index:1;pointer-events:none;opacity:0;
+  background:url(bookmark.webp) center top/100% auto no-repeat;
+  filter:drop-shadow(0 4px 9px rgba(0,0,0,.66)) brightness(.96) saturate(.96);
+  transition:top .5s cubic-bezier(.32,0,.18,1),opacity .3s ease;
+  transform-origin:50% 24%}
 #ribbon.show{opacity:1}
-#ribbon.sway{animation:ribbonSway 6s ease-in-out infinite alternate}
-@keyframes ribbonSway{from{transform:rotate(-.4deg)}to{transform:rotate(.4deg)}}
-#ribbon::before{content:"";position:absolute;left:50%;top:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#2a1008;box-shadow:inset 0 0 0 1px rgba(255,220,180,.25)}
-#ribbon::after{content:"";position:absolute;left:50%;top:-22px;width:14px;height:26px;margin-left:-7px;border:2px solid #4a2a16;border-bottom:none;border-radius:8px 8px 0 0;box-shadow:0 1px 2px rgba(0,0,0,.6)}
+#ribbon.sway{animation:ribbonSway 7s ease-in-out infinite alternate}
+@keyframes ribbonSway{from{transform:rotate(-.55deg)}to{transform:rotate(.55deg)}}
 /* 読んでいる間はUIを闇へ溶かす（2.5秒操作なし）。画面の下側に触れれば戻る */
 #reader.uihide #favBtn,#reader.uihide #favListBtn,#reader.uihide #setBtn,#reader.uihide #seen,#reader.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
 /* 紙は机の上の「物」。全体をわずかに傾け、接地影を足す（KEI 2026-09-07 Phase 4）。

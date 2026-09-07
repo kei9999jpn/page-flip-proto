@@ -350,5 +350,5 @@ window.__app = {
   get info() { return { favs: favCount(), bookmark: hasBookmark(), visits: ST.visits, mobile: MOBILE, sound: S.sound, q: QP.toString() }; },
   beginRead, closeBook,
   setCam(th: number, ph: number) { scene.camTheta = th; scene.camPhi = ph; },
-  ui,
+  ui, scene,
 };

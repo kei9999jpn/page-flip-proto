@@ -267,25 +267,31 @@ export class Reader {
     this.releaseFar();
   }
 
-  // ---------------------------------------------------------- 栞の紐
-  private placeRibbon(animate: boolean): void {
+  // ---------------------------------------------------------- 栞（羊皮紙のタブ）
+  // bookmark.webp は 400x1805。上端 RIB_PEEK 分（麻紐＋マーク）だけを紙の上端から覗かせる。
+  private static readonly RIB_AR = 1805 / 400;
+  private static readonly RIB_PEEK = 0.215;
+  private ribbonGeom(): { w: number; h: number; left: number; top: number } {
     const r = this.cv.getBoundingClientRect();
-    const tail = Math.round(Math.max(52, r.height * 0.11)), rh = Math.round(r.height * 0.96 + tail);
-    const el = this.el.ribbon;
-    el.style.height = rh + 'px';
-    el.style.left = Math.round(r.left + r.width * 0.71) + 'px';
-    const top = Math.round(r.top - tail);
+    const w = Math.round(Math.min(58, Math.max(34, r.width * 0.13)));
+    const h = Math.round(w * Reader.RIB_AR);
+    return { w, h, left: Math.round(r.left + r.width * 0.72 - w / 2), top: Math.round(r.top - h * Reader.RIB_PEEK) };
+  }
+  private placeRibbon(animate: boolean): void {
+    const g = this.ribbonGeom(), el = this.el.ribbon;
+    el.style.width = g.w + 'px'; el.style.height = g.h + 'px'; el.style.left = g.left + 'px';
     if (animate) {
+      // 上から差し込まれる（0.5秒）
       el.classList.remove('sway');
       el.style.transition = 'none';
-      el.style.top = Math.round(r.top - rh - 6) + 'px';
+      el.style.top = Math.round(g.top - g.h * 0.6) + 'px';
       void el.offsetHeight;
       el.style.transition = '';
       el.classList.add('show');
-      requestAnimationFrame(() => { el.style.top = top + 'px'; });
-      setTimeout(() => el.classList.add('sway'), 1200);
+      requestAnimationFrame(() => { el.style.top = g.top + 'px'; });
+      setTimeout(() => { if (this.ribbonShown) this.el.ribbon.classList.add('sway'); }, 700);
     } else {
-      el.style.transition = 'none'; el.style.top = top + 'px'; void el.offsetHeight; el.style.transition = '';
+      el.style.transition = 'none'; el.style.top = g.top + 'px'; void el.offsetHeight; el.style.transition = '';
     }
   }
   private showRibbon(animate: boolean): void {
@@ -293,9 +299,18 @@ export class Reader {
     this.ribbonShown = true; this.placeRibbon(animate);
     if (!animate) this.el.ribbon.classList.add('show', 'sway');
   }
-  private hideRibbon(): void {
+  private hideRibbon(animate = false): void {
     if (!this.ribbonShown) return;
-    this.ribbonShown = false; this.el.ribbon.classList.remove('show', 'sway');
+    this.ribbonShown = false;
+    const el = this.el.ribbon;
+    el.classList.remove('sway');
+    if (animate) {
+      // 引き抜く
+      el.style.top = Math.round(this.ribbonGeom().top - this.ribbonGeom().h * 0.6) + 'px';
+      setTimeout(() => { if (!this.ribbonShown) el.classList.remove('show'); }, 240);
+    } else {
+      el.classList.remove('show');
+    }
   }
 
   // ---------------------------------------------------------- 印・栞・UI
@@ -820,7 +835,7 @@ export class Reader {
       const bm0 = loadBookmark();
       if (bm0 && bm0.index === this.index && bm0.deck[bm0.index] === this.deck[this.index]) {
         clearBookmark();
-        this.hideRibbon(); this.el.favListBtn.classList.remove('on');
+        this.hideRibbon(true); this.el.favListBtn.classList.remove('on');
         sealSound(false); haptic(6); this.hooks.onBookmark({ off: true });
         this.toast('栞を外しました');
         return;

@@ -51,6 +51,8 @@ const GradeShader = {
     }`,
 };
 
+const RIB_YAW = Math.PI - 0.06;   // 栞タブの向き（手前端から覗く）
+
 export class BookScene {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
@@ -350,15 +352,35 @@ export class BookScene {
     book.rotation.z = rz; this.pivot.position.y = py;
     const bb = this.bookBB;
     const bw = bb.max.x - bb.min.x, bh = bb.max.z - bb.min.z;
-    const len = bh * 0.24, w = bw * 0.032;
-    const geo = new THREE.PlaneGeometry(w, len, 1, 8); geo.translate(0, -len / 2, 0);
+
+    // 羊皮紙の栞タブ。bookmark.webp の上端 F 分だけを使い、閉じた本の上端(min.z)から覗かせる。
+    const F = 0.30;                                   // 使うテクスチャの割合（麻紐＋マーク＋少しの紙）
+    const peek = bh * 0.21;                          // 本の上端から出ている長さ
+    const len = peek / 0.72;                          // 残り 28% は本の中（ページに挟まっている）
+    const w = len * (400 / (1805 * F));               // 切り出した領域の縦横比
+
+    const tex = new THREE.TextureLoader().load(new URL('bookmark.webp', document.baseURI).href);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(1, F); tex.offset.set(0, 1 - F);
+
+    const geo = new THREE.PlaneGeometry(w, len, 1, 8);
+    geo.translate(0, -len / 2, 0);                    // 原点＝タブの先端（テクスチャ上端）
     const pos = geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); const k = -y / len; pos.setZ(i, -k * k * w * 1.2); }
-    geo.rotateX(Math.PI / 2); geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ color: 0x3a120c, roughness: 0.94, metalness: 0, side: THREE.DoubleSide });
+    for (let i = 0; i < pos.count; i++) {             // 先端をわずかに反らせて光を受けさせる
+      const k = 1 + pos.getY(i) / len;                // 先端 1 → 根元 0
+      pos.setZ(i, k * k * len * 0.18);
+    }
+    geo.rotateX(-Math.PI / 2); geo.computeVertexNormals();
+
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, color: 0xe8ddc6, transparent: true, alphaTest: 0.42, roughness: 0.96, metalness: 0, side: THREE.DoubleSide,
+    });
     this.ribbon = new THREE.Mesh(geo, mat);
-    this.ribbon.position.set(bb.min.x + bw * 0.72, 0, bb.min.z + bh * 0.015);
-    this.ribbon.rotation.y = -0.06;
+    // 手前側の端（max.z）から覗かせる。奥端(min.z)だと本体に隠れて見えない（2026-09-07 実測）
+    this.ribbon.position.set(bb.min.x + bw * 0.58, (bb.max.y - bb.min.y) * 0.12, bb.max.z + peek);
+    this.ribbon.rotation.x = -0.16;         // わずかに起こして面をカメラへ向ける
+    this.ribbon.rotation.y = RIB_YAW;
     book.add(this.ribbon);
     this.ribbon.visible = hasBookmark();
   }
@@ -383,6 +405,7 @@ export class BookScene {
     this.book.add(this.favMarks);
   }
 
+  get ribbonMesh(): THREE.Mesh | null { return this.ribbon; }
   setRibbonVisible(v: boolean): void { if (this.ribbon) this.ribbon.visible = v; }
   refreshRibbon(): void { if (this.ribbon) this.ribbon.visible = hasBookmark(); }
 
@@ -533,7 +556,7 @@ export class BookScene {
     this.dust.visible = this.bookScale > 0.2;
 
     if (this.ribbon && this.ribbon.visible) {
-      this.ribbon.rotation.y = -0.06 + Math.sin(t * 0.7) * 0.03 + this.shake * Math.sin(t * 40) * 0.08;
+      this.ribbon.rotation.y = RIB_YAW + Math.sin(t * 0.7) * 0.03 + this.shake * Math.sin(t * 40) * 0.08;
     }
     this.motesStep(wdt);
 
