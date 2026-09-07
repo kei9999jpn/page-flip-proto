@@ -183,11 +183,12 @@ export class Reader {
     this.showButtons();
     if (mode === 'fresh') clearBookmark();
     if (mode === 'fav') this.enterFavBook();
-    // 'read'（ダブルタップ）は栞を復元しない。栞のページから再開するのは 'resume'（本の画面の「栞」）だけ（2026-09-07 夜 KEI）
-    if (mode === 'resume') {
+    // 栞があれば、開いた時はそのページから（めくった枚数も戻す）。2026-09-07 夜 KEI
+    if (mode === 'resume' || mode === 'read') {
       const b = loadBookmark();
       if (b && b.deck.every(n => n >= 0 && n < N)) {
         this.deck = b.deck; this.index = Math.min(b.index, this.deck.length - 1); this.favMode = !!b.fav;
+        if (b.seen) this.seenSet = new Set(b.seen);
         this.draw(); this.updateFavUI();
       }
     }
@@ -197,19 +198,19 @@ export class Reader {
   }
   /** 闇からの夜明け：紙と背景は真っ黒から、ろうそくは0.4秒後に灯り、灯りは3.2秒かけて満ちる */
   private dawn(): void {
-    const dark = [this.cv, bgOf(this.root)];
+    const dark = [this.cv, bgOf(this.root)], c = this.el.candleImg;
     dark.forEach(el => { el.style.transition = 'none'; el.style.filter = 'brightness(0)'; });
-    this.el.candleImg.classList.remove('on');
+    c.style.transition = 'none'; c.classList.remove('on');                // ろうそくは完全に消えた状態から
     this.glowBase = 0; this.lampLevel = 0; this.draw();
     void this.cv.offsetHeight;
     setTimeout(() => this.root.classList.add('uihide'), 0);                 // ボタンは紙が見えるまで出さない
-    setTimeout(() => { this.el.candleImg.classList.add('on'); }, 400);    // まずろうそくが灯る（2秒かけて）
-    setTimeout(() => this.rampGlow(1.0, 3600), 900);                       // 灯りが紙へ満ちていく
-    setTimeout(() => {                                                     // 紙と部屋が闇から浮かぶ（3.8秒）
-      dark.forEach(el => { el.style.transition = 'filter 3.8s ease-in-out'; el.style.filter = ''; });
-      setTimeout(() => dark.forEach(el => { el.style.transition = ''; }), 4000);
-    }, 1400);
-    setTimeout(() => this.uiWake(), 5000);
+    setTimeout(() => { c.style.transition = 'opacity 3.2s ease-in'; c.classList.add('on'); }, 600);   // 闇の中でろうそくがボワッと灯る
+    setTimeout(() => this.rampGlow(1.0, 5000), 1000);                      // 灯りが紙へ満ちていく
+    setTimeout(() => {                                                     // 紙と部屋が闇から浮かぶ（5秒）
+      dark.forEach(el => { el.style.transition = 'filter 5s ease-in-out'; el.style.filter = ''; });
+      setTimeout(() => { dark.forEach(el => { el.style.transition = ''; }); c.style.transition = ''; }, 5200);
+    }, 1500);
+    setTimeout(() => this.uiWake(), 6800);
   }
   /** 本を閉じる儀式（ページの世界が先に沈む） */
   closeRitual(): void {
@@ -860,17 +861,10 @@ export class Reader {
       this.uiWake();
       if (performance.now() - this.uiJustWoke < 400) return;
       this.firstTouch();
-      const bm0 = loadBookmark();
-      if (bm0 && bm0.deck[bm0.index] === this.deck[this.index]) {
-        clearBookmark();
-        this.hideRibbon(true); this.el.favListBtn.classList.remove('on');
-        sealSound(false); haptic(6); this.hooks.onBookmark({ off: true });
-        this.toast('栞を外しました');
-        return;
-      }
-      const b: Bookmark = { deck: this.deck, index: this.index, ts: Date.now(), fav: this.favMode };
+      // 栞を挟む＝そのページを覚えて本を閉じる（閉じるのはシェル側 onBookmark）
+      const b: Bookmark = { deck: this.deck, index: this.index, ts: Date.now(), fav: this.favMode, seen: [...this.seenSet] };
       saveBookmark(b);
-      this.toast('このページに栞を挟みました');
+      this.toast('栞を挟みました');
       this.showRibbon(true); ribbonSound(); haptic([10, 20, 15]);
       this.el.favListBtn.classList.add('on'); this.hooks.onBookmark({ off: false });
     });

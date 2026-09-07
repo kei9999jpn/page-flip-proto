@@ -79,9 +79,12 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:40;background:rgba(5,3,1,.72);backdrop-filter:blur(2px)}
 .ov.show{display:flex}
 .box{width:min(88vw,410px);max-height:86vh;max-height:86dvh;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;box-sizing:border-box;color:var(--paper);padding:6px 6px 4px}
-.box h2{font-family:var(--serif);font-size:15px;letter-spacing:.45em;text-indent:.45em;margin:0 0 6px;font-weight:500;text-align:center;color:var(--gold2)}
-.box .rule{width:180px;height:20px;margin:2px auto 12px;background:url(../assets/ui2/divider.png) center/contain no-repeat}
-.box p{font-size:var(--t-md);line-height:2.05;letter-spacing:.06em;margin:0 0 8px;color:var(--paper)}
+.box h2{font-family:var(--serif);font-size:18px;letter-spacing:.45em;text-indent:.45em;margin:0 0 6px;font-weight:500;text-align:center;color:var(--gold2)}
+.box .rule{width:144px;height:16px;margin:4px auto 10px;background:url(../assets/ui2/divider.png) center/contain no-repeat}
+.box p{font-size:var(--t-md);line-height:1.85;letter-spacing:.04em;margin:0 0 7px;color:var(--paper)}   /* 1文=1行（「。」で改行） */
+.box p.h{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.3em;text-indent:.3em;text-align:center;color:var(--gold);margin:0 0 10px}
+.pnav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px}
+.pnav .dots{margin:0}
 .box hr{border:none;border-top:1px solid rgba(201,162,74,.22);margin:10px 0 9px}
 .box .close{display:block;margin:12px auto 2px;background:none;border:1px solid rgba(201,162,74,.45);color:var(--gold2);padding:8px 30px;letter-spacing:.4em;text-indent:.4em;font-family:var(--serif);cursor:pointer}
 .mode{display:flex;flex-direction:column;align-items:flex-start;width:100%;box-sizing:border-box;margin:0 0 7px;padding:9px 13px;

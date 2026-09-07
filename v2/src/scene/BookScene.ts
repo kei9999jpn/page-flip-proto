@@ -23,7 +23,7 @@ import { RoomBackground } from './RoomBackground';
 const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
 const CANDLE_I = QUALITY ? 2.0 : 1.6;
-const DIVE_DUR = 1.5;                     // ページの間へ潜る時間（秒）
+const DIVE_DUR = 2.0;                     // ページの間へ潜る時間（秒）2026-09-07 夜: 台本2倍に合わせて延長
 
 const GradeShader = {
   uniforms: {

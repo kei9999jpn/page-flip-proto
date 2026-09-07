@@ -63,7 +63,7 @@ export function saveFavs(favs: number[]): void { writeJSON(K.favs, favs); }
 export function favCount(): number { return loadFavs().length; }
 
 // ---- 栞 ----
-export interface Bookmark { deck: number[]; index: number; ts: number; fav: boolean }
+export interface Bookmark { deck: number[]; index: number; ts: number; fav: boolean; seen?: number[] }
 export function loadBookmark(): Bookmark | null {
   const b = readJSON<Bookmark | null>(K.bookmark, null);
   if (b && Array.isArray(b.deck) && b.deck.length) return b;
@@ -89,7 +89,13 @@ export function asset(path: string): string {
 }
 export const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
 export const QP = new URLSearchParams(location.search);
-export const BUILD = '20260907v2-2';
+export const BUILD = '20260907v2-3';
 
-// 2026-09-07 夜: 栞の意味が変わった（開いただけでは復元しない・挟んだ時だけ）。旧版が勝手に保存していた栞は一度だけ捨てる
-try { if (!localStorage.getItem('bookexp-bm-v2')) { localStorage.removeItem(K.bookmark); localStorage.setItem('bookexp-bm-v2', '1'); } } catch { /* noop */ }
+// テスト期間の約束（2026-09-07 夜 KEI「更新のたびにリセットして」）: BUILD が変わったら栞・印・枚数を消す。
+// ※一般公開の前にこのブロックを外すこと（読者の栞まで消える）
+try {
+  if (localStorage.getItem('bookexp-build') !== BUILD) {
+    [K.bookmark, K.favs, K.stats].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('bookexp-build', BUILD);
+  }
+} catch { /* noop */ }

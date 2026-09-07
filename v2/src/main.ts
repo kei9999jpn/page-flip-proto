@@ -106,7 +106,8 @@ const reader = new Reader({
     void info;
   },
   onFav: info => { activity(); track('seal', { on: info.on, count: info.count }); },
-  onBookmark: info => { activity(); scene.setRibbonVisible(!info.off); track('bookmark', { off: info.off }); },
+  // 栞を挟む＝そこで本を閉じる。次に開いた時は栞のページから（2026-09-07 夜 KEI）
+  onBookmark: info => { activity(); scene.setRibbonVisible(!info.off); track('bookmark', { off: info.off }); if (!info.off) setTimeout(() => closeBook(), 1400); },
   onActivity: () => activity(),
   onFirstTouch: () => { bgmWant(); ensureAudio(); activity(); },
   onSoundToggle: () => { toggleSound(); activity(); },
@@ -128,9 +129,12 @@ onSoundChange(on => { ui.paintSound(on); reader.paintSound(on); });
 //   1.45 ページの間へドリー（視野が歪む）
 //   2.15 革が着地する重い音に合わせて光が最大
 //   2.42 暗転せずに読書画面へマッチカット（同じ位置・同じ明るさの紙／背景は直前の3D画面）
+// 2026-09-07 夜 KEI「開いて潜るまで5秒かけていい」→ 台本を OK 倍に引き伸ばす（上の秒数×OK）
+const OK = 2.0;
 const OPEN_LIFT = 0.09;              // 表紙が持ち上がる角度（rad ≈ 5°）
-const OPEN_DUR = 1.15;               // 表紙が開ききるまで
-const T_SOUND = 0.85, T_MOTES = 1.00, T_DIVE = 1.45, T_CUT = 2.42;
+const OPEN_DUR = 1.15 * OK;          // 表紙が開ききるまで
+const T_SOUND = 0.85 * OK, T_MOTES = 1.00 * OK, T_DIVE = 1.45 * OK, T_CUT = 2.42 * OK;
+const T_SFX = T_SOUND + OPEN_DUR - 1.30;   // 革の着地音(呼び出し+1.30s)が表紙の着地と合う時刻
 let openT0 = 0, lifting = false;
 
 function beginRead(mode: string, title?: string): void {
@@ -147,12 +151,13 @@ function beginRead(mode: string, title?: string): void {
   setAmbBoost(0.34);                                        // 環境音がすっと引く
   const at = (sec: number, fn: () => void) => setTimeout(fn, sec * 1000);
 
-  at(T_SOUND, () => { opening = true; openBookSound(); haptic(8); });
+  at(T_SOUND, () => { opening = true; haptic(8); });
+  at(T_SFX, () => openBookSound());
   at(T_MOTES, () => scene.motesStart());
   at(T_DIVE, () => { diving = true; });
-  at(2.10, () => haptic(16));                               // 革が着地する直前
+  at(2.10 * OK, () => haptic(16));                               // 革が着地する直前
   // 2026-09-07 夜 KEI: 光で切り替えず、ページの間へ潜ったら真っ暗になる。そこからろうそくが灯り、紙が浮かんでくる
-  at(2.12, () => { fade.style.transition = 'opacity .3s ease-in'; fade.style.opacity = '1'; });
+  at(2.12 * OK, () => { fade.style.transition = 'opacity .4s ease-in'; fade.style.opacity = '1'; });
   // 2026-09-07 KEI: 読書の背景は3Dスクショでなく書斎の絵(hall-bg.jpg)に戻す。スクショは撮らない
   at(T_CUT, () => {
     setStage('read');
@@ -174,20 +179,20 @@ function openEnvelope(): { r: number; ph: number } | null {
   if (!lifting) return null;
   const ot = (performance.now() - openT0) / 1000;
   // 表紙の金箔に光が走る（0.00 → 0.85）
-  scene.gild = Math.max(0, Math.min(1, (ot - 0.02) / 0.83));
+  scene.gild = Math.max(0, Math.min(1, (ot - 0.02) / (0.83 * OK)));
   // 光が本の内側から溢れる。2.15 の着地で最大、そのあとすっと引く
   let f = 0;
-  if (ot > T_SOUND) f = Math.min(1, (ot - T_SOUND) / 0.70);
-  if (ot > 2.20) f = Math.max(0.35, 1 - (ot - 2.20) / 0.55);
+  if (ot > T_SOUND) f = Math.min(1, (ot - T_SOUND) / (0.70 * OK));
+  if (ot > 2.20 * OK) f = Math.max(0.35, 1 - (ot - 2.20 * OK) / (0.55 * OK));
   scene.openFlare = f;
   // 表紙が5°持ち上がる（0.15 → 0.80）。開きはじめたら hinge は下のループに任せる
   if (!opening && scene.hinge) {
-    const k = Math.max(0, Math.min(1, (ot - 0.15) / 0.65));
+    const k = Math.max(0, Math.min(1, (ot - 0.15 * OK) / (0.65 * OK)));
     scene.hinge.rotation.z = OPEN_LIFT * (k * k * (3 - 2 * k));
   }
   // カメラが寄る（1.55 → 1.30）。潜り込みが始まったら dive 側が持つ
   if (ot < T_DIVE) {
-    const k = Math.max(0, Math.min(1, (ot - 0.15) / 1.20));
+    const k = Math.max(0, Math.min(1, (ot - 0.15 * OK) / (1.20 * OK)));
     return { r: BookScene.CAM_R - 0.26 * (k * k * (3 - 2 * k)), ph: scene.camPhi };
   }
   return null;
