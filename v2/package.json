@@ -1,0 +1,28 @@
+{
+  "name": "meigen-book-v2",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "assets": "node scripts/build-assets.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "4.2.1",
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "@types/three": "0.180.0",
+    "draco3dgltf": "^1.5.7",
+    "sharp": "^0.35.4",
+    "typescript": "5.9.2",
+    "vite": "6.3.5",
+    "vite-plugin-pwa": "0.21.2"
+  }
+}

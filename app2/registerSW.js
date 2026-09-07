@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/page-flip-proto/app2/sw.js', { scope: '/page-flip-proto/app2/' })})}
