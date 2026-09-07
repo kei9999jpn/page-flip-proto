@@ -42,7 +42,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   white-space:nowrap;text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
 
 /* ---- 枠（唯一の部品）: ChatGPT生成の革と真鍮の9スライス ---- */
-.frame{position:relative;border:28px solid transparent;border-image:url(../assets/ui2/panel.png) 92 fill / 28px stretch;box-shadow:0 16px 40px rgba(0,0,0,.75)}
+.frame{position:relative;border:28px solid transparent;border-image:url(../assets/ui2/panel.webp) 92 fill / 28px stretch;box-shadow:0 16px 40px rgba(0,0,0,.75)}
 .box::-webkit-scrollbar{display:none}
 
 /* ---- 1タップで出る周りのUI: 右上「メニュー」1つだけ ---- */
@@ -101,14 +101,21 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #readTitle .rule{width:min(56vw,330px);height:1px;margin:14px auto;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 #readTitle.show{opacity:1;filter:blur(0)}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.1s ease-in;z-index:30}
+/* 開く瞬間に溢れる光（暗転のかわり。白飛びさせず、一瞬で引く） */
+#flash{position:fixed;inset:0;pointer-events:none;z-index:31;opacity:0;mix-blend-mode:screen;
+  background:radial-gradient(ellipse 78% 62% at 50% 52%,rgba(255,238,200,.92),rgba(255,196,120,.42) 45%,rgba(255,150,60,.10) 70%,transparent 88%)}
 
 /* ============================================================
    読書レイヤー（旧 a/index.html。iframe をやめ、同一ページの全画面レイヤーに）
    ============================================================ */
 #reader{position:fixed;inset:0;z-index:25;opacity:0;pointer-events:none;transition:opacity 1.2s ease;visibility:hidden}
+#reader.matchcut{transition:opacity .45s ease}
 #reader.show{opacity:1;pointer-events:auto;visibility:visible}
 #reader #bg{position:absolute;inset:0;background:#000 center 45%/cover no-repeat;filter:brightness(.95) saturate(1);z-index:0}
 #reader.show #bg{background-image:url(../assets/hall-bg.jpg)}   /* 読書に入るまで書斎の絵は落とさない */
+/* 開く直前の3D画面のスクショを、暗くぼかして紙の後ろに敷く（マッチカット・KEI 2026-09-07） */
+#reader #bg.snap{filter:blur(9px);opacity:.62;transform:scale(1.08)}
+#reader #bg.snap::after{background:none}
 #reader #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.55) 100%)}
 /* 栞の紐（本の裏＝ページの間を通る。上から入って下から出る） */
 #ribbon{position:fixed;z-index:1;width:30px;pointer-events:none;opacity:0;transition:top 1.15s cubic-bezier(.4,0,.2,1),opacity .6s ease;
@@ -124,11 +131,19 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #ribbon::after{content:"";position:absolute;left:50%;top:-22px;width:14px;height:26px;margin-left:-7px;border:2px solid #4a2a16;border-bottom:none;border-radius:8px 8px 0 0;box-shadow:0 1px 2px rgba(0,0,0,.6)}
 /* 読んでいる間はUIを闇へ溶かす（2.5秒操作なし）。画面の下側に触れれば戻る */
 #reader.uihide #favBtn,#reader.uihide #favListBtn,#reader.uihide #setBtn,#reader.uihide #seen,#reader.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
-#book{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97);z-index:2;box-shadow:0 30px 60px rgba(0,0,0,.85),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
-#book.in{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0) brightness(1)}
+/* 紙は机の上の「物」。全体をわずかに傾け、接地影を足す（KEI 2026-09-07 Phase 4）。
+   当たり判定は傾けない座標系のまま（横方向のドラッグ量で決まるので 2.2° では実質ずれない）。 */
+#book{--tilt:-2.2deg;position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97) rotate(var(--tilt));z-index:2;
+  box-shadow:0 4px 10px rgba(0,0,0,.7),0 30px 60px rgba(0,0,0,.85),0 64px 120px rgba(0,0,0,.55),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);
+  border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
+#book.in{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(var(--tilt));filter:blur(0) brightness(1)}
+/* マッチカット: 紙は同じ位置・同じ明るさからそのまま現れる（ぼかしも増光もしない） */
+#reader.matchcut #book{filter:none;transform:translate(-50%,-50%) scale(1) rotate(var(--tilt));transition:opacity .5s ease}
 #book.sway{top:46%;animation:swayK 9s ease-in-out infinite alternate}
-@keyframes swayK{from{transform:translate(-50%,-50%) scale(1) rotate(-.35deg)}to{transform:translate(-50%,-50.4%) scale(1.004) rotate(.35deg)}}
-#book.out{opacity:0 !important;transform:translate(-50%,-49%) scale(.94) !important;filter:blur(5px) brightness(.35) !important;animation:none !important;
+@keyframes swayK{
+  from{transform:translate(-50%,-50%) scale(1) rotate(calc(var(--tilt) - .35deg))}
+  to{transform:translate(-50%,-50.4%) scale(1.004) rotate(calc(var(--tilt) + .35deg))}}
+#book.out{opacity:0 !important;transform:translate(-50%,-49%) scale(.94) rotate(var(--tilt)) !important;filter:blur(5px) brightness(.35) !important;animation:none !important;
   transition:opacity 1.4s cubic-bezier(.6,0,.9,.6),transform 1.4s cubic-bezier(.6,0,.9,.6),filter 1.4s cubic-bezier(.6,0,.9,.6) !important}
 #paperGlow{position:fixed;left:50%;top:54%;width:130vmin;height:110vmin;transform:translate(-50%,-50%);pointer-events:none;
   mix-blend-mode:overlay;z-index:4;opacity:0;transition:opacity 1.2s ease,transform 1.6s ease;
@@ -145,7 +160,10 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   background:radial-gradient(ellipse at 50% 80%,#fff8dc 0%,#ffd16a 25%,#ff8a1e 55%,rgba(255,80,0,.55) 78%,transparent 100%);
   filter:blur(.6px);box-shadow:0 0 18px 6px rgba(255,150,60,.55),0 0 60px 22px rgba(255,120,40,.28)}
 #flameCore{position:absolute;left:50%;bottom:12px;width:8px;height:20px;margin-left:-4px;border-radius:50%;background:radial-gradient(#5aa8ff55,transparent 70%)}
-#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease}
+#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease;
+  /* 絵の四隅を溶かす。後ろが真っ黒でない時に絵の矩形が浮くのを防ぐ（2026-09-07） */
+  -webkit-mask-image:radial-gradient(ellipse 74% 76% at 50% 52%,#000 62%,transparent 100%);
+  mask-image:radial-gradient(ellipse 74% 76% at 50% 52%,#000 62%,transparent 100%)}
 #candleImg.on{opacity:.95}
 #flameGlow{position:fixed;pointer-events:none;z-index:9;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;mix-blend-mode:screen;opacity:0;
   background:radial-gradient(circle at 50% 55%,rgba(255,232,170,.95) 0%,rgba(255,180,90,.55) 18%,rgba(255,130,50,.18) 42%,transparent 66%);filter:blur(1.5px)}

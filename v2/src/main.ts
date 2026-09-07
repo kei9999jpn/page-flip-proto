@@ -23,13 +23,13 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 
 // ---- 画面に足す要素（HTML を小さく保つ） ----
-const readTitle = document.createElement('div');
-readTitle.id = 'readTitle';
-readTitle.innerHTML = '<div class="rule"></div><div class="main">名言の書</div><div class="rule"></div>';
-document.body.appendChild(readTitle);
+// タイトルカード「名言の書」は出さない（2026-09-07 KEI: 表紙の箔押しに置き換えた）。
 const fade = document.createElement('div');
 fade.id = 'fade';
 document.body.appendChild(fade);
+const flash = document.createElement('div');
+flash.id = 'flash';
+document.body.appendChild(flash);
 
 let stage: Stage = 'book';
 function setStage(s: Stage): void {
@@ -114,34 +114,108 @@ const ui = new Ui({
 });
 onSoundChange(on => { ui.paintSound(on); reader.paintSound(on); });
 
-// ============================================================ 開く → 吸い込まれる → 読書
+// ============================================================ 開く演出（作品最大の一発）
+// 台本（秒。openBookSound は 0.85s に鳴らし、その内部タイミング＝紙2枚 0/0.55、革の着地 1.30 に合わせる）
+//   0.00 環境音がすっと引く／表紙の金箔に光が走る
+//   0.15 表紙が5°持ち上がり、カメラが寄る
+//   0.85 表紙が開きはじめる（openBookSound）。光が本の内側から溢れはじめる
+//   1.45 ページの間へドリー（視野が歪む）
+//   2.15 革が着地する重い音に合わせて光が最大
+//   2.42 暗転せずに読書画面へマッチカット（同じ位置・同じ明るさの紙／背景は直前の3D画面）
+const OPEN_LIFT = 0.09;              // 表紙が持ち上がる角度（rad ≈ 5°）
+const OPEN_DUR = 1.15;               // 表紙が開ききるまで
+const T_SOUND = 0.85, T_MOTES = 1.00, T_DIVE = 1.45, T_SNAP = 0.30, T_CUT = 2.42;
+let openT0 = 0, lifting = false, capturedBG = '';
+
 function beginRead(mode: string, title?: string): void {
   if (stage !== 'book') return;
+  void title;
   setStage('opening');
   ui.setLocked(true);
-  (readTitle.querySelector('.main') as HTMLElement).textContent = title || '名言の書';
   ensureAudio();
   talk.classList.remove('show');
-  readTitle.classList.add('show');
   activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   track('open_book', { mode });
 
-  setTimeout(() => readTitle.classList.remove('show'), 2400);
-  setTimeout(() => { opening = true; openBookSound(); }, 1700);
-  setTimeout(() => haptic(12), 3000);
-  setTimeout(() => haptic(12), 3800);
-  setTimeout(() => scene.motesStart(), 2600);
-  setTimeout(() => { diving = true; }, 3300);
-  setTimeout(() => { fade.style.transition = 'opacity 1.4s ease-in'; fade.style.opacity = '1'; }, 4000);
-  setTimeout(() => {
+  openT0 = performance.now(); lifting = true; capturedBG = '';
+  setAmbBoost(0.34);                                        // 環境音がすっと引く
+  const at = (sec: number, fn: () => void) => setTimeout(fn, sec * 1000);
+
+  at(T_SOUND, () => { opening = true; openBookSound(); haptic(8); });
+  at(T_MOTES, () => scene.motesStart());
+  at(T_DIVE, () => { diving = true; });
+  at(2.10, () => haptic(16));                               // 革が着地する直前
+  at(2.15, () => { flash.style.transition = 'opacity .22s ease-out'; flash.style.opacity = '.82'; });
+  at(T_SNAP, () => scene.captureFrame(url => { if (url) void dimSnapshot(url).then(u => { capturedBG = u; }); }));
+  at(T_CUT, () => {
     setStage('read');
     $('bgDim').style.opacity = '1';
-    reader.open(mode);
-    scene.motesStop();
-    setTimeout(() => { fade.style.transition = 'opacity 2.2s ease'; fade.style.opacity = '0'; }, 700);
-    opening = false; diving = false; openT = 0; diveT = 0;
-    if (scene.hinge) scene.hinge.rotation.z = 0;
-  }, 5900);
+    reader.open(mode, { bg: capturedBG || undefined, matchCut: true });
+    flash.style.transition = 'opacity 1.05s ease';
+    flash.style.opacity = '0';
+    setTimeout(() => {
+      scene.motesStop(); scene.resetOpenFX();
+      opening = false; diving = false; lifting = false; openT = 0; diveT = 0;
+      if (scene.hinge) scene.hinge.rotation.z = 0;
+    }, 600);
+  });
+}
+
+/**
+ * 開く直前の3D画面を、読書画面の後ろに敷ける形に落とす。
+ * 1/3 に縮めてぼかし、暗く沈め、右下（ろうそくの居場所）は黒に潰す。
+ * ここで焼いておけば読書中の CSS フィルタが要らず、転送も描画も軽い。
+ */
+function dimSnapshot(url: string): Promise<string> {
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const w = Math.max(64, Math.round(im.width / 3)), h = Math.max(64, Math.round(im.height / 3));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const g = c.getContext('2d')!;
+        g.filter = 'blur(4px) brightness(0.44) saturate(0.85)';
+        g.drawImage(im, 0, 0, w, h);
+        g.filter = 'none';
+        // 画面のふち
+        let vg = g.createRadialGradient(w / 2, h * 0.46, 0, w / 2, h * 0.46, Math.max(w, h) * 0.78);
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.55, 'rgba(0,0,0,.35)'); vg.addColorStop(1, 'rgba(0,0,0,.92)');
+        g.fillStyle = vg; g.fillRect(0, 0, w, h);
+        // 右下はろうそくの居場所。黒に潰しておかないと灯りの絵が四角く浮く
+        vg = g.createRadialGradient(w * 0.9, h * 0.95, 0, w * 0.9, h * 0.95, Math.max(w, h) * 0.42);
+        vg.addColorStop(0, 'rgba(0,0,0,.98)'); vg.addColorStop(0.6, 'rgba(0,0,0,.7)'); vg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = vg; g.fillRect(0, 0, w, h);
+        res(c.toDataURL('image/jpeg', 0.6));
+      } catch { res(''); }
+    };
+    im.onerror = () => res('');
+    im.src = url;
+  });
+}
+
+/** 開く演出の連続量（光・箔の走り・表紙の持ち上げ・寄り）。毎フレーム呼ぶ */
+function openEnvelope(): { r: number; ph: number } | null {
+  if (stage !== 'opening' && stage !== 'read') return null;
+  if (!lifting) return null;
+  const ot = (performance.now() - openT0) / 1000;
+  // 表紙の金箔に光が走る（0.00 → 0.85）
+  scene.gild = Math.max(0, Math.min(1, (ot - 0.02) / 0.83));
+  // 光が本の内側から溢れる。2.15 の着地で最大、そのあとすっと引く
+  let f = 0;
+  if (ot > T_SOUND) f = Math.min(1, (ot - T_SOUND) / 0.70);
+  if (ot > 2.20) f = Math.max(0.35, 1 - (ot - 2.20) / 0.55);
+  scene.openFlare = f;
+  // 表紙が5°持ち上がる（0.15 → 0.80）。開きはじめたら hinge は下のループに任せる
+  if (!opening && scene.hinge) {
+    const k = Math.max(0, Math.min(1, (ot - 0.15) / 0.65));
+    scene.hinge.rotation.z = OPEN_LIFT * (k * k * (3 - 2 * k));
+  }
+  // カメラが寄る（1.55 → 1.30）。潜り込みが始まったら dive 側が持つ
+  if (ot < T_DIVE) {
+    const k = Math.max(0, Math.min(1, (ot - 0.15) / 1.20));
+    return { r: BookScene.CAM_R - 0.26 * (k * k * (3 - 2 * k)), ph: scene.camPhi };
+  }
+  return null;
 }
 
 // 本を閉じる儀式（約3秒）
@@ -206,6 +280,14 @@ function listenTilt(): void {
   }, { passive: true });
   reader.listenTilt();
 }
+// PC は mousemove で代替（光の向きが視線に付いてくる）
+if (!MOBILE) {
+  addEventListener('mousemove', e => {
+    scene.tiltRaw.x = Math.max(-1, Math.min(1, (e.clientX / innerWidth - 0.5) * 2));
+    scene.tiltRaw.y = Math.max(-1, Math.min(1, (e.clientY / innerHeight - 0.5) * 2));
+  }, { passive: true });
+  reader.listenMouse();
+}
 setTiltGrantHandler(listenTilt);
 try {
   const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
@@ -229,14 +311,14 @@ scene.renderer.setAnimationLoop(() => {
   if (stage === 'read' && !diving) return;       // 読書中は3Dを描かない（電池）
 
   if (opening && scene.hinge) {
-    openT = Math.min(openT + wdt / 2.2, 1);
+    openT = Math.min(openT + wdt / OPEN_DUR, 1);
     const k = openT * openT * (3 - 2 * openT);
-    scene.hinge.rotation.z = k * 2.5;
+    scene.hinge.rotation.z = OPEN_LIFT + (2.5 - OPEN_LIFT) * k;
   }
   if (diving) diveT += wdt;
 
   // 本を閉じる儀式: 本から抜ける(1.0s) → 表紙が重く閉じる(0.85s) → ドスッ
-  let closeCam: { r: number; ph: number } | null = null;
+  let closeCam: { r: number; ph: number } | null = openEnvelope();
   if (closing && scene.hinge) {
     closing.t += wdt;
     if (closing.phase === 'pull') {
@@ -255,7 +337,7 @@ scene.renderer.setAnimationLoop(() => {
     dt, wdt, t, raw,
     dragging, opening, diving, diveT,
     autoSpin: !dragging && !opening && !diving && stage === 'book',
-    closeCam,
+    camOverride: closeCam,
   });
 });
 

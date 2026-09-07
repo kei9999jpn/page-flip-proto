@@ -12,7 +12,17 @@ import { asset, MOBILE, QP, S, loadFavs, saveFavs, loadBookmark, saveBookmark, c
 import { pageSound, sealSound, ribbonSound, uiClick, haptic, ensureAudio } from '../audio';
 
 const N = 790;
+// 名言のページは AVIF（900x1200 q52・1枚 297KB → 約150KB）。
+// 対応していない端末と、まだ AVIF を作っていないページは JPEG に落ちる（loadImg の中で拾う）。
+let AVIF_OK = false;
+(() => {
+  const im = new Image();
+  im.onload = () => { AVIF_OK = im.width > 0; };
+  im.onerror = () => { AVIF_OK = false; };
+  im.src = 'data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgANogQEAwgMg8f8D///8WfhwB8+ErK42A=';
+})();
 const SRC = (i: number) => asset('pages/p' + (i + 1) + '.jpg');
+const SRC_AVIF = (i: number) => asset('pages-avif/p' + (i + 1) + '.avif');
 const PAPER = QP.get('paper') !== '0';
 const EDGE = 8;
 const AHEAD = 8, BEHIND = 2, MAX_PAR = 4;
@@ -143,15 +153,24 @@ export class Reader {
   }
 
   // ---------------------------------------------------------- 出入り
-  /** mode: 'read' | 'fav' | 'resume' | 'fresh' */
-  open(mode: string): void {
+  /**
+   * mode: 'read' | 'fav' | 'resume' | 'fresh'
+   * opts.bg : 開く直前の3D画面のスクショ（data URL）。紙の後ろに暗くぼかして敷き、
+   *           3D→読書のマッチカットで景色が途切れないようにする（KEI 2026-09-07 B）。
+   */
+  open(mode: string, opts?: { bg?: string; matchCut?: boolean }): void {
     this.opened = true;                                  // これ以降だけ画像を落とす
     if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp'));
     if (!this.backTex) this.loadImg(asset('backside.jpg')).then(im => { this.backTex = im; });
     setTimeout(() => { if (!this.imgs[this.deck[this.index]]) this.firstReady(); }, 6000);
+    const bgEl = this.root.querySelector<HTMLElement>('#bg')!;
+    if (opts && opts.bg) { bgEl.style.backgroundImage = 'url(' + opts.bg + ')'; bgEl.classList.add('snap'); }
+    else { bgEl.style.backgroundImage = ''; bgEl.classList.remove('snap'); }
+    const mc = !!(opts && opts.matchCut);
+    this.root.classList.toggle('matchcut', mc);
     this.root.classList.add('show');
     this.cv.classList.add('in'); this.cv.classList.add('sway');
-    this.rampGlow(1.0, 3600);                            // 暗い所から徐々に灯る（KEI 2026-09-04）
+    this.rampGlow(1.0, mc ? 1100 : 3600);                // マッチカットは同じ明るさから現れる
     this.pagesReady.then(() => {
       this.draw(); this.updateFavUI();
       [300, 1200, 2600].forEach(ms => setTimeout(() => { this.layout(); this.draw(); this.placeRibbon(false); }, ms));
@@ -180,7 +199,7 @@ export class Reader {
   /** 完全に退場（シェルが本の画面に戻ったあと） */
   hide(): void {
     this.opened = false;
-    this.root.classList.remove('show');
+    this.root.classList.remove('show', 'matchcut');
     this.cv.classList.remove('out', 'in', 'sway');
     this.glowBase = 0; this.lampLevel = 0;
     this.el.paperGlow.style.opacity = '0';
@@ -205,8 +224,16 @@ export class Reader {
   }
 
   // ---------------------------------------------------------- 画像（先読み + LRU ±12）
-  private loadImg(src: string): Promise<HTMLImageElement | null> {
-    return new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  private loadImg(src: string, fallback?: string): Promise<HTMLImageElement | null> {
+    return new Promise(res => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => { if (fallback) { const f = new Image(); f.onload = () => res(f); f.onerror = () => res(null); f.src = fallback; } else res(null); };
+      im.src = src;
+    });
+  }
+  private pageSrc(i: number): { src: string; fallback?: string } {
+    return AVIF_OK ? { src: SRC_AVIF(i), fallback: SRC(i) } : { src: SRC(i) };
   }
   private releaseFar(): void {
     if (this.loadedSet.size <= KEEP * 2 + 4) return;
@@ -224,7 +251,8 @@ export class Reader {
     if (i < 0 || i >= N || this.imgs[i] || this.loading.has(i)) return;
     if (!prio && this.loading.size >= MAX_PAR) return;
     this.loading.add(i);
-    this.loadImg(SRC(i)).then(im => {
+    const p = this.pageSrc(i);
+    this.loadImg(p.src, p.fallback).then(im => {
       this.imgs[i] = im; this.loading.delete(i); if (im) this.loadedSet.add(i);
       const k = this.deck.indexOf(i);
       if (k >= this.index - 1 && k <= this.index + 1) this.draw();
@@ -296,7 +324,7 @@ export class Reader {
     const step = (now: number) => {
       if (!this.favStamp) return;
       this.draw();
-      if (now - this.favStamp.t0 < 700) requestAnimationFrame(step);
+      if (now - this.favStamp.t0 < 900) requestAnimationFrame(step);
       else { this.favStamp = null; this.draw(); }
     };
     step(performance.now());
@@ -365,7 +393,7 @@ export class Reader {
   }
 
   // ---------------------------------------------------------- 描画
-  private draw(): void { this.drawInner(); this.lampOverlay(); }
+  private draw(): void { this.drawInner(); this.lampOverlay(); this.sealRun(this.W - EDGE, this.H - EDGE); }
   private smoothNoise(t: number): number { return Math.sin(t * 0.61) * 0.5 + Math.sin(t * 1.37 + 1.3) * 0.3 + Math.sin(t * 0.23 + 2.1) * 0.2; }
   private gustFn(s: number): void { this._fl.gust = Math.min(1.2, this._fl.gust + s); }
 
@@ -376,23 +404,30 @@ export class Reader {
     const gu = this._fl.gust, gj = gu * Math.sin(this._fl.t * 41) * 0.5 + gu * 0.5;
     const lv = Math.max(0, Math.min(1, this.lampLevel * (0.85 + n * 0.12 + cur * 0.35 + gj * 0.22)));
     const n2 = this.smoothNoise(this._fl.t * 1.7 + 3.1);
-    const cx = pw * (0.80 + n * 0.04 + n2 * 0.02 + gu * Math.sin(this._fl.t * 33) * 0.05);
-    const cy = ph * (0.82 + n * 0.03 - gu * 0.03);
-    const r = Math.max(pw, ph) * (1.05 + n * 0.10 + cur * 0.18 + gj * 0.12);
+    // 光源は紙の中ではなく、画面右下のろうそくの位置（＝紙の外）に置く。
+    // 2026-09-07 KEI「本の右下あたりに光源があって眩しすぎて見にくい」→ 中心を紙の外へ出し、
+    // 山を低くして、紙全体は右下から左上へゆるく落ちる階調にする。
+    this.tilt.sx += (this.tilt.x - this.tilt.sx) * 0.12;
+    this.tilt.sy += (this.tilt.y - this.tilt.sy) * 0.12;
+    const tx = this.tilt.on ? this.tilt.sx * 0.10 : 0, ty = this.tilt.on ? this.tilt.sy * 0.08 : 0;
+    const cx = pw * (1.06 + tx + n * 0.03 + n2 * 0.015 + gu * Math.sin(this._fl.t * 33) * 0.035);
+    const cy = ph * (1.16 + ty + n * 0.02 - gu * 0.02);
+    const r = Math.max(pw, ph) * (1.72 + n * 0.10 + cur * 0.16 + gj * 0.10);
     ctx.save();
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     this.sheen(pw, ph);
     ctx.globalCompositeOperation = 'multiply';
-    let g = ctx.createRadialGradient(cx, cy, r * 0.18, cx, cy, r);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.55, 'rgba(214,188,150,1)');
-    g.addColorStop(1, 'rgba(70,48,28,1)');
-    ctx.globalAlpha = lv * 0.9; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
+    let g = ctx.createRadialGradient(cx, cy, r * 0.22, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,252,244,1)');
+    g.addColorStop(0.45, 'rgba(232,214,182,1)');
+    g.addColorStop(0.78, 'rgba(182,156,120,1)');
+    g.addColorStop(1, 'rgba(120,96,68,1)');
+    ctx.globalAlpha = lv * 0.86; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
     ctx.globalCompositeOperation = 'overlay';
-    g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.75);
-    g.addColorStop(0, 'rgba(255,196,120,' + (0.62 + n2 * 0.12).toFixed(3) + ')');
-    g.addColorStop(0.5, 'rgba(255,150,70,0.20)');
-    g.addColorStop(1, 'rgba(255,120,40,0)');
+    g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.9);
+    g.addColorStop(0, 'rgba(255,200,128,' + (0.30 + n2 * 0.06).toFixed(3) + ')');
+    g.addColorStop(0.5, 'rgba(255,158,76,0.11)');
+    g.addColorStop(1, 'rgba(255,124,44,0)');
     ctx.globalAlpha = lv; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
     if (PAPER) {
       const ax = pw * (0.98 + gu * 0.02), ay = ph * (0.96 - n * 0.02);
@@ -452,8 +487,6 @@ export class Reader {
   private sheen(pw: number, ph: number): void {
     if (!this.tilt.on) return;
     const ctx = this.ctx;
-    this.tilt.sx += (this.tilt.x - this.tilt.sx) * 0.12;
-    this.tilt.sy += (this.tilt.y - this.tilt.sy) * 0.12;
     const px = pw * (0.5 + this.tilt.sx * 0.9), py = ph * (0.5 + this.tilt.sy * 0.9);
     const g = ctx.createLinearGradient(px - pw * 0.55, py - ph * 0.35, px + pw * 0.55, py + ph * 0.35);
     const a = 0.09 + 0.06 * Math.min(1, Math.hypot(this.tilt.sx, this.tilt.sy) * 2);
@@ -461,6 +494,95 @@ export class Reader {
     g.addColorStop(0.5, 'rgba(255,244,210,' + a.toFixed(3) + ')');
     g.addColorStop(0.58, 'rgba(255,240,200,0)'); g.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph); ctx.restore();
+  }
+
+
+  /**
+   * 紙を「物」にする一手間（KEI 2026-09-07 Phase 4）。
+   *  - 上端の反り: 数px 湾曲した稜線＋その下の陰影
+   *  - 右端・下端: 一枚ぶんの縁の落ち込みと拾い光
+   * めくり中は描かない（形が二重に見えるため）。
+   */
+  private paperBody(pw: number, ph: number): void {
+    const ctx = this.ctx;
+    const bow = Math.max(3, ph * 0.011);                 // 反りの深さ（px）
+    ctx.save();
+    // 上端の反り: 稜線の下に落ちる影
+    let g = ctx.createLinearGradient(0, 0, 0, bow * 3.4);
+    g.addColorStop(0, 'rgba(28,19,8,.30)');
+    g.addColorStop(0.45, 'rgba(28,19,8,.09)');
+    g.addColorStop(1, 'rgba(28,19,8,0)');
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(pw, 0); ctx.lineTo(pw, bow * 3.4);
+    ctx.quadraticCurveTo(pw / 2, bow * 3.4 - bow * 2.0, 0, bow * 3.4);
+    ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    // 稜線そのもの（数px 湾曲した明るい線）
+    ctx.globalCompositeOperation = 'screen';
+    ctx.strokeStyle = 'rgba(255,238,198,.20)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, bow * 0.4);
+    ctx.quadraticCurveTo(pw / 2, -bow * 0.9, pw, bow * 0.4);
+    ctx.stroke();
+    // 下端も同じだけ、逆向きにわずかに起きる
+    ctx.globalCompositeOperation = 'multiply';
+    g = ctx.createLinearGradient(0, ph - bow * 2.6, 0, ph);
+    g.addColorStop(0, 'rgba(28,19,8,0)'); g.addColorStop(1, 'rgba(28,19,8,.16)');
+    ctx.fillStyle = g; ctx.fillRect(0, ph - bow * 2.6, pw, bow * 2.6);
+    // 右端の拾い光（ろうそくは右下）
+    ctx.globalCompositeOperation = 'screen';
+    g = ctx.createLinearGradient(pw - bow * 2.2, 0, pw, 0);
+    g.addColorStop(0, 'rgba(255,226,168,0)'); g.addColorStop(1, 'rgba(255,226,168,.16)');
+    ctx.fillStyle = g; ctx.fillRect(pw - bow * 2.2, 0, bow * 2.2, ph);
+    ctx.restore();
+  }
+
+  /**
+   * 印を押すと、金の印から光が紙の縁を一周して消える（0.8秒・KEI 2026-09-07 C）。
+   * 起点は右上の印。時計回りに一周する。
+   */
+  private sealRun(pw: number, ph: number): void {
+    if (!this.favStamp) return;
+    const k = (performance.now() - this.favStamp.t0) / 800;
+    if (k <= 0 || k >= 1) return;
+    const ctx = this.ctx;
+    const r = Math.max(6, pw * 0.021);
+    const per = 2 * (pw + ph);
+    const start = pw - r * 2.2;                          // 印の位置（上辺のこの x から出発）
+    const pt = (d: number): Pt => {                      // 周長 d の点（時計回り: 右→下→左→上）
+      let x = ((d % per) + per) % per;
+      if (x < pw) return { x, y: 0 };
+      x -= pw; if (x < ph) return { x: pw, y: x };
+      x -= ph; if (x < pw) return { x: pw - x, y: ph };
+      x -= pw; return { x: 0, y: ph - x };
+    };
+    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    const head = start + e * per;
+    const tail = Math.max(pw * 0.16, per * 0.16);
+    const fade = k < 0.12 ? k / 0.12 : (k > 0.72 ? Math.max(0, 1 - (k - 0.72) / 0.28) : 1);
+    ctx.save();
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    const STEPS = 22;
+    for (let i = 0; i < STEPS; i++) {
+      const a = pt(head - tail * (i / STEPS)), b = pt(head - tail * ((i + 1) / STEPS));
+      if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > tail) continue;   // 角をまたぐ区間は飛ばす
+      const al = (1 - i / STEPS) * fade;
+      ctx.strokeStyle = 'rgba(255,224,150,' + (al * 0.55).toFixed(3) + ')';
+      ctx.lineWidth = 5.5 * (1 - i / STEPS) + 1.2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,248,224,' + (al * 0.75).toFixed(3) + ')';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    const h = pt(head);
+    const gg = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26);
+    gg.addColorStop(0, 'rgba(255,244,206,' + (0.7 * fade).toFixed(3) + ')');
+    gg.addColorStop(0.35, 'rgba(255,206,120,' + (0.28 * fade).toFixed(3) + ')');
+    gg.addColorStop(1, 'rgba(255,180,70,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(h.x, h.y, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   private drawInner(): void {
@@ -472,18 +594,34 @@ export class Reader {
     const pw = this.W - EDGE, ph = this.H - EDGE;
     const flip = this.flip;
 
+    // ---- 紙の束（小口）。右端と下端に薄い層を重ねて「厚み」を出す ----
     const remain = Math.max(0, this.deck.length - 1 - this.index - (flip && flip.dir > 0 ? 1 : 0));
-    for (let i = Math.min(3, remain); i >= 1; i--) {
-      const o = i * 2.4;
-      ctx.fillStyle = i % 2 ? '#cbbd9c' : '#bfb08d';
+    const LAYERS = Math.min(4, remain);
+    for (let i = LAYERS; i >= 1; i--) {
+      const o = i * 1.6;
+      ctx.fillStyle = i % 2 ? '#cdbf9e' : '#c0b18e';
       ctx.fillRect(o, o, pw, ph);
-      ctx.fillStyle = 'rgba(60,45,20,0.25)';
-      ctx.fillRect(o, o + ph - 1, pw, 1); ctx.fillRect(o + pw - 1, o, 1, ph);
+      // 層と層のあいだの筋
+      ctx.fillStyle = 'rgba(58,42,18,' + (0.30 - i * 0.04).toFixed(3) + ')';
+      ctx.fillRect(o, o + ph - 1, pw, 1);
+      ctx.fillRect(o + pw - 1, o, 1, ph);
+    }
+    if (LAYERS > 0) {
+      // 小口の金気（右端と下端にうっすら反射）
+      const eg = ctx.createLinearGradient(pw, 0, pw + LAYERS * 1.6, 0);
+      eg.addColorStop(0, 'rgba(224,196,138,0)'); eg.addColorStop(1, 'rgba(224,196,138,.22)');
+      ctx.fillStyle = eg; ctx.fillRect(pw, LAYERS * 1.6, LAYERS * 1.6, ph);
     }
 
     const cur = this.pg(this.index);
     if (!cur) { ctx.fillStyle = '#1a140c'; ctx.fillRect(0, 0, pw, ph); return; }
-    if (!flip) { ctx.drawImage(cur, 0, 0, pw, ph); this.gutter(pw, ph, 0); this.drawSealFor(pw, ph, this.deck[this.index]); return; }
+    if (!flip) {
+      ctx.drawImage(cur, 0, 0, pw, ph);
+      this.gutter(pw, ph, 0);
+      this.paperBody(pw, ph);
+      this.drawSealFor(pw, ph, this.deck[this.index]);
+      return;
+    }
     const under = flip.dir > 0 ? this.pg(this.index + 1) : this.pg(this.index);
     const sheet = flip.dir > 0 ? this.pg(this.index) : this.pg(this.index - 1);
     if (!under || !sheet) { ctx.drawImage(cur, 0, 0, pw, ph); this.gutter(pw, ph, 0); this.drawSealFor(pw, ph, this.deck[this.index]); return; }
@@ -863,13 +1001,21 @@ export class Reader {
     gstep(t0);
   }
 
-  /** 端末の傾き（箔押し・インクの艶） */
+  /** 端末の傾き（箔押し・インクの艶・灯りの向き）。PC は mousemove で代替 */
   listenTilt(): void {
     addEventListener('deviceorientation', ev => {
       if (ev.gamma == null || ev.beta == null) return;
       this.tilt.on = true;
       this.tilt.x = Math.max(-1, Math.min(1, ev.gamma / 35));
       this.tilt.y = Math.max(-1, Math.min(1, (ev.beta - 45) / 35));
+    }, { passive: true });
+  }
+  listenMouse(): void {
+    if (MOBILE) return;
+    addEventListener('mousemove', e => {
+      this.tilt.on = true;
+      this.tilt.x = Math.max(-1, Math.min(1, (e.clientX / innerWidth - 0.5) * 2));
+      this.tilt.y = Math.max(-1, Math.min(1, (e.clientY / innerHeight - 0.5) * 2));
     }, { passive: true });
   }
 

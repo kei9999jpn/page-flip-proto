@@ -23,6 +23,7 @@ import { RoomBackground } from './RoomBackground';
 const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
 const CANDLE_I = QUALITY ? 2.0 : 1.6;
+const DIVE_DUR = 1.5;                     // ページの間へ潜る時間（秒）
 
 const GradeShader = {
   uniforms: {
@@ -71,6 +72,19 @@ export class BookScene {
   private dspd: number[] = [];
   private ND = MOBILE ? 120 : 220;
 
+  private titleDecal: THREE.Mesh | null = null;
+  private titleSweep: THREE.Mesh | null = null;
+  private sweepTex: THREE.CanvasTexture | null = null;
+  private flareA: THREE.PointLight;             // 表紙の内側から溢れる光
+  private flareB: THREE.PointLight;             // ページの谷から立つ光
+  private rimB: THREE.DirectionalLight;
+  private rimHome = new THREE.Vector3(-0.8, 0.9, -0.6);
+  private capture: ((url: string) => void) | null = null;
+  /** 開く演出の光量 0..1（main.ts の台本が毎フレーム入れる） */
+  openFlare = 0;
+  /** 表紙の箔に光が走る 0..1 */
+  gild = 0;
+
   private motes: THREE.Points;
   private mGeo = new THREE.BufferGeometry();
   private mPos: Float32Array; private mVel: Float32Array; private mLife: Float32Array;
@@ -104,10 +118,17 @@ export class BookScene {
     this.candleB = new THREE.PointLight(0xffc98f, CANDLE_I, 2.5, 2.0);
     this.candleB.position.set(0.28, 0.34, 0.30);
     this.scene.add(this.candleB);
-    const rimB = new THREE.DirectionalLight(QUALITY ? 0x6f80b8 : 0x7a86a8, QUALITY ? 0.55 : 0.9);
-    rimB.position.set(-0.8, 0.9, -0.6); this.scene.add(rimB);
+    this.rimB = new THREE.DirectionalLight(QUALITY ? 0x6f80b8 : 0x7a86a8, QUALITY ? 0.55 : 0.9);
+    this.rimB.position.copy(this.rimHome); this.scene.add(this.rimB);
     this.fireB = new THREE.PointLight(0xff6a22, QUALITY ? 0.9 : 0, 4.0, 2.0);
     this.fireB.position.set(-1.25, -0.05, 0.45); this.scene.add(this.fireB);
+    // 開く瞬間の光は「本の内側」から出す。書斎の右下（ろうそく側）を強くすると
+    // 画面右下が白く飛んで文字が読めなくなる（2026-09-07 KEI 指摘）ので、
+    // ろうそくは逆に一瞬だけ落とし、光源は本の中に置く。
+    this.flareA = new THREE.PointLight(0xffd9a4, 0, 1.15, 2.4);
+    this.flareA.position.set(-0.06, 0.085, 0.0); this.scene.add(this.flareA);
+    this.flareB = new THREE.PointLight(0xfff0cc, 0, 0.55, 2.4);
+    this.flareB.position.set(0.02, 0.06, 0.0); this.scene.add(this.flareB);
     if (QUALITY) {
       this.candleB.castShadow = true;
       this.candleB.shadow.mapSize.set(MOBILE ? 512 : 1024, MOBILE ? 512 : 1024);
@@ -179,13 +200,14 @@ export class BookScene {
       }
       this.pivot.scale.setScalar(1); this.bookScale = 1; this.bookTarget = 1;
       this.buildRibbon(); this.buildFavMarks(); if (QUALITY) this.buildStage();
+      this.buildTitleDecal(cover || null);
       onReady();
     });
   }
 
   private applyLeather(root: THREE.Object3D): void {
     const tl = new THREE.TextureLoader();
-    const nrm = tl.load(asset('cover-normal.jpg')); nrm.flipY = false; nrm.colorSpace = THREE.NoColorSpace;
+    const nrm = tl.load(asset('cover-normal.webp')); nrm.flipY = false; nrm.colorSpace = THREE.NoColorSpace;
     const rgh = tl.load(asset('cover-rough.jpg')); rgh.flipY = false; rgh.colorSpace = THREE.NoColorSpace;
     root.traverse(o => {
       const m = o as THREE.Mesh;
@@ -197,6 +219,104 @@ export class BookScene {
       }
     });
   }
+
+
+  // ------------------------------------------------------------------
+  // 表紙の箔押し「名言の書」（KEI 2026-09-07: DOM のタイトルカードは出さず、
+  // 表紙そのものに刻む）。GLB の UV が分からないのでテクスチャに焼かず、
+  // 表紙のすぐ上に薄い板（デカール）を貼る。見た目は箔押しと同じ。
+  // 斜光でだけ読める控えめな金。位置は紋章の下。
+  // ------------------------------------------------------------------
+  private titleCanvas(): { tex: THREE.CanvasTexture; ratio: number } {
+    const W = 1024, H = 300;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    const chars = ['名', '言', 'の', '書'];
+    const fs = 168, sp = fs * 0.30;
+    g.font = '500 ' + fs + 'px "Hiragino Mincho ProN","Yu Mincho","Shippori Mincho",serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const widths = chars.map(ch => g.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0) + sp * (chars.length - 1);
+    let x = (W - total) / 2;
+    const grad = g.createLinearGradient(0, H * 0.18, 0, H * 0.86);
+    grad.addColorStop(0, '#f6e6ae'); grad.addColorStop(0.42, '#cda54c');
+    grad.addColorStop(0.56, '#9d7a2c'); grad.addColorStop(1, '#e6cf88');
+    for (let i = 0; i < chars.length; i++) {
+      const cx = x + widths[i] / 2;
+      // 押し込みの影（箔押しの窪み）
+      g.fillStyle = 'rgba(20,12,4,.55)';
+      g.fillText(chars[i], cx + 3, H / 2 + 3);
+      g.fillStyle = grad;
+      g.fillText(chars[i], cx, H / 2);
+      // 縁の一本ハイライト
+      g.strokeStyle = 'rgba(255,244,206,.35)'; g.lineWidth = 1.6;
+      g.strokeText(chars[i], cx - 0.8, H / 2 - 1.2);
+      x += widths[i] + sp;
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return { tex, ratio: W / H };
+  }
+  private sweepTexture(): THREE.CanvasTexture {
+    const W = 256, H = 8;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    const lg = g.createLinearGradient(0, 0, W, 0);
+    lg.addColorStop(0.00, 'rgba(0,0,0,0)');
+    lg.addColorStop(0.42, 'rgba(0,0,0,0)');
+    lg.addColorStop(0.50, 'rgba(255,246,214,1)');
+    lg.addColorStop(0.58, 'rgba(0,0,0,0)');
+    lg.addColorStop(1.00, 'rgba(0,0,0,0)');
+    g.fillStyle = lg; g.fillRect(0, 0, W, H);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  private buildTitleDecal(cover: THREE.Object3D | null): void {
+    const book = this.book; if (!book || !cover || this.titleDecal) return;
+    const hinge = this.hinge; if (!hinge) return;
+    // 表紙のバウンディングボックスを本のローカル座標で測る（buildRibbon と同じ手）
+    const rz = book.rotation.z, py = this.pivot.position.y, hz = hinge.rotation.z;
+    book.rotation.z = 0; hinge.rotation.z = 0; this.pivot.position.y = 0;
+    this.pivot.updateMatrixWorld(true);
+    const cb = new THREE.Box3().setFromObject(cover);
+    book.rotation.z = rz; hinge.rotation.z = hz; this.pivot.position.y = py;
+    const cw = cb.max.x - cb.min.x, cz = cb.max.z - cb.min.z;
+    const { tex, ratio } = this.titleCanvas();
+    const w = cw * 0.52, h = w / ratio;
+    const geo = new THREE.PlaneGeometry(w, h);
+    geo.rotateX(-Math.PI / 2);                       // 表紙の面（+Y を向く）に寝かせる
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, transparent: true, alphaTest: 0.02, depthWrite: false,
+      metalness: 0.85, roughness: 0.28, envMapIntensity: 0.9,
+      emissive: new THREE.Color(0xffd48a), emissiveIntensity: 0,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
+    const m = new THREE.Mesh(geo, mat);
+    // 紋章の下（本の上端 = z 小、下端 = z 大）
+    const px = (cb.min.x + cb.max.x) / 2 + cw * 0.02;
+    const pz = cb.min.z + cz * 0.70;
+    const pyTop = cb.max.y + 0.0006;
+    m.position.set(px - hinge.position.x, pyTop - hinge.position.y, pz - hinge.position.z);
+    m.renderOrder = 2;
+    hinge.add(m); this.titleDecal = m;
+
+    // 箔の上を光が走る板（同じ字型で抜く）
+    this.sweepTex = this.sweepTexture();
+    const sw = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({
+      map: this.sweepTex, alphaMap: tex, transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, opacity: 0,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+    }));
+    sw.position.copy(m.position); sw.position.y += 0.0002;
+    sw.renderOrder = 3; sw.visible = false;
+    hinge.add(sw); this.titleSweep = sw;
+  }
+
+  /** 直後の1フレームを画像にして返す（読書画面の背景に敷く） */
+  captureFrame(cb: (url: string) => void): void { this.capture = cb; }
 
   private buildStage(): void {
     if (!this.book || !this.bookBB || this.stageGroup) return;
@@ -337,7 +457,7 @@ export class BookScene {
   update(opts: {
     dt: number; wdt: number; t: number; raw: number;
     dragging: boolean; opening: boolean; diving: boolean; diveT: number;
-    autoSpin: boolean; closeCam: { r: number; ph: number } | null;
+    autoSpin: boolean; camOverride: { r: number; ph: number } | null;
   }): void {
     if (this.composer && !this.perfDone) {
       this.perfN++; this.perfT += opts.raw;
@@ -367,7 +487,38 @@ export class BookScene {
     this.tiltCur.x += (this.tiltRaw.x - this.tiltCur.x) * 0.08;
     this.tiltCur.y += (this.tiltRaw.y - this.tiltCur.y) * 0.08;
     this.candleB.position.set(0.28 + this.tiltCur.x * 0.22, 0.34 + this.tiltCur.y * 0.12, 0.30 - this.tiltCur.y * 0.15);
-    this.candleB.intensity = CANDLE_I + Math.sin(t * 0.71) * 0.18 + Math.sin(t * 1.63 + 1.1) * 0.11 + Math.sin(t * 0.29 + 2.4) * 0.14 + this.shake * 0.6;
+    this.candleB.intensity = (CANDLE_I + Math.sin(t * 0.71) * 0.18 + Math.sin(t * 1.63 + 1.1) * 0.11 + Math.sin(t * 0.29 + 2.4) * 0.14 + this.shake * 0.6)
+      * (1 - this.openFlare * 0.80);                 // 開く瞬間は書斎の灯りを引き、光を本の中に集める
+    // 端末を傾けると縁の光の向きが動く（±8°ぶん）
+    this.rimB.position.set(
+      this.rimHome.x - this.tiltCur.x * 0.42,
+      this.rimHome.y - Math.abs(this.tiltCur.y) * 0.10,
+      this.rimHome.z + this.tiltCur.y * 0.30,
+    );
+    // 開く演出の光（本の内側から溢れる。白飛びさせないよう上限を切る）
+    if (this.openFlare > 0.0001 || this.flareA.intensity > 0.0001) {
+      const f = this.openFlare;
+      const fl = 0.9 + Math.sin(t * 21) * 0.06 + Math.sin(t * 7.3) * 0.04;
+      this.flareA.intensity = f * 0.90 * fl;
+      this.flareB.intensity = f * f * 0.42 * fl;
+      if (this.bloomPass) this.bloomPass.strength = (MOBILE ? 0.32 : 0.42) + f * (MOBILE ? 0.18 : 0.24);
+      this.renderer.toneMappingExposure = 0.72 + f * 0.04;
+      if (this.gradePass) this.gradePass.uniforms.uVig.value = 0.30 - f * 0.14;
+    }
+    // 表紙の箔に光が走る
+    if (this.titleDecal) {
+      const mat = this.titleDecal.material as THREE.MeshStandardMaterial;
+      mat.emissiveIntensity = this.gild * 0.55 + this.openFlare * 0.35;
+      if (this.titleSweep && this.sweepTex) {
+        const on = this.gild > 0.001;
+        this.titleSweep.visible = on;
+        if (on) {
+          const sm = this.titleSweep.material as THREE.MeshBasicMaterial;
+          sm.opacity = Math.min(1, Math.sin(Math.PI * Math.min(1, this.gild)) * 1.6);
+          this.sweepTex.offset.x = -0.5 + this.gild * 1.15;
+        }
+      }
+    }
     if (QUALITY) {
       const fl = Math.sin(t * 1.9) * 0.5 + Math.sin(t * 3.7 + 0.8) * 0.3 + Math.sin(t * 0.53 + 2.0) * 0.2;
       this.fireB.intensity = 0.9 + fl * 0.22 + this.shake * 0.4;
@@ -389,12 +540,15 @@ export class BookScene {
     const sx0 = this.shake * Math.sin(t * 57) * 0.012, sy0 = this.shake * Math.sin(t * 43 + 1) * 0.008;
     const cam = this.camera;
     if (opts.diving) {
-      const k = Math.min(opts.diveT / 2.4, 1), e2 = k * k * k * (k * (6 * k - 15) + 10);
-      const r = CAM_R * (1 - e2) + 0.19 * e2, th = this.camTheta, ph = this.camPhi * (1 - e2) + 0.12 * e2;
+      const k = Math.min(opts.diveT / DIVE_DUR, 1), e2 = k * k * k * (k * (6 * k - 15) + 10);
+      const r = CAM_R * (1 - e2) + 0.155 * e2, th = this.camTheta, ph = this.camPhi * (1 - e2) + 0.12 * e2;
       cam.position.set(r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph), r * Math.sin(ph) * Math.cos(th));
       cam.lookAt(0, 0.01, 0);
-    } else if (opts.closeCam) {
-      const { r, ph } = opts.closeCam, th = this.camTheta;
+      // 本の中へ潜るほど視野が広がる（覗き込む歪み）
+      const fov = 38 + 20 * (k * k);
+      if (Math.abs(cam.fov - fov) > 0.05) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    } else if (opts.camOverride) {
+      const { r, ph } = opts.camOverride, th = this.camTheta;
       cam.position.set(r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph), r * Math.sin(ph) * Math.cos(th));
       cam.lookAt(0, 0.01, 0);
     } else {
@@ -411,8 +565,27 @@ export class BookScene {
     if (this.bookScale > 0.002) {
       if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     }
+    if (this.capture) {
+      const cb = this.capture; this.capture = null;
+      let url = '';
+      try { url = this.renderer.domElement.toDataURL('image/jpeg', 0.62); } catch { /* noop */ }
+      cb(url);
+    }
+  }
+
+  /** 開く演出が終わったら描画設定を平常へ戻す */
+  resetOpenFX(): void {
+    if (this.camera.fov !== 38) { this.camera.fov = 38; this.camera.updateProjectionMatrix(); }
+    this.openFlare = 0; this.gild = 0;
+    this.flareA.intensity = 0; this.flareB.intensity = 0;
+    if (this.bloomPass) this.bloomPass.strength = MOBILE ? 0.32 : 0.42;
+    this.renderer.toneMappingExposure = 0.72;
+    if (this.gradePass) this.gradePass.uniforms.uVig.value = QP.get('q_vig') ? +QP.get('q_vig')! : 0.30;
+    if (this.titleSweep) this.titleSweep.visible = false;
+    if (this.titleDecal) (this.titleDecal.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
   }
 
   static readonly CAM_R = CAM_R;
+  static readonly DIVE_DUR = DIVE_DUR;
   static readonly QUALITY = QUALITY;
 }

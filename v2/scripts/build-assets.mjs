@@ -103,6 +103,26 @@ async function buildPages() {
   log('pages done', done, (saved / 1e6).toFixed(1) + 'MB');
 }
 
+// ------------------------------------------------------------ ui（枠素材と表紙の法線マップを軽くする）
+async function buildUi() {
+  const sharp = (await import('sharp')).default;
+  const jobs = [
+    // 9スライスの枠。border-image は 92px のスライスを使うので寸法は変えない。
+    { src: path.join(ASSETS, 'ui2', 'panel.png'), dst: path.join(ASSETS, 'ui2', 'panel.webp'), w: null, q: 82 },
+    // 表紙の法線マップ。1024 あれば足りる（表示は最大でも画面の半分）。
+    { src: path.join(ASSETS, 'cover-normal.jpg'), dst: path.join(ASSETS, 'cover-normal.webp'), w: 1024, q: 76 },
+  ];
+  for (const j of jobs) {
+    if (!fs.existsSync(j.src)) { log('ui: 元ファイルが無い', j.src); continue; }
+    let im = sharp(j.src);
+    if (j.w) im = im.resize(j.w, j.w, { fit: 'inside', withoutEnlargement: true });
+    await im.webp({ quality: j.q }).toFile(j.dst);
+    log('ui', path.basename(j.src), (fs.statSync(j.src).size / 1e3).toFixed(0) + 'KB →',
+      path.basename(j.dst), (fs.statSync(j.dst).size / 1e3).toFixed(0) + 'KB');
+  }
+}
+
+if (task === 'ui' || task === 'all') await buildUi();
 if (task === 'glb' || task === 'all') await buildGlb();
 if (task === 'rain' || task === 'all') buildRain();
 if (task === 'pages') await buildPages();
