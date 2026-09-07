@@ -158,7 +158,7 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
 <div id="candle"></div>
 <div id="shade"></div>
 <div id="halo"></div>
-<img id="candleImg" alt="" src="../assets/candle.png?b=20260904v23" onerror="this.style.display='none'"><div id="flameGlow"></div>
+<img id="candleImg" alt="" src="../assets/candle.webp?b=20260907v42" onerror="this.style.display='none'"><div id="flameGlow"></div>
 <div id="flameWrap"><div id="wick"></div><div id="flame"></div><div id="flameCore"></div></div>
 <div id="veil"></div>
 <canvas id="dust"></canvas>
@@ -175,8 +175,8 @@ body.uihide #favBtn,body.uihide #favListBtn,body.uihide #setBtn,body.uihide #see
 <div id="favPanel"><div class="box"><h2>印のページ</h2><div class="grid" id="favGrid"></div>
 <div class="empty" id="favEmpty">まだ印のページがない</div><button class="close" id="favClose">閉じる</button></div></div>
 <div id="fade"></div>
-<audio id="bgm" loop preload="auto" src="../assets/bgm.mp3"></audio>
-<audio id="rain" loop preload="auto" src="../assets/rain.mp3"></audio>
+<audio id="bgm" loop preload="none"></audio>
+<audio id="rain" loop preload="none"></audio>
 <script>
 (() => {
 const N = 790, SRC = i => '../assets/pages/p' + (i + 1) + '.jpg';
@@ -240,12 +240,26 @@ const AHEAD = 8, BEHIND = 2, MAX_PAR = 4;
 const loading = new Set();
 let _firstReady = null;
 const pagesReady = new Promise(res => { _firstReady = res; });
+const KEEP = 12;              // v42: いま開いている所から前後 KEEP 枚だけ持つ。それより遠い画像は捨てる(端末のメモリを食い続けない)
+const loadedSet = new Set();  // いま imgs[] に載っている実ページ番号
+function releaseFar() {
+  if (loadedSet.size <= KEEP * 2 + 4) return;
+  const lo = Math.max(0, index - KEEP), hi = Math.min(deck.length - 1, index + KEEP);
+  const keep = new Set();
+  for (let k = lo; k <= hi; k++) keep.add(deck[k]);
+  for (const i of Array.from(loadedSet)) {
+    if (keep.has(i)) continue;
+    const im = imgs[i];
+    imgs[i] = null; loadedSet.delete(i);
+    if (im) { try { im.removeAttribute('src'); } catch (e) {} }   // 復号済みビットマップを手放す
+  }
+}
 function ensure(i, prio) {
   if (i < 0 || i >= N || imgs[i] || loading.has(i)) return;
   if (!prio && loading.size >= MAX_PAR) return;
   loading.add(i);
   loadImg(SRC(i)).then(im => {
-    imgs[i] = im; loading.delete(i);
+    imgs[i] = im; loading.delete(i); if (im) loadedSet.add(i);
     const k = deck.indexOf(i);
     if (k >= index - 1 && k <= index + 1) draw();
     if (i === deck[0] || i === deck[index]) _firstReady();
@@ -255,6 +269,7 @@ function ensure(i, prio) {
 function pump() {
   for (let d = 0; d <= AHEAD; d++) { const k = index + d; if (k >= 0 && k < deck.length) ensure(deck[k], d <= 1); }
   for (let d = 1; d <= BEHIND; d++) { const k = index - d; if (k >= 0) ensure(deck[k], false); }
+  releaseFar();
 }
 pump();
 setTimeout(() => { if (!imgs[deck[index]]) _firstReady(); }, 6000);   // 読めなくても暗いページを出して先へ進める
@@ -602,13 +617,14 @@ const PAPER = new URLSearchParams(location.search).get('paper') !== '0';   // v3
 let _touched = false;
 if (EMBED) { SND.bgm = false; SND.rain = false; }
 function applyRainSrc() {
+  if (EMBED || !SND.rain) return;   // v42: 埋め込み時は親が音を鳴らす。src を入れず一切ダウンロードしない
   const src = RAIN_SRC[SND.rainKind] || RAIN_SRC.std;
   if (rain.getAttribute('src') === src) return;
   const wasPlaying = !rain.paused;
   rain.setAttribute('src', src); rain.load();
   if (wasPlaying) { rain.volume = SND.rain ? 0.34 * SND.amb : 0; rain.play().catch(() => {}); }
 }
-applyRainSrc();
+// v42: 起動時には src を入れない(=先読みゼロ)。音が要る瞬間(ensureAudio)に初めて入れる
 // 別タブ(設定画面)で雨の種類が変わったら追従する
 addEventListener('message', e => {
   const d = e.data || {};
@@ -679,6 +695,9 @@ function ensureAudio() {
     startCrickets();
     startCrackle();
   }
+  // v42: ここで初めて音源を割り当てる(それまでは1バイトも落とさない)
+  if (!EMBED && SND.bgm && !bgm.getAttribute('src')) { bgm.setAttribute('src', '../assets/bgm.mp3'); bgm.load(); }
+  applyRainSrc();
   if (bgm.paused && SND.bgm) { bgm.volume = 0.22 * SND.bgmVol; bgm.play().catch(() => {}); }
   if (rain.paused && SND.rain) { rain.volume = 0.34 * SND.amb; rain.play().catch(() => {}); }
 }
@@ -686,6 +705,7 @@ let _lastVar = -1, _lastBuf = -1, sfxOut = null;
 const flipBufs = [];
 // v16: 速さに応じて音が変わる。ゆっくり=「サァ…」(こもって静か)、速い=「パサッ」(明るく重い)
 var _psCalls = 0, _psLast = null;
+window.__lru = () => imgs.filter(Boolean).length;   // v42: いま抱えている画像の枚数(検証用)
 window.__snd = { get bufs(){ return flipBufs.filter(Boolean).length; }, get on(){ return SND.flipOn; }, get flip(){ return SND.flip; }, get ac(){ return ac && ac.state; }, get calls(){ return _psCalls; }, get last(){ return _psLast; } };
 var _fbPool = [];   // v34: 代替の <audio>(最初に触った時に解錠しておく)
 function fbFlip(vel) {
@@ -1045,7 +1065,7 @@ function _smoothNoise(t) {
   return Math.sin(t * 0.61) * 0.5 + Math.sin(t * 1.37 + 1.3) * 0.3 + Math.sin(t * 0.23 + 2.1) * 0.2;
 }
 function gust(s) { _fl.gust = Math.min(1.2, _fl.gust + s); }
-let _flPrev = performance.now();
+let _flPrev = performance.now(), _lampSig = 1e9;
 (function flicker(now) {
   const dt = Math.min((now - _flPrev) / 1000, 0.1); _flPrev = now; _fl.t += dt;
   if (_fl.gust > 0.001) { _fl.gust *= Math.exp(-dt / 0.42); if (_fl.gust < 0.001) _fl.gust = 0; }
@@ -1080,7 +1100,12 @@ let _flPrev = performance.now();
     const vt = _fl.cur < -0.15 ? 0.10 : 0.02;
     if (vt !== veilTarget) { veilTarget = vt; veil.style.opacity = vt.toFixed(3); }
   }
-  if (lampLevel > 0.001 && !flip && (++_lampTick % (MOBILE ? 3 : 2) === 0 || _fl.gust > 0.01 || tilt.on)) draw();
+  // v42: 炎の揺れが前回の描画からほとんど動いていない時は描き直さない(見た目は同じ・CPUだけ下がる)
+  if (lampLevel > 0.001 && !flip && (++_lampTick % (MOBILE ? 3 : 2) === 0 || _fl.gust > 0.01 || tilt.on)) {
+    const n2f = _smoothNoise(_fl.t * 1.7 + 3.1);
+    const sig = n + n2f * 0.5 + _fl.cur + _fl.gust * 2;
+    if (tilt.on || Math.abs(sig - _lampSig) > 0.008) { _lampSig = sig; draw(); }
+  }
   requestAnimationFrame(flicker);
 })(performance.now());
 

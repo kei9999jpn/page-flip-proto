@@ -38,13 +38,12 @@
   --ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
   --t-lg:clamp(20px,5.6vmin,28px); --t-md:clamp(14px,4.1vmin,17px); --t-sm:clamp(11px,3.1vmin,13px);
 }
-@font-face{font-family:"Soukou Mincho";src:url(../assets/fonts/SoukouMincho.ttf) format("truetype");font-display:swap}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;font-size:clamp(14px,4.1vmin,18px)}
 html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--serif);-webkit-tap-highlight-color:transparent;color:var(--paper);
-  background:var(--ink) url(../assets/app-bg.jpg) center 40%/cover no-repeat;
-  /* v38: 部屋の絵は three.js 側で描くので、読み込み後は CSS の絵を消す */
+  background:var(--ink) center 40%/cover no-repeat;
+  /* v42: 部屋の絵は three.js 側だけが読む(CSSと二重にダウンロードしていた)。旧描画(?classic=1)の時だけ JS で CSS 背景を入れる */
   height:100%;height:-webkit-fill-available;height:100dvh}
-body.q3d{background-image:none !important}
+body.classicbg{background-image:url(../assets/app-bg.jpg)}   /* v42: 旧描画(?classic=1)だけ CSS で部屋の絵を出す */
 #bgDim{position:fixed;inset:0;background:#000;opacity:0;transition:opacity 1.6s ease;pointer-events:none;z-index:1}
 #c{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;z-index:2}
 /* 画面全体の統一: ビネット + フィルムグレイン(3) */
@@ -207,9 +206,9 @@ body.q3d{background-image:none !important}
 <div id="readTitle"><div class="rule"></div><div class="main">名言の書</div><div class="rule"></div></div>
 <iframe id="reader" title="名言の書" allow="autoplay"></iframe>
 <div id="fade"></div>
-<audio id="bgm" preload="auto"></audio>
-<audio id="bgm2" preload="auto"></audio>
-<audio id="rain" loop preload="auto"></audio>
+<audio id="bgm" preload="none"></audio>
+<audio id="bgm2" preload="none"></audio>
+<audio id="rain" loop preload="none"></audio>
 
 <script>
 // v37: Google アナリティクス(GA4)。GA_ID が空の間は何もしない。KEIから測定IDが来たらここに入れる
@@ -237,12 +236,12 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = id => document.getElementById(id);
-const BUILD = '20260907v41';
+const BUILD = '20260907v42';
 
 // ============================================================ 設定(読書側 a/ と共有キー)
 const DEFAULTS = { bgm:true, rain:true, insects:false, candle:false, amb:0.6, flip:1.0, flipOn:true, rainKind:'study', bgmVol:0.5 };
 const RAIN_SRC = { std:'../assets/rain.mp3', drizzle:'../assets/rain/drizzle.mp3', window:'../assets/rain/window.mp3',
-                   storm:'../assets/rain/storm.mp3', suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3?b=20260904v23' };   // v23: ファイル自体を-12dB(iPhoneは volume が効かないため)
+                   storm:'../assets/rain/storm.mp3', suno1:'../assets/rain/suno1.mp3', study:'../assets/rain/study.mp3?b=20260907v42' };   // v23: ファイル自体を-12dB(iPhoneは volume が効かないため)
 let S = { ...DEFAULTS };
 try { S = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem('bookexp-settings')) || {}) }; } catch(e){}
 if (!S.v3) { S.rainKind = 'study'; S.bgmVol = 0.5; S.v3 = 1; }
@@ -473,7 +472,7 @@ function applyRainSrc(){
   rain.setAttribute('src', src); rain.load();
   if (was || (audioOn && S.rain)) { setRainVol(rainTarget()); rain.play().catch(()=>{}); }
 }
-applyRainSrc();
+// v42: 起動時には環境音の src を入れない(先読み -5.7MB)。音が要る瞬間(ensureAudio / toggleSound)で入れる
 function applyAudio(){
   if (!audioOn) return;
   setRainVol(rainTarget());
@@ -494,6 +493,7 @@ function unlockAudio(){
   if (BGM_ENABLED) decks.forEach((d, i) => { try { if (!d.src) d.src = BGM_LIST[0]; setDeckVol(i, 0); d.muted = true; const p = d.play(); if (p && p.then) p.then(() => { if (!bgmWanted || !S.bgm || i !== dk) { d.pause(); try { d.currentTime = 0; } catch(e){} } d.muted = false; }).catch(() => { d.muted = false; }); else d.muted = false; } catch(e){} });
 }
 function ensureAudio(){ goFullscreen(); activity(); if (!S.sound) return;   // v36: 音OFFの間は音に一切触らない(YouTube等の裏再生を止めない)
+  applyRainSrc();   // v42: ここで初めて雨の音源を割り当てる
   unlockAudio(); sxInit(); loadPageBuf(); if (audioOn) return; audioOn = true; applyAudio(); }
 ['pointerdown','touchend','click','keydown'].forEach(ev => addEventListener(ev, ensureAudio, { passive:true }));
 ['touchend','click','pointerup'].forEach(ev => addEventListener(ev, () => { if (!S.sound || !sx) return; if (sx.state !== 'running') sx.resume().then(tryRoute).catch(()=>{}); else tryRoute(); }, { passive:true }));
@@ -618,6 +618,7 @@ renderer.toneMappingExposure = 0.72;
 renderer.autoClear = false;
 // v38 (2026-09-06 KEI「最高傑作を」): 仕上げの光。?classic=1 で旧描画に戻せる
 const QUALITY = !new URLSearchParams(location.search).has('classic');
+if (!QUALITY) document.body.classList.add('classicbg');   // v42: 旧描画には three の背景板が無いので CSS で出す
 if (QUALITY) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 
 // ---------- 本(book) ----------
@@ -633,7 +634,7 @@ const rimB = new THREE.DirectionalLight(QUALITY ? 0x6f80b8 : 0x7a86a8, QUALITY ?
 const fireB = new THREE.PointLight(0xff6a22, QUALITY ? 0.9 : 0, 4.0, 2.0); fireB.position.set(-1.25, -0.05, 0.45); sceneB.add(fireB);
 if (QUALITY) { candleB.castShadow = true; candleB.shadow.mapSize.set(MOBILE ? 512 : 1024, MOBILE ? 512 : 1024); candleB.shadow.bias = -0.003; candleB.shadow.radius = 4; }
 // v38: 部屋の絵を「舞台の奥」に置く(後処理のぼけ・にじみ・色が部屋にも掛かり、本が浮かない)
-const bgTex = new THREE.TextureLoader().load('../assets/app-bg.jpg', t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; bgReady = true; layoutBg(); document.body.classList.add('q3d'); });
+const bgTex = QUALITY ? new THREE.TextureLoader().load('../assets/app-bg.jpg', t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; bgReady = true; layoutBg(); }) : null;   // v42: 旧描画では three 側は読まない(CSS だけ)
 let bgReady = false;
 const BG_DIST = 3.0, BG_IMG_ASPECT = 941 / 1672;
 const QP = new URLSearchParams(location.search);
