@@ -124,8 +124,8 @@ onSoundChange(on => { ui.paintSound(on); reader.paintSound(on); });
 //   2.42 暗転せずに読書画面へマッチカット（同じ位置・同じ明るさの紙／背景は直前の3D画面）
 const OPEN_LIFT = 0.09;              // 表紙が持ち上がる角度（rad ≈ 5°）
 const OPEN_DUR = 1.15;               // 表紙が開ききるまで
-const T_SOUND = 0.85, T_MOTES = 1.00, T_DIVE = 1.45, T_SNAP = 0.30, T_CUT = 2.42;
-let openT0 = 0, lifting = false, capturedBG = '';
+const T_SOUND = 0.85, T_MOTES = 1.00, T_DIVE = 1.45, T_CUT = 2.42;
+let openT0 = 0, lifting = false;
 
 function beginRead(mode: string, title?: string): void {
   if (stage !== 'book') return;
@@ -137,7 +137,7 @@ function beginRead(mode: string, title?: string): void {
   activity(); pagesSession = 0; flipTimes = []; rushSeen = false;
   track('open_book', { mode });
 
-  openT0 = performance.now(); lifting = true; capturedBG = '';
+  openT0 = performance.now(); lifting = true;
   setAmbBoost(0.34);                                        // 環境音がすっと引く
   const at = (sec: number, fn: () => void) => setTimeout(fn, sec * 1000);
 
@@ -146,11 +146,11 @@ function beginRead(mode: string, title?: string): void {
   at(T_DIVE, () => { diving = true; });
   at(2.10, () => haptic(16));                               // 革が着地する直前
   at(2.15, () => { flash.style.transition = 'opacity .22s ease-out'; flash.style.opacity = '.82'; });
-  at(T_SNAP, () => scene.captureFrame(url => { if (url) void dimSnapshot(url).then(u => { capturedBG = u; }); }));
+  // 2026-09-07 KEI: 読書の背景は3Dスクショでなく書斎の絵(hall-bg.jpg)に戻す。スクショは撮らない
   at(T_CUT, () => {
     setStage('read');
     $('bgDim').style.opacity = '1';
-    reader.open(mode, { bg: capturedBG || undefined, matchCut: true });
+    reader.open(mode, { matchCut: true });
     flash.style.transition = 'opacity 1.05s ease';
     flash.style.opacity = '0';
     setTimeout(() => {
@@ -159,38 +159,6 @@ function beginRead(mode: string, title?: string): void {
       opening = false; diving = false; lifting = false; openT = 0; diveT = 0;
       if (scene.hinge) scene.hinge.rotation.z = 0;
     }, 600);
-  });
-}
-
-/**
- * 開く直前の3D画面を、読書画面の後ろに敷ける形に落とす。
- * 1/3 に縮めてぼかし、暗く沈め、右下（ろうそくの居場所）は黒に潰す。
- * ここで焼いておけば読書中の CSS フィルタが要らず、転送も描画も軽い。
- */
-function dimSnapshot(url: string): Promise<string> {
-  return new Promise(res => {
-    const im = new Image();
-    im.onload = () => {
-      try {
-        const w = Math.max(64, Math.round(im.width / 3)), h = Math.max(64, Math.round(im.height / 3));
-        const c = document.createElement('canvas'); c.width = w; c.height = h;
-        const g = c.getContext('2d')!;
-        g.filter = 'blur(4px) brightness(0.44) saturate(0.85)';
-        g.drawImage(im, 0, 0, w, h);
-        g.filter = 'none';
-        // 画面のふち
-        let vg = g.createRadialGradient(w / 2, h * 0.46, 0, w / 2, h * 0.46, Math.max(w, h) * 0.78);
-        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.55, 'rgba(0,0,0,.35)'); vg.addColorStop(1, 'rgba(0,0,0,.92)');
-        g.fillStyle = vg; g.fillRect(0, 0, w, h);
-        // 右下はろうそくの居場所。黒に潰しておかないと灯りの絵が四角く浮く
-        vg = g.createRadialGradient(w * 0.9, h * 0.95, 0, w * 0.9, h * 0.95, Math.max(w, h) * 0.42);
-        vg.addColorStop(0, 'rgba(0,0,0,.98)'); vg.addColorStop(0.6, 'rgba(0,0,0,.7)'); vg.addColorStop(1, 'rgba(0,0,0,0)');
-        g.fillStyle = vg; g.fillRect(0, 0, w, h);
-        res(c.toDataURL('image/jpeg', 0.6));
-      } catch { res(''); }
-    };
-    im.onerror = () => res('');
-    im.src = url;
   });
 }
 

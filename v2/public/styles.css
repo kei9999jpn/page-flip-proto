@@ -130,7 +130,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #reader.uihide #favBtn,#reader.uihide #favListBtn,#reader.uihide #setBtn,#reader.uihide #seen,#reader.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
 /* 紙は机の上の「物」。全体をわずかに傾け、接地影を足す（KEI 2026-09-07 Phase 4）。
    当たり判定は傾けない座標系のまま（横方向のドラッグ量で決まるので 2.2° では実質ずれない）。 */
-#book{--tilt:-2.2deg;position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97) rotate(var(--tilt));z-index:2;
+#book{--tilt:0deg;position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97) rotate(var(--tilt));z-index:2;
   box-shadow:0 4px 10px rgba(0,0,0,.7),0 30px 60px rgba(0,0,0,.85),0 64px 120px rgba(0,0,0,.55),0 2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(60,44,22,.6);
   border-radius:2px;touch-action:none;opacity:0;filter:blur(14px) brightness(2.1);transition:opacity 1.5s ease,transform 1.5s ease,filter 1.8s ease}
 #book.in{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(var(--tilt));filter:blur(0) brightness(1)}
@@ -157,10 +157,8 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   background:radial-gradient(ellipse at 50% 80%,#fff8dc 0%,#ffd16a 25%,#ff8a1e 55%,rgba(255,80,0,.55) 78%,transparent 100%);
   filter:blur(.6px);box-shadow:0 0 18px 6px rgba(255,150,60,.55),0 0 60px 22px rgba(255,120,40,.28)}
 #flameCore{position:absolute;left:50%;bottom:12px;width:8px;height:20px;margin-left:-4px;border-radius:50%;background:radial-gradient(#5aa8ff55,transparent 70%)}
-#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;transition:opacity 2s ease;
-  /* 絵の四隅を溶かす。後ろが真っ黒でない時に絵の矩形が浮くのを防ぐ（2026-09-07） */
-  -webkit-mask-image:radial-gradient(ellipse 74% 76% at 50% 52%,#000 62%,transparent 100%);
-  mask-image:radial-gradient(ellipse 74% 76% at 50% 52%,#000 62%,transparent 100%)}
+#candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;opacity:0;transition:opacity 2s ease}
+  /* candle.webp は透過画像（2026-09-07 黒背景+screen合成を廃止。iOSで mask+blend が効かず黒い枠が出たため） */
 #candleImg.on{opacity:.95}
 #flameGlow{position:fixed;pointer-events:none;z-index:9;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;mix-blend-mode:screen;opacity:0;
   background:radial-gradient(circle at 50% 55%,rgba(255,232,170,.95) 0%,rgba(255,180,90,.55) 18%,rgba(255,130,50,.18) 42%,transparent 66%);filter:blur(1.5px)}
