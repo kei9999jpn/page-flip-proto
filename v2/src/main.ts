@@ -31,6 +31,12 @@ const flash = document.createElement('div');
 flash.id = 'flash';
 document.body.appendChild(flash);
 
+// 新しい版が入ったら自動で読み直す（古い画面が端末に残り続けるのを防ぐ・2026-09-07 KEI「反映されてない」）
+if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) location.reload(); });
+}
+
 let stage: Stage = 'book';
 function setStage(s: Stage): void {
   stage = s;

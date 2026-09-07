@@ -90,3 +90,6 @@ export function asset(path: string): string {
 export const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
 export const QP = new URLSearchParams(location.search);
 export const BUILD = '20260907v2-2';
+
+// 2026-09-07 夜: 栞の意味が変わった（開いただけでは復元しない・挟んだ時だけ）。旧版が勝手に保存していた栞は一度だけ捨てる
+try { if (!localStorage.getItem('bookexp-bm-v2')) { localStorage.removeItem(K.bookmark); localStorage.setItem('bookexp-bm-v2', '1'); } } catch { /* noop */ }

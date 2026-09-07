@@ -47,11 +47,11 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 
 /* ---- 1タップで出る周りのUI: 右上「メニュー」1つだけ ---- */
 /* 本の画面の下段UI（2026-09-07 夜 KEI: 前の形に戻す。常に表示・「この本の説明」＋ 栞／音量／印） */
-#ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 1.2vh);bottom:calc(env(safe-area-inset-bottom,0px) + 1.2dvh);z-index:7;
-  display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;opacity:0;transition:opacity .9s}
+#ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2.6vh);bottom:calc(env(safe-area-inset-bottom,0px) + 2.6dvh);z-index:7;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;opacity:0;transition:opacity .9s}
 #ui.show{opacity:1}
 #ui.show .ico,#ui.show .seal{pointer-events:auto}
-#ui .row{display:flex;gap:10px}
+#ui .row{display:flex;gap:10px;width:284px;justify-content:space-between}   /* 3つの角＝「この本の説明」の枠の両端に揃える（88×3＋10×2＝284） */
 .seal{font-family:var(--serif);font-size:clamp(15px,4.5vmin,18px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
   width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.png) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
   transition:transform .18s ease,color .18s}
@@ -59,7 +59,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .seal.sub{width:284px;font-size:clamp(12px,3.4vmin,14px);letter-spacing:.3em;text-indent:.3em;padding:3px 0;border-width:11px;border-image-width:11px;color:var(--paper2)}
 .ico.off{opacity:.55}
 .ico{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.22em;text-indent:.22em;color:var(--paper2);white-space:nowrap;cursor:pointer;
-  width:104px;height:80px;box-sizing:border-box;padding:0;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;
+  width:88px;height:72px;box-sizing:border-box;padding:0;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   filter:drop-shadow(0 8px 16px rgba(0,0,0,.6));transition:color .18s,transform .18s}
 .ico:active{color:var(--gold2);transform:translateY(1px);filter:brightness(1.25) drop-shadow(0 6px 12px rgba(0,0,0,.6))}

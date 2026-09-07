@@ -1,6 +1,6 @@
 // ============================================================
 // 本の画面のUI（KEI指示 2026-09-07 夜・前の形に戻す）
-//   - 下に「この本の説明」＋「栞／音量／印」の3つ。本の画面では常に表示（自動で消えない）
+//   - 下に「この本を読む」「この本の説明」＋「栞／音量／印」の3つ（v25の形）。本の画面では常に表示（自動で消えない）
 //   - 表示から5秒後、画面中央に細い金の罫線1本と一文「2回タップで、本を読む」
 //   - 本を開くのはダブルタップ（300ms以内の2回）だけ。1回タップは何もしない
 //   - 「この本の説明」= 画面中央の縦パネル（説明3タブだけ。メニュー項目は入れない）
@@ -35,6 +35,7 @@ export class Ui {
     wrap.innerHTML = `
 <div id="hint"><div class="rule"></div><div class="txt">2回タップで、本を読む</div></div>
 <div id="ui">
+  <button class="seal" id="bOpen">この本を読む</button>
   <button class="seal sub" id="bInfo">この本の説明</button>
   <div class="row">
     <button class="ico" id="bResume"><b>${RIB_ICO}</b>栞</button>
@@ -81,6 +82,7 @@ export class Ui {
     const stop = (e: Event) => e.stopPropagation();
     this.ui.addEventListener('pointerdown', stop);
     this.ui.addEventListener('pointerup', stop);
+    $('bOpen').addEventListener('click', () => { if (this.locked) return; this.hint.classList.remove('show'); this.hooks.onOpen('read'); });
     $('bInfo').addEventListener('click', () => this.openMenu());
     $('menuClose').addEventListener('click', () => this.closeMenu());
     this.menu.addEventListener('click', e => { if (e.target === this.menu) this.closeMenu(); });
