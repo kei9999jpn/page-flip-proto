@@ -20,6 +20,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { asset, MOBILE, QP, BUILD, loadFavs, hasBookmark } from '../state';
 import { RoomBackground } from './RoomBackground';
 
+/** 表紙の箔押しタイトル「名言の書」。2026-09-08 KEI「チャチい」→ 無し。戻す時は true */
+const TITLE_DECAL = false;
 const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
 const CANDLE_I = QUALITY ? 2.0 : 1.6;
@@ -204,7 +206,7 @@ export class BookScene {
       }
       this.pivot.scale.setScalar(1); this.bookScale = 1; this.bookTarget = 1;
       this.buildRibbon(); this.buildFavMarks(); if (QUALITY) this.buildStage();
-      this.buildTitleDecal(cover || null);
+      if (TITLE_DECAL) this.buildTitleDecal(cover || null);   // 2026-09-08 KEI: 表紙の「名言の書」は消す
       onReady();
     });
   }
