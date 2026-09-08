@@ -184,13 +184,17 @@ export class Reader {
     if (mode === 'fresh') clearBookmark();
     if (mode === 'fav') this.enterFavBook();
     // 栞があれば、開いた時はそのページから（めくった枚数も戻す）。2026-09-07 夜 KEI
-    if (mode === 'resume' || mode === 'read') {
+    if (mode === 'resume' || mode === 'read' || mode === 'fresh') {
       const b = loadBookmark();
       if (b && b.deck.every(n => n >= 0 && n < N)) {
         this.deck = b.deck; this.index = Math.min(b.index, this.deck.length - 1); this.favMode = !!b.fav;
         if (b.seen) this.seenSet = new Set(b.seen);
-        this.draw(); this.updateFavUI();
+      } else {
+        // 栞が無い＝初期状態。開くたびに全ページを混ぜ直して最初から（2026-09-08 KEI「栞を外したらシャッフルに戻して」）
+        this.favMode = false; this.deck = this.shuffled(this.ALL_PAGES); this.index = 0;
+        this.seenSet = new Set(); this.flip = null; this.anim = null;
       }
+      this.draw(); this.updateFavUI();
     }
     this.opened = true;
     this.uiWake();
@@ -861,6 +865,14 @@ export class Reader {
       this.uiWake();
       if (performance.now() - this.uiJustWoke < 400) return;
       this.firstTouch();
+      // 栞のあるページでもう一度押す＝栞を外す。次に開く時は混ぜ直した初期状態から（2026-09-08 KEI）
+      const cur = loadBookmark();
+      if (cur && cur.deck[cur.index] === this.deck[this.index]) {
+        clearBookmark(); this.hideRibbon(true); ribbonSound(); haptic(6);
+        this.toast('栞を外しました'); this.el.favListBtn.classList.remove('on');
+        this.hooks.onBookmark({ off: true });
+        return;
+      }
       // 栞を挟む＝そのページを覚えて本を閉じる（閉じるのはシェル側 onBookmark）
       const b: Bookmark = { deck: this.deck, index: this.index, ts: Date.now(), fav: this.favMode, seen: [...this.seenSet] };
       saveBookmark(b);

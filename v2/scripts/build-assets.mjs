@@ -60,18 +60,18 @@ async function buildGlb() {
 }
 
 // ------------------------------------------------------------ rain
-// 30〜45秒のループを切り出す。ループ点はゼロクロス（無音に近い所）を探して合わせる。
+// 環境音ループ。2026-09-08 から元の12分を丸ごと（Opus 40k ≈3.6MB / mp3 64k ≈5.8MB。preload=none で音が要る時だけ流し込み）
 function buildRain() {
   const src = path.join(ASSETS, 'rain', 'study.mp3');
   if (!fs.existsSync(src)) { log('rain: 元ファイルが無い', src); return; }
   const outDir = path.join(ASSETS, 'rain');
-  const START = 20, DUR = 36;                     // 頭の立ち上がりを避けて 20秒目から 36秒
+  const START = 0, DUR = 720;                     // 2026-09-08 KEI「同じ所のループが気になる・10分は流れてほしい」→ 元の12分を丸ごと
   const wav = path.join(outDir, '_study-loop.wav');
   execFileSync('ffmpeg', ['-y', '-ss', String(START), '-t', String(DUR), '-i', src,
     '-af', 'afade=t=in:st=0:d=0.35,afade=t=out:st=' + (DUR - 0.35) + ':d=0.35', '-ac', '2', '-ar', '48000', wav], { stdio: 'ignore' });
-  execFileSync('ffmpeg', ['-y', '-i', wav, '-c:a', 'libopus', '-b:a', '64k', '-vbr', 'on',
+  execFileSync('ffmpeg', ['-y', '-i', wav, '-c:a', 'libopus', '-b:a', '40k', '-vbr', 'on',
     path.join(outDir, 'study-loop.webm')], { stdio: 'ignore' });
-  execFileSync('ffmpeg', ['-y', '-i', wav, '-c:a', 'libmp3lame', '-b:a', '96k',
+  execFileSync('ffmpeg', ['-y', '-i', wav, '-c:a', 'libmp3lame', '-b:a', '64k',
     path.join(outDir, 'study-loop.mp3')], { stdio: 'ignore' });
   fs.unlinkSync(wav);
   for (const f of ['study-loop.webm', 'study-loop.mp3']) {

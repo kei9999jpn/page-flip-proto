@@ -14,8 +14,7 @@ const RAIN_SRC: Record<string, string> = {
   window: asset('rain/window.mp3'),
   storm: asset('rain/storm.mp3'),
   suno1: asset('rain/suno1.mp3'),
-  // v2: 5.76MB の study.mp3 から 36秒のループを切り出し、Opus(WebM) 64k / mp3 96k に。
-  //     Opus 対応なら 0.22MB、非対応(古い iOS)は mp3 0.43MB へ落ちる。
+  // v2: study.mp3(12分)を丸ごと Opus(WebM) 40k / mp3 64k に（2026-09-08 KEI: 36秒ループは同じ所が気になる→12分で一周）。
   study: (() => {
     try {
       const a = document.createElement('audio');

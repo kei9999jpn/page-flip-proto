@@ -174,6 +174,8 @@ function beginRead(mode: string, title?: string): void {
 }
 
 /** 開く演出の連続量（光・箔の走り・表紙の持ち上げ・寄り）。毎フレーム呼ぶ */
+/** 本の内側から溢れる光の強さ。2026-09-08 KEI「眩しすぎていらない」→ 0（戻す時は FLARE_GAIN）*/
+const OPEN_FLARE = 0;
 function openEnvelope(): { r: number; ph: number } | null {
   if (stage !== 'opening' && stage !== 'read') return null;
   if (!lifting) return null;
@@ -184,7 +186,7 @@ function openEnvelope(): { r: number; ph: number } | null {
   let f = 0;
   if (ot > T_SOUND) f = Math.min(1, (ot - T_SOUND) / (0.70 * OK));
   if (ot > 2.20 * OK) f = Math.max(0.35, 1 - (ot - 2.20 * OK) / (0.55 * OK));
-  scene.openFlare = f * FLARE_GAIN;   // 2026-09-07 KEI: 光が強すぎる→半分
+  scene.openFlare = f * OPEN_FLARE;   // 2026-09-08 KEI: 開く時の光は眩しすぎる→無し（光の粒だけ残す）
   // 表紙が5°持ち上がる（0.15 → 0.80）。開きはじめたら hinge は下のループに任せる
   if (!opening && scene.hinge) {
     const k = Math.max(0, Math.min(1, (ot - 0.15 * OK) / (0.65 * OK)));

@@ -89,7 +89,7 @@ export function asset(path: string): string {
 }
 export const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
 export const QP = new URLSearchParams(location.search);
-export const BUILD = '20260908v2-4';
+export const BUILD = '20260908v2-5';
 
 // テスト期間の約束（2026-09-07 夜 KEI「更新のたびにリセットして」）: BUILD が変わったら栞・印・枚数を消す。
 // ※一般公開の前にこのブロックを外すこと（読者の栞まで消える）
