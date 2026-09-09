@@ -89,13 +89,10 @@ export function asset(path: string): string {
 }
 export const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
 export const QP = new URLSearchParams(location.search);
-export const BUILD = '20260908v2-5';
+export const BUILD = '20260909v3';
 
-// テスト期間の約束（2026-09-07 夜 KEI「更新のたびにリセットして」）: BUILD が変わったら栞・印・枚数を消す。
-// ※一般公開の前にこのブロックを外すこと（読者の栞まで消える）
+// 2026-09-09 KEI: BUILD を上げても栞・印・枚数は消さない（更新のたびに読者の記録が飛ぶ不具合）。
+// 記録するのは「どの版まで見たか」だけ。設定の形を変える時だけ、ここに移行処理を足す。
 try {
-  if (localStorage.getItem('bookexp-build') !== BUILD) {
-    [K.bookmark, K.favs, K.stats].forEach(k => localStorage.removeItem(k));
-    localStorage.setItem('bookexp-build', BUILD);
-  }
+  if (localStorage.getItem('bookexp-build') !== BUILD) localStorage.setItem('bookexp-build', BUILD);
 } catch { /* noop */ }

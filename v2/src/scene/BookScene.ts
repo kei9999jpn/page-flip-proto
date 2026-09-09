@@ -24,10 +24,12 @@ import { RoomBackground } from './RoomBackground';
 const TITLE_DECAL = false;
 const QUALITY = !QP.has('classic');
 const CAM_R = 1.55;
-const CANDLE_I = QUALITY ? 2.0 : 1.6;
+const CANDLE_I = QUALITY ? 1.55 : 1.3;   // 2026-09-09 KEI: 右下の光が強い→半減
 const DIVE_DUR = 1.6;                     // ページの間へ潜る時間（秒）
 /** 開く演出の光の強さの係数。2026-09-07 KEI: 光が強すぎる→半分 */
 export const FLARE_GAIN = 0.5;
+/** ブルームの基準強度。2026-09-09 KEI: 開く時の右下のキラキラを半減 */
+const BLOOM_BASE = MOBILE ? 0.24 : 0.30;
 
 const GradeShader = {
   uniforms: {
@@ -91,10 +93,13 @@ export class BookScene {
   /** 表紙の箔に光が走る 0..1 */
   gild = 0;
 
+  /** 影マップを更新した最後の時刻（秒）。15Hz に間引く */
+  private shadowT = 0;
+
   private motes: THREE.Points;
   private mGeo = new THREE.BufferGeometry();
   private mPos: Float32Array; private mVel: Float32Array; private mLife: Float32Array;
-  private MN = MOBILE ? 800 : 1600;
+  private MN = MOBILE ? 280 : 480;
   private motesOn = false; private moteT = 0;
 
   private composer: EffectComposer | null = null;
@@ -117,7 +122,10 @@ export class BookScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.72;
     this.renderer.autoClear = false;
-    if (QUALITY) { this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
+    if (QUALITY) {
+      this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.shadowMap.autoUpdate = false; this.renderer.shadowMap.needsUpdate = true;   // 2026-09-09 軽量化: 影の更新は 15Hz
+    }
 
     this.scene.add(this.camera);
     this.scene.add(new THREE.AmbientLight(0x2a2018, QUALITY ? 0.75 : 1.0));
@@ -163,8 +171,8 @@ export class BookScene {
     r.addColorStop(0, 'rgba(255,240,200,1)'); r.addColorStop(0.35, 'rgba(255,200,120,.6)'); r.addColorStop(1, 'rgba(255,150,60,0)');
     g.fillStyle = r; g.fillRect(0, 0, 64, 64);
     this.motes = new THREE.Points(this.mGeo, new THREE.PointsMaterial({
-      size: 0.016, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.95,
-      depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffd9a0,
+      size: 0.010, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.95,
+      depthWrite: false, blending: THREE.AdditiveBlending, color: 0xe6c690,
     }));
     this.motes.visible = false;
     this.camera.add(this.motes);
@@ -438,7 +446,7 @@ export class BookScene {
       if (this.mPos[i * 3 + 2] > -0.05) this.mLife[i] = 0;
     }
     this.mGeo.attributes.position.needsUpdate = true;
-    (this.motes.material as THREE.PointsMaterial).opacity = Math.min(0.8, this.moteT * 1.0);
+    (this.motes.material as THREE.PointsMaterial).opacity = Math.min(0.45, this.moteT * 1.0);
   }
   /** 机に落ちた衝撃で塵が舞う */
   burstDust(): void {
@@ -454,7 +462,8 @@ export class BookScene {
       this.bokehPass = new BokehPass(this.scene, this.camera, { focus: CAM_R, aperture: 0.00004, maxblur: 0.0045 });
       this.composer.addPass(this.bokehPass);
     }
-    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), MOBILE ? 0.32 : 0.42, 0.65, 0.80);
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), BLOOM_BASE, 0.45, 0.86);
+    this.setBloomSize();
     this.composer.addPass(this.bloomPass);
     this.gradePass = new ShaderPass(GradeShader);
     if (QP.get('q_vig')) this.gradePass.uniforms.uVig.value = +QP.get('q_vig')!;
@@ -466,6 +475,14 @@ export class BookScene {
     pmrem.dispose();
   }
 
+  /** ブルームの描画先を実解像度の半分に落とす（2026-09-09 軽量化）。resolution だけでは実サイズが変わらない */
+  private setBloomSize(): void {
+    if (!this.bloomPass) return;
+    const dpr = this.renderer.getPixelRatio();
+    this.bloomPass.resolution.set(innerWidth / 2, innerHeight / 2);
+    this.bloomPass.setSize(Math.max(1, Math.round(innerWidth * dpr * 0.5)), Math.max(1, Math.round(innerHeight * dpr * 0.5)));
+  }
+
   resize(): void {
     this.renderer.setSize(innerWidth, innerHeight, false);
     this.camera.aspect = innerWidth / innerHeight;
@@ -473,7 +490,7 @@ export class BookScene {
     this.room.layout(this.camera);
     if (this.composer) {
       this.composer.setSize(innerWidth, innerHeight);
-      if (this.bloomPass) this.bloomPass.resolution.set(innerWidth / 2, innerHeight / 2);
+      this.setBloomSize();
     }
   }
 
@@ -511,6 +528,9 @@ export class BookScene {
 
     if (this.shake > 0) { this.shake *= Math.exp(-wdt / 0.18); if (this.shake < 0.01) this.shake = 0; }
 
+    // 影マップの更新だけ 15Hz（ろうそくの明滅は 60Hz のまま）
+    if (this.renderer.shadowMap.enabled && t - this.shadowT >= 1 / 15) { this.shadowT = t; this.renderer.shadowMap.needsUpdate = true; }
+
     this.tiltCur.x += (this.tiltRaw.x - this.tiltCur.x) * 0.08;
     this.tiltCur.y += (this.tiltRaw.y - this.tiltCur.y) * 0.08;
     this.candleB.position.set(0.28 + this.tiltCur.x * 0.22, 0.34 + this.tiltCur.y * 0.12, 0.30 - this.tiltCur.y * 0.15);
@@ -528,7 +548,7 @@ export class BookScene {
       const fl = 0.9 + Math.sin(t * 21) * 0.06 + Math.sin(t * 7.3) * 0.04;
       this.flareA.intensity = f * 0.90 * fl;
       this.flareB.intensity = f * f * 0.42 * fl;
-      if (this.bloomPass) this.bloomPass.strength = (MOBILE ? 0.32 : 0.42) + f * (MOBILE ? 0.18 : 0.24);
+      if (this.bloomPass) this.bloomPass.strength = BLOOM_BASE + f * (MOBILE ? 0.18 : 0.24);
       this.renderer.toneMappingExposure = 0.72 + f * 0.04;
       if (this.gradePass) this.gradePass.uniforms.uVig.value = 0.30 - f * 0.14;
     }
@@ -606,7 +626,7 @@ export class BookScene {
     if (this.camera.fov !== 38) { this.camera.fov = 38; this.camera.updateProjectionMatrix(); }
     this.openFlare = 0; this.gild = 0;
     this.flareA.intensity = 0; this.flareB.intensity = 0;
-    if (this.bloomPass) this.bloomPass.strength = MOBILE ? 0.32 : 0.42;
+    if (this.bloomPass) this.bloomPass.strength = BLOOM_BASE;
     this.renderer.toneMappingExposure = 0.72;
     if (this.gradePass) this.gradePass.uniforms.uVig.value = QP.get('q_vig') ? +QP.get('q_vig')! : 0.30;
     if (this.titleSweep) this.titleSweep.visible = false;

@@ -34,11 +34,11 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #talk.slow{transition:opacity 2.6s ease}
 
 /* ---- 最初の一言（表示から5秒後・細い金の罫線1本＋一文） ---- */
-#hint{position:fixed;left:50%;top:35%;transform:translate(-50%,-50%);display:flex;flex-direction:column-reverse;z-index:9;pointer-events:none;text-align:center;
+#hint{position:fixed;left:50%;top:44%;top:44dvh;transform:translate(-50%,-50%);display:flex;flex-direction:column-reverse;z-index:9;pointer-events:none;text-align:center;
   opacity:0;transition:opacity 1.6s ease}
 #hint.show{opacity:1}
 #hint .rule{width:min(46vw,260px);height:1px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-#hint .txt{font-family:var(--serif);font-size:clamp(14px,4vmin,19px);letter-spacing:.34em;text-indent:.34em;font-weight:400;color:var(--gold2);
+#hint .txt{font-family:var(--serif);font-size:clamp(14px,4vmin,19px);letter-spacing:.26em;text-indent:.26em;font-weight:400;color:var(--gold2);
   white-space:nowrap;text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.8)}
 
 /* ---- 枠（唯一の部品）: ChatGPT生成の革と真鍮の9スライス ---- */
@@ -53,7 +53,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #ui.show .ico,#ui.show .seal{pointer-events:auto}
 #ui .row{display:flex;gap:10px;width:284px;justify-content:space-between}   /* 3つの角＝「この本の説明」の枠の両端に揃える（88×3＋10×2＝284） */
 .seal{font-family:var(--serif);font-size:clamp(15px,4.5vmin,18px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
-  width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.png) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
+  width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.webp) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
   transition:transform .18s ease,color .18s}
 .seal:active{transform:translateY(1px) scale(.985);color:#fff2c4}
 .seal.sub{width:284px;font-size:clamp(12px,3.4vmin,14px);letter-spacing:.3em;text-indent:.3em;padding:3px 0;border-width:11px;border-image-width:11px;color:var(--paper2)}
@@ -96,14 +96,18 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .tabs h2{margin:0;min-width:9em}
 .tarrow{background:none;border:1px solid rgba(201,162,74,.35);color:var(--gold);width:30px;height:30px;font-family:var(--serif);font-size:18px;line-height:1;cursor:pointer}
 .tarrow:active{color:#fff2c4;border-color:var(--gold)}
-.tabbody{height:min(46vh,340px);height:min(46dvh,340px);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:2px}
+.tabbody{height:auto;max-height:52vh;max-height:52dvh;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:0}
 .tabbody::-webkit-scrollbar{display:none}
-.tab p{min-height:0;white-space:normal;word-break:normal;font-size:clamp(12.5px,3.6vw,15px);letter-spacing:.03em;line-height:1.75;margin:0 0 7px}
+.tab p{min-height:0;white-space:normal;word-break:normal;font-size:15px;letter-spacing:.02em;line-height:1.8;margin:0 0 12px}
+.tab p:last-child{margin-bottom:0}
 .tab p.h{color:var(--gold);letter-spacing:.2em;margin:14px 0 6px;font-size:clamp(11.5px,3.3vw,13.5px)}
 .dots{display:flex;justify-content:center;gap:8px;margin:10px 0 0}
 .dots i{width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg);opacity:.45}
 .dots i.on{background:var(--gold);opacity:1}
 #menuActs{margin-top:12px}
+/* 名言の書パネル（2026-09-09 再設計: 幅と余白を広げ、本文をゆったり） */
+#menu .box{width:min(calc(100vw - 32px),380px);padding:12px 16px 14px;max-height:84vh;max-height:84dvh}
+#menu .box.frame{border-width:20px;border-image-width:20px}
 
 /* ---- 開く演出 ---- */
 #readTitle{position:fixed;left:0;right:0;top:36%;text-align:center;pointer-events:none;z-index:21;font-family:var(--serif);color:var(--gold2);
@@ -172,10 +176,10 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #candleImg{position:fixed;right:calc(env(safe-area-inset-right,0px) - 3vw);bottom:calc(env(safe-area-inset-bottom,0px) - 1.5vh);width:min(34vmin,200px);pointer-events:none;z-index:8;opacity:0;transition:opacity 2s ease}
   /* candle.webp は透過画像（2026-09-07 黒背景+screen合成を廃止。iOSで mask+blend が効かず黒い枠が出たため） */
 #candleImg.on{opacity:.95}
-#flameGlow{position:fixed;pointer-events:none;z-index:9;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;mix-blend-mode:screen;opacity:0;
+#flameGlow{position:fixed;pointer-events:none;z-index:9;width:16vmin;height:16vmin;margin:-8vmin 0 0 -8vmin;mix-blend-mode:screen;opacity:0;
   background:radial-gradient(circle at 50% 55%,rgba(255,232,170,.95) 0%,rgba(255,180,90,.55) 18%,rgba(255,130,50,.18) 42%,transparent 66%);filter:blur(1.5px)}
 #halo{position:fixed;right:0;bottom:0;width:120vmin;height:120vmin;pointer-events:none;z-index:7;mix-blend-mode:screen;
-  transform:translate(35%,40%);background:radial-gradient(circle at 50% 50%,rgba(255,170,80,.42),rgba(255,120,40,.12) 35%,transparent 62%)}
+  transform:translate(35%,40%);background:radial-gradient(circle at 50% 50%,rgba(255,170,80,.30),rgba(255,120,40,.12) 35%,transparent 62%)}
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
 
 /* ---- 読書画面の下ボタン列（栞／音／印）と 戻る・N枚目 ---- */

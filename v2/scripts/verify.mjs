@@ -62,7 +62,7 @@ await sleep(900);
 await shot('03-ui');                // 1タップ → 右上メニューボタン
 
 const initial = await measure();   // 本の画面だけ（メニューを開く前）
-await page.click('#bMenu');
+await page.click('#bInfo');
 await sleep(700);
 await shot('04-menu');              // メニューパネル
 await page.click('#menuClose');
@@ -101,11 +101,14 @@ await shot('09-bookmark');
 
 const readDone = await measure();
 
-// 戻る
-await page.mouse.move(215, 800); await sleep(200);
-await page.click('#backBtn'); await sleep(300); await page.click('#backBtn');
-await sleep(5000);
-await shot('10-back');
+// 戻る（UI が隠れている等で押せなくても、計測結果は必ず出す）
+try {
+  await page.mouse.move(215, 800); await sleep(200);
+  await page.click('#backBtn', { timeout: 6000, force: true }); await sleep(300);
+  await page.click('#backBtn', { timeout: 6000, force: true });
+  await sleep(5000);
+  await shot('10-back');
+} catch (e) { console.log('back skipped:', e.message.split(chr(10))[0]); }
 
 const dbg = await page.evaluate(() => ({ stage: window.__app.stage, reader: window.__app.reader, audio: window.__app.audio }));
 

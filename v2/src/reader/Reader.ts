@@ -25,7 +25,7 @@ const SRC = (i: number) => asset('pages/p' + (i + 1) + '.jpg');
 const SRC_AVIF = (i: number) => asset('pages-avif/p' + (i + 1) + '.avif');
 const PAPER = QP.get('paper') !== '0';
 const EDGE = 8;
-const AHEAD = 8, BEHIND = 2, MAX_PAR = 4;
+const AHEAD = 4, BEHIND = 1, MAX_PAR = 3;   // 2026-09-09 軽量化: 先読みを縮小
 const KEEP = 12;                                        // いま開いている所から前後 KEEP 枚だけ持つ（LRU ±12）
 
 type Pt = { x: number; y: number };
@@ -80,6 +80,10 @@ export class Reader {
   private glowBase = 0; private glowRaf: number | null = null;
   private _fl = { t: 0, tgt: 0, cur: 0, next: 0, gust: 0 };
   private tilt = { x: 0, y: 0, on: false, sx: 0, sy: 0 };
+  /** 傾きがまだ動いている間だけ true。止まったら全面再描画をやめる（2026-09-09） */
+  private tiltMoving(): boolean {
+    return this.tilt.on && (Math.abs(this.tilt.x - this.tilt.sx) > 0.002 || Math.abs(this.tilt.y - this.tilt.sy) > 0.002);
+  }
 
   private motes: Array<{ x: number; y: number; r: number; a: number; vx: number; vy: number; ph: number }> = [];
   private embers: Array<{ x: number; y: number; r: number; a: number; vx: number; vy: number; sway: number; ph: number; life: number; px: number; py: number; hot: boolean }> = [];
@@ -165,7 +169,7 @@ export class Reader {
    */
   open(mode: string, opts?: { bg?: string; matchCut?: boolean; dawn?: boolean }): void {
     this.opened = true;                                  // これ以降だけ画像を落とす
-    if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp') + '?v=2');
+    if (!this.el.candleImg.getAttribute('src')) this.el.candleImg.setAttribute('src', asset('candle.webp') + '?v=3');
     if (!this.backTex) this.loadImg(asset('backside.jpg')).then(im => { this.backTex = im; });
     setTimeout(() => { if (!this.imgs[this.deck[this.index]]) this.firstReady(); }, 6000);
     const bgEl = this.root.querySelector<HTMLElement>('#bg')!;
@@ -259,6 +263,9 @@ export class Reader {
       im.src = src;
     });
   }
+  /** 読み込みに失敗した回数。2 回で諦める（無限リトライ防止・2026-09-09） */
+  private failN = new Map<number, number>();
+  private static readonly RETRY_MAX = 2;
   private pageSrc(i: number): { src: string; fallback?: string } {
     return AVIF_OK ? { src: SRC_AVIF(i), fallback: SRC(i) } : { src: SRC(i) };
   }
@@ -276,11 +283,14 @@ export class Reader {
   }
   private ensure(i: number, prio: boolean): void {
     if (i < 0 || i >= N || this.imgs[i] || this.loading.has(i)) return;
+    if ((this.failN.get(i) || 0) >= Reader.RETRY_MAX) return;
     if (!prio && this.loading.size >= MAX_PAR) return;
     this.loading.add(i);
     const p = this.pageSrc(i);
     this.loadImg(p.src, p.fallback).then(im => {
-      this.imgs[i] = im; this.loading.delete(i); if (im) this.loadedSet.add(i);
+      this.imgs[i] = im; this.loading.delete(i);
+      if (im) { this.loadedSet.add(i); this.failN.delete(i); }
+      else this.failN.set(i, (this.failN.get(i) || 0) + 1);
       const k = this.deck.indexOf(i);
       if (k >= this.index - 1 && k <= this.index + 1) this.draw();
       if (i === this.deck[0] || i === this.deck[this.index]) this.firstReady();
@@ -445,52 +455,89 @@ export class Reader {
   private smoothNoise(t: number): number { return Math.sin(t * 0.61) * 0.5 + Math.sin(t * 1.37 + 1.3) * 0.3 + Math.sin(t * 0.23 + 2.1) * 0.2; }
   private gustFn(s: number): void { this._fl.gust = Math.min(1.2, this._fl.gust + s); }
 
+  /** 灯りの階調を焼いたオフスクリーン。寸法か傾きが変わった時だけ焼き直す（2026-09-09 軽量化） */
+  private lampBake: { key: string; m: HTMLCanvasElement; o: HTMLCanvasElement; s: HTMLCanvasElement | null } | null = null;
+
+  private bakeLamp(pw: number, ph: number, tx: number, ty: number): void {
+    const key = pw + '|' + ph + '|' + (PAPER ? 1 : 0) + '|' + tx.toFixed(3) + '|' + ty.toFixed(3);
+    if (this.lampBake && this.lampBake.key === key) return;
+    const bw = Math.max(2, Math.round(pw / 2)), bh = Math.max(2, Math.round(ph / 2)), k = 0.5;
+    const mk = (): [HTMLCanvasElement, CanvasRenderingContext2D] => {
+      const c = document.createElement('canvas'); c.width = bw; c.height = bh;
+      return [c, c.getContext('2d')!];
+    };
+    const cx = pw * (1.06 + tx) * k, cy = ph * (1.16 + ty) * k, r = Math.max(pw, ph) * 1.72 * k;
+
+    // multiply 層：紙全体の階調 ＋ 右下から左上へ落ちる影
+    const [mc, m] = mk();
+    m.fillStyle = '#fff'; m.fillRect(0, 0, bw, bh);
+    let g = m.createRadialGradient(cx, cy, r * 0.22, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,252,244,1)');
+    g.addColorStop(0.45, 'rgba(232,214,182,1)');
+    g.addColorStop(0.78, 'rgba(182,156,120,1)');
+    g.addColorStop(1, 'rgba(120,96,68,1)');
+    m.globalAlpha = 0.86; m.fillStyle = g; m.fillRect(0, 0, bw, bh); m.globalAlpha = 1;
+    if (PAPER) {
+      const ax = pw * 0.98 * k, ay = ph * 0.96 * k;
+      const lg = m.createLinearGradient(pw * 0.05 * k, ph * 0.05 * k, ax, ay);
+      lg.addColorStop(0, 'rgba(28,18,10,0.340)');
+      lg.addColorStop(0.55, 'rgba(28,18,10,0.06)'); lg.addColorStop(1, 'rgba(28,18,10,0)');
+      m.globalCompositeOperation = 'multiply'; m.fillStyle = lg; m.fillRect(0, 0, bw, bh);
+    }
+
+    // overlay 層：芯の暖色 ＋ 右下からの暖かい流れ
+    const [oc, o] = mk();
+    g = o.createRadialGradient(cx, cy, 0, cx, cy, r * 0.9);
+    g.addColorStop(0, 'rgba(255,200,128,0.300)');
+    g.addColorStop(0.5, 'rgba(255,158,76,0.11)');
+    g.addColorStop(1, 'rgba(255,124,44,0)');
+    o.fillStyle = g; o.fillRect(0, 0, bw, bh);
+    if (PAPER) {
+      const ax = pw * 0.98 * k, ay = ph * 0.96 * k;
+      const lg = o.createLinearGradient(ax, ay, pw * 0.15 * k, ph * 0.05 * k);
+      lg.addColorStop(0, 'rgba(255,178,80,0.300)');
+      lg.addColorStop(0.45, 'rgba(255,160,70,0.08)'); lg.addColorStop(1, 'rgba(255,150,60,0)');
+      o.fillStyle = lg; o.fillRect(0, 0, bw, bh);
+    }
+
+    // screen 層：小口の光の帯
+    let sc: HTMLCanvasElement | null = null;
+    if (PAPER) {
+      const [c2, s2] = mk();
+      const eg = s2.createLinearGradient((pw - 18) * k, 0, pw * k, 0);
+      eg.addColorStop(0, 'rgba(255,220,160,0)');
+      eg.addColorStop(1, 'rgba(255,220,160,0.220)');
+      s2.fillStyle = eg; s2.fillRect((pw - 18) * k, 0, 18 * k, bh);
+      sc = c2;
+    }
+    this.lampBake = { key, m: mc, o: oc, s: sc };
+  }
+
   private lampOverlay(): void {
     if (this.lampLevel <= 0.001) return;
     const ctx = this.ctx, pw = this.W - EDGE, ph = this.H - EDGE;
     const n = this.smoothNoise(this._fl.t), cur = this._fl.cur;
     const gu = this._fl.gust, gj = gu * Math.sin(this._fl.t * 41) * 0.5 + gu * 0.5;
     const lv = Math.max(0, Math.min(1, this.lampLevel * (0.85 + n * 0.12 + cur * 0.35 + gj * 0.22)));
-    const n2 = this.smoothNoise(this._fl.t * 1.7 + 3.1);
     // 光源は紙の中ではなく、画面右下のろうそくの位置（＝紙の外）に置く。
     // 2026-09-07 KEI「本の右下あたりに光源があって眩しすぎて見にくい」→ 中心を紙の外へ出し、
     // 山を低くして、紙全体は右下から左上へゆるく落ちる階調にする。
+    // 2026-09-09: 階調そのものはオフスクリーンに焼き、毎フレームは drawImage と α だけにした。
     this.tilt.sx += (this.tilt.x - this.tilt.sx) * 0.12;
     this.tilt.sy += (this.tilt.y - this.tilt.sy) * 0.12;
     const tx = this.tilt.on ? this.tilt.sx * 0.10 : 0, ty = this.tilt.on ? this.tilt.sy * 0.08 : 0;
-    const cx = pw * (1.06 + tx + n * 0.03 + n2 * 0.015 + gu * Math.sin(this._fl.t * 33) * 0.035);
-    const cy = ph * (1.16 + ty + n * 0.02 - gu * 0.02);
-    const r = Math.max(pw, ph) * (1.72 + n * 0.10 + cur * 0.16 + gj * 0.10);
+    this.bakeLamp(pw, ph, tx, ty);
+    const bk = this.lampBake!;
     ctx.save();
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     this.sheen(pw, ph);
     ctx.globalCompositeOperation = 'multiply';
-    let g = ctx.createRadialGradient(cx, cy, r * 0.22, cx, cy, r);
-    g.addColorStop(0, 'rgba(255,252,244,1)');
-    g.addColorStop(0.45, 'rgba(232,214,182,1)');
-    g.addColorStop(0.78, 'rgba(182,156,120,1)');
-    g.addColorStop(1, 'rgba(120,96,68,1)');
-    ctx.globalAlpha = lv * 0.86; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
+    ctx.globalAlpha = lv; ctx.drawImage(bk.m, 0, 0, pw, ph);
     ctx.globalCompositeOperation = 'overlay';
-    g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.9);
-    g.addColorStop(0, 'rgba(255,200,128,' + (0.30 + n2 * 0.06).toFixed(3) + ')');
-    g.addColorStop(0.5, 'rgba(255,158,76,0.11)');
-    g.addColorStop(1, 'rgba(255,124,44,0)');
-    ctx.globalAlpha = lv; ctx.fillStyle = g; ctx.fillRect(0, 0, pw, ph);
-    if (PAPER) {
-      const ax = pw * (0.98 + gu * 0.02), ay = ph * (0.96 - n * 0.02);
-      let lg = ctx.createLinearGradient(ax, ay, pw * 0.15, ph * 0.05);
-      lg.addColorStop(0, 'rgba(255,178,80,' + (0.30 + n * 0.05 + cur * 0.12 + gj * 0.10).toFixed(3) + ')');
-      lg.addColorStop(0.45, 'rgba(255,160,70,0.08)'); lg.addColorStop(1, 'rgba(255,150,60,0)');
-      ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = lv; ctx.fillStyle = lg; ctx.fillRect(0, 0, pw, ph);
-      lg = ctx.createLinearGradient(pw * 0.05, ph * 0.05, ax, ay);
-      lg.addColorStop(0, 'rgba(28,18,10,' + (0.34 - cur * 0.10).toFixed(3) + ')');
-      lg.addColorStop(0.55, 'rgba(28,18,10,0.06)'); lg.addColorStop(1, 'rgba(28,18,10,0)');
-      ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = lv; ctx.fillStyle = lg; ctx.fillRect(0, 0, pw, ph);
-      const eg = ctx.createLinearGradient(pw - 18, 0, pw, 0);
-      eg.addColorStop(0, 'rgba(255,220,160,0)');
-      eg.addColorStop(1, 'rgba(255,220,160,' + (0.22 + gj * 0.15).toFixed(3) + ')');
-      ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = lv * 0.8; ctx.fillStyle = eg; ctx.fillRect(pw - 18, 0, 18, ph);
+    ctx.globalAlpha = lv; ctx.drawImage(bk.o, 0, 0, pw, ph);
+    if (bk.s) {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = lv * 0.8 * (1 + gj * 0.68); ctx.drawImage(bk.s, 0, 0, pw, ph);
     }
     ctx.restore();
   }
@@ -923,6 +970,22 @@ export class Reader {
       ph: Math.random() * Math.PI * 2,
     }));
   }
+  /** 火の粉のハロー。60fps×最大11個ぶんの createRadialGradient を消すため 1 回だけ焼く（2026-09-09） */
+  private static _emberSp: (HTMLCanvasElement | null)[] = [null, null];
+  private static emberSprite(hot: boolean): HTMLCanvasElement {
+    const k = hot ? 1 : 0;
+    let c = Reader._emberSp[k];
+    if (c) return c;
+    c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d')!;
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, (hot ? 'rgba(255,236,190,' : 'rgba(255,190,110,') + '0.620)');
+    gr.addColorStop(0.25, (hot ? 'rgba(255,180,80,' : 'rgba(230,110,40,') + '0.450)');
+    gr.addColorStop(1, 'rgba(255,110,30,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(64, 64, 64, 0, Math.PI * 2); g.fill();
+    Reader._emberSp[k] = c;
+    return c;
+  }
   private spawnEmber(): void {
     this.embers.push({
       x: this.dc.width * (0.62 + Math.random() * 0.36), y: this.dc.height * (0.78 + Math.random() * 0.22),
@@ -956,7 +1019,7 @@ export class Reader {
       dctx.fillStyle = 'rgba(255,226,170,' + (m.a * tw).toFixed(3) + ')';
       dctx.beginPath(); dctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); dctx.fill();
     }
-    if (this.embers.length < (MOBILE ? 10 : 18) && Math.random() < 0.07) this.spawnEmber();
+    if (this.embers.length < (MOBILE ? 7 : 11) && Math.random() < 0.045) this.spawnEmber();
     dctx.save();
     dctx.globalCompositeOperation = 'lighter';
     for (let i = this.embers.length - 1; i >= 0; i--) {
@@ -973,12 +1036,11 @@ export class Reader {
       dctx.strokeStyle = 'rgba(255,150,60,' + (al * 0.35).toFixed(3) + ')';
       dctx.lineWidth = Math.max(0.6, rr * 0.7);
       dctx.beginPath(); dctx.moveTo(e.px - e.vx * 3, e.py - e.vy * 3); dctx.lineTo(e.x, e.y); dctx.stroke();
-      const gr = dctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, rr * 5);
-      gr.addColorStop(0, (e.hot ? 'rgba(255,236,190,' : 'rgba(255,190,110,') + (al * 0.9).toFixed(3) + ')');
-      gr.addColorStop(0.25, (e.hot ? 'rgba(255,180,80,' : 'rgba(230,110,40,') + (al * 0.45).toFixed(3) + ')');
-      gr.addColorStop(1, 'rgba(255,110,30,0)');
-      dctx.fillStyle = gr;
-      dctx.beginPath(); dctx.arc(e.x, e.y, rr * 5, 0, Math.PI * 2); dctx.fill();
+      // 事前に焼いたスプライトを拡大して置く（見た目は同じ・毎フレームの勾配生成が消える）
+      const sp = Reader.emberSprite(e.hot), R = rr * 5;
+      dctx.globalAlpha = al;
+      dctx.drawImage(sp, e.x - R, e.y - R, R * 2, R * 2);
+      dctx.globalAlpha = 1;
       dctx.fillStyle = (e.hot ? 'rgba(255,246,220,' : 'rgba(255,200,130,') + Math.min(0.95, al * (e.hot ? 1.3 : 0.9)).toFixed(3) + ')';
       dctx.beginPath(); dctx.arc(e.x, e.y, rr * 0.55, 0, Math.PI * 2); dctx.fill();
     }
@@ -1030,10 +1092,11 @@ export class Reader {
       this.el.veil.style.opacity = vt.toFixed(3);
     }
     // 炎の揺れが前回の描画からほとんど動いていない時は描き直さない（見た目は同じ・CPUだけ下がる）
-    if (this.lampLevel > 0.001 && !this.flip && (++this._lampTick % (MOBILE ? 3 : 2) === 0 || this._fl.gust > 0.01 || this.tilt.on)) {
+    const tm = this.tiltMoving();
+    if (this.lampLevel > 0.001 && !this.flip && (++this._lampTick % (MOBILE ? 3 : 2) === 0 || this._fl.gust > 0.01 || tm)) {
       const n2f = this.smoothNoise(this._fl.t * 1.7 + 3.1);
       const sig = n + n2f * 0.5 + this._fl.cur + this._fl.gust * 2;
-      if (this.tilt.on || Math.abs(sig - this._lampSig) > 0.008) { this._lampSig = sig; this.draw(); }
+      if (tm || Math.abs(sig - this._lampSig) > 0.008) { this._lampSig = sig; this.draw(); }
     }
     requestAnimationFrame(this.flickerLoop);
   };

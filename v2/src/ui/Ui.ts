@@ -2,7 +2,7 @@
 // 本の画面のUI（KEI指示 2026-09-07 夜・前の形に戻す）
 //   - 下に「この本の説明」＋「栞／音量／印」の3つ。本の画面では常に表示（自動で消えない）。「この本を読む」ボタンは置かない（2回タップで開く）
 //   - 表示から5秒後、画面中央に細い金の罫線1本と一文「2回タップで、本を読む」
-//   - 本を開くのはダブルタップ（300ms以内の2回）だけ。1回タップは何もしない
+//   - 本を開くのはダブルタップ（400ms以内の2回）だけ。1回タップは何もしない。PC は Enter / Space でも開く
 //   - 「この本の説明」= 画面中央の縦パネル（この本の説明／操作説明／印の使い方／栞の使い方の4ページ。1文=1行）
 //   - 栞 = 栞のページから続きを読む／印 = 印のページだけを綴じた本を開く／音量 = 音の一括スイッチ
 // ============================================================
@@ -10,7 +10,7 @@ import { hasBookmark, favCount, a2hsSeen, a2hsMark } from '../state';
 import { SPK_ON, SPK_OFF } from '../audio';
 
 const HINT_DELAY = 2000;
-const DOUBLE_TAP = 300;
+const DOUBLE_TAP = 400;   // 2026-09-09 KEI: 2回タップの猶予を広げる
 const RIB_ICO = '<svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg>';
 
 export interface UiHooks {
@@ -49,9 +49,9 @@ export class Ui {
   <p class="h" id="tabTitle">この本について</p>
   <div class="tabbody">
   <div class="tab" data-tab="0">
-    <p>異世界の叡智が、これまでに集めてきた言の葉が、すべて入っている魔法の本。</p>
-    <p>この本は、開くたびに中身が変わる。</p>
-    <p>今もなお、中身のページは増え続けている。</p>
+    <p>この本には、異なる世界を生きた者たちの言葉が収められている。迷いの中で選んだ道、守ろうとしたもの、手放したもの。その記録を、一枚ずつ読むための本だ。</p>
+    <p>栞がなければ、開くたびに言葉の並びが変わる。はじめから順に読む必要はない。今の自分に届く一文があれば、そこで止まればいい。</p>
+    <p>残したい言葉には印をつける。続きは栞に預ける。集められた言葉は、これからも少しずつ、この本に加わっていく。</p>
   </div>
   <div class="tab" data-tab="1" hidden>
     <p>本を2回タップすると、開く。</p>
@@ -100,6 +100,16 @@ export class Ui {
       else this.hooks.onSay('印のついたページは、まだありませんね');
     });
     $('a2hsX').addEventListener('click', () => this.closeA2hs());
+    // キーボードでも開ける（Enter / Space）。ボタンに焦点がある時は素通し
+    addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      if (this.locked || this.menu.classList.contains('show')) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'BUTTON' || t.tagName === 'INPUT' || t.tagName === 'A')) return;
+      e.preventDefault();
+      this.hint.classList.remove('show');
+      this.hooks.onOpen('read');
+    });
   }
 
   /** 本が現れたら呼ぶ。UIを出し、5秒後に一文が浮かぶ */
