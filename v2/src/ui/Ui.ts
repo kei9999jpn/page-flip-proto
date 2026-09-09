@@ -2,6 +2,7 @@
 // 本の画面のUI（KEI指示 2026-09-07 夜・前の形に戻す）
 //   - 下に「この本の説明」＋ 横長ボタン2つ「しおりから読む」「お気に入りを読む」（中身がある時だけ・必ず横並び）
 //     2026-09-09 KEI: 本の画面に音のボタンは置かない。音の入切は読書画面の「音」ボタン
+//     2026-09-09 KEI: 全画面の札も置かない。本を開く操作そのものの中で勝手に全画面へ入る（main.ts）
 //     「この本を読む」ボタンは置かない（2回タップで開く）。2026-09-09 KEI: 小さな「栞」「印」の札は意味が分からないので廃止
 //   - 表示から5秒後、画面中央に細い金の罫線1本と一文「2回タップで、本を読む」
 //   - 本を開くのはダブルタップ（400ms以内の2回）だけ。1回タップは何もしない。PC は Enter / Space でも開く
@@ -16,8 +17,6 @@ const DOUBLE_TAP = 400;   // 2026-09-09 KEI: 2回タップの猶予を広げる
 export interface UiHooks {
   onOpen: (mode: string, title?: string) => void;
   onToggleSound: () => void;
-  /** true=切り替えた / false=この端末では文書の全画面が使えない(iOS Safari) */
-  onToggleFullscreen: () => boolean;
   onSay: (line: string) => void;
 }
 
@@ -28,7 +27,6 @@ export class Ui {
   private a2hs: HTMLDivElement;
   private bResume!: HTMLButtonElement;
   private bFav!: HTMLButtonElement;
-  private bFs!: HTMLButtonElement;
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
   private tabIdx = 0;
   private lastTap = 0;
@@ -43,7 +41,6 @@ export class Ui {
   <div class="row">
     <button class="seal wide" id="bResume" aria-label="しおりから読む" hidden>しおりから読む</button>
     <button class="seal wide" id="bFav" aria-label="お気に入りを読む" hidden>お気に入りを読む</button>
-    <button class="seal wide fs" id="bFs" aria-label="全画面">全画面</button>
   </div>
 </div>
 <div id="a2hs"><span>ホーム画面に追加すると、枠のない全画面で読める</span><button id="a2hsX" aria-label="閉じる">✕</button></div>
@@ -102,11 +99,6 @@ export class Ui {
       if (this.locked) return;
       if (favCount() > 0) this.hooks.onOpen('fav', 'お気に入りのページ');
       else this.hooks.onSay('お気に入りのページは、まだありませんね');
-    });
-    this.bFs = $<HTMLButtonElement>('bFs');
-    this.bFs.addEventListener('click', () => {
-      if (this.locked) return;
-      if (!this.hooks.onToggleFullscreen()) this.hooks.onSay('ホーム画面に追加すると、全画面で読める');
     });
     this.updateEntry();
     $('a2hsX').addEventListener('click', () => this.closeA2hs());
@@ -180,14 +172,6 @@ export class Ui {
 
   /** 本の画面に音のボタンは置かない（2026-09-09 KEI）。音の入切は読書画面の「音」ボタンで行う */
   paintSound(_on: boolean): void { /* noop */ }
-
-  /** 全画面の札（ 2026-09-09 KEI「全画面が消えた」で復活） */
-  paintFullscreen(on: boolean, supported: boolean): void {
-    if (!this.bFs) return;
-    this.bFs.textContent = on ? '全画面をやめる' : '全画面';
-    this.bFs.setAttribute('aria-label', on ? '全画面をやめる' : '全画面');
-    this.bFs.classList.toggle('off', !supported);
-  }
 
   // ---- ホーム画面に追加の一言（スタンドアロンでない時・モバイルの時だけ1回きり） ----
   private maybeA2hs(): void {

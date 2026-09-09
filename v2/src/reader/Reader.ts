@@ -39,8 +39,6 @@ export interface ReaderHooks {
   onActivity: () => void;
   onFirstTouch: () => void;
   onSoundToggle: () => void;
-  /** 全画面の出し入れ。使えない端末(iOS Safari)では false */
-  onFullscreenToggle: () => boolean;
 }
 
 function bgOf(root: HTMLElement): HTMLElement { return root.querySelector<HTMLElement>('#bg')!; }
@@ -101,7 +99,7 @@ export class Reader {
     ribbon: HTMLDivElement; paperGlow: HTMLDivElement; candle: HTMLDivElement; shade: HTMLDivElement;
     halo: HTMLDivElement; candleImg: HTMLImageElement; flameGlow: HTMLDivElement; flame: HTMLDivElement;
     veil: HTMLDivElement; seen: HTMLDivElement; backBtn: HTMLDivElement; favBtn: HTMLDivElement;
-    favListBtn: HTMLDivElement; setBtn: HTMLDivElement; fsBtn: HTMLDivElement; toast: HTMLDivElement; favPanel: HTMLDivElement;
+    favListBtn: HTMLDivElement; setBtn: HTMLDivElement; toast: HTMLDivElement; favPanel: HTMLDivElement;
   };
 
   constructor(private hooks: ReaderHooks) {
@@ -125,7 +123,6 @@ export class Reader {
 <div id="favBtn" role="button" tabindex="0" aria-label="お気に入り"><b>♡</b><span>お気に入り</span></div>
 <div id="favListBtn" role="button" tabindex="0" aria-label="栞"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b><span>栞</span></div>
 <div id="setBtn" role="button" tabindex="0" aria-label="音の入切"><b></b><span>音</span></div>
-<div id="fsBtn" role="button" tabindex="0" aria-label="全画面"><b><svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#c9a24a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2 6V2h4M16 6V2h-4M2 12v4h4M16 12v4h-4"/></svg></b><span>全画面</span></div>
 <div id="toast"></div>
 <div id="favPanel"><div class="box"><h2>お気に入りのページ</h2>
 <div class="empty" id="favEmpty">まだお気に入りのページがない</div><button class="close" id="favClose">閉じる</button></div></div>`;
@@ -140,7 +137,7 @@ export class Reader {
       ribbon: q('ribbon'), paperGlow: q('paperGlow'), candle: q('candle'), shade: q('shade'),
       halo: q('halo'), candleImg: q<HTMLImageElement>('candleImg'), flameGlow: q('flameGlow'), flame: q('flame'),
       veil: q('veil'), seen: q('seen'), backBtn: q('backBtn'), favBtn: q('favBtn'),
-      favListBtn: q('favListBtn'), setBtn: q('setBtn'), fsBtn: q('fsBtn'), toast: q('toast'), favPanel: q('favPanel'),
+      favListBtn: q('favListBtn'), setBtn: q('setBtn'), toast: q('toast'), favPanel: q('favPanel'),
     };
     this.el.veil.style.transition = 'opacity 1.4s ease';
     this.el.candleImg.addEventListener('error', () => { this.el.candleImg.style.display = 'none'; });
@@ -398,7 +395,6 @@ export class Reader {
     this.el.favListBtn.classList.add('show');
     this.el.seen.classList.add('show');
     this.el.setBtn.classList.add('show');
-    this.el.fsBtn.classList.add('show');
     this.el.backBtn.classList.add('show');
     this.updateFavUI();
   }
@@ -410,19 +406,6 @@ export class Reader {
     b.innerHTML = on
       ? '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M15.5 6.5a5 5 0 0 1 0 7"/><path d="M18.5 4a9 9 0 0 1 0 12"/></svg>'
       : '<svg width="18" height="16" viewBox="0 0 24 20" fill="none" stroke="#8a7a58" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h4l5-4v14l-5-4H3z"/><path d="M16 7l5 6M21 7l-5 6"/></svg>';
-  }
-  /** 全画面の札を塗り直す。入っている時は「戻す」に変える（2026-09-09 KEI「全画面が消えた」で復活） */
-  paintFullscreen(on: boolean, supported: boolean): void {
-    const el = this.el.fsBtn;
-    el.setAttribute('aria-label', on ? '全画面をやめる' : '全画面');
-    el.classList.toggle('off', !supported);
-    const span = el.querySelector('span');
-    if (span) span.textContent = on ? '戻す' : '全画面';
-    const b = el.querySelector('b');
-    if (!b) return;
-    b.innerHTML = on
-      ? '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#c9a24a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M6 2v4H2M12 2v4h4M6 16v-4H2M12 16v-4h4"/></svg>'
-      : '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#c9a24a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2 6V2h4M16 6V2h-4M2 12v4h4M16 12v4h-4"/></svg>';
   }
   private uiWake(): void {
     if (this.root.classList.contains('uihide')) this.uiJustWoke = performance.now();
@@ -910,10 +893,6 @@ export class Reader {
       this.el.favListBtn.classList.add('on'); this.hooks.onBookmark({ off: false });
     });
     this.el.setBtn.addEventListener('click', () => { ensureAudio(); uiClick(); this.hooks.onSoundToggle(); });
-    this.el.fsBtn.addEventListener('click', () => {
-      ensureAudio(); uiClick();
-      if (!this.hooks.onFullscreenToggle()) this.toast('ホーム画面に追加すると、全画面で読める');
-    });
     this.el.backBtn.addEventListener('click', () => { ensureAudio(); uiClick(); this.hooks.onClose(); });
     this.root.querySelector('#favClose')!.addEventListener('click', () => { ensureAudio(); uiClick(); this.el.favPanel.style.display = 'none'; });
   }

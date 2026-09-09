@@ -16,7 +16,7 @@ import {
   thudHeavy, openBookSound, blip, haptic, audioDebug,
 } from './audio';
 import { track } from './track';
-import { fsEnter, fsSupported, toggleFullscreen, onFsChange } from './fullscreen';
+import { fsEnter, fsOn } from './fullscreen';
 
 type Stage = 'book' | 'opening' | 'read' | 'closing';
 
@@ -73,9 +73,9 @@ function say(line: string, hold = 3000): void {
 }
 
 // ============================================================ 没入（モバイル）
-let fsTried = false;
+// 2026-09-09 KEI「ボタンはいらない。開くたびに勝手に全画面に」。
+// 一度きりの見張り（fsTried）を外し、触られるたびに要求する。すでに全画面なら fsEnter は何もしない。
 setFullscreenHook(() => {
-  if (fsTried) return; fsTried = true;
   fsEnter();
   try {
     const so = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
@@ -109,20 +109,24 @@ const reader = new Reader({
   onActivity: () => activity(),
   onFirstTouch: () => { bgmWant(); ensureAudio(); activity(); },
   onSoundToggle: () => { toggleSound(); activity(); },
-  // 全画面の出し入れ。使えない端末（iOS Safari）では false が返るので、呼び手が案内を出す
-  onFullscreenToggle: () => { activity(); return toggleFullscreen(); },
 });
 
 // ============================================================ UI
 const ui = new Ui({
   onOpen: (mode, title) => beginRead(mode, title),
   onToggleSound: () => toggleSound(),
-  onToggleFullscreen: () => toggleFullscreen(),
   onSay: line => say(line, 2500),
 });
 onSoundChange(on => { ui.paintSound(on); reader.paintSound(on); });
-// 全画面の札は「いま全画面かどうか」で文字が変わる（本の画面・読書画面の両方）
-onFsChange(on => { ui.paintFullscreen(on, fsSupported()); reader.paintFullscreen(on, fsSupported()); });
+
+// 開いたあと、読書画面の最初の一触りでもう一度だけ全画面を要求する。
+// （開いた瞬間の要求が断られた時の保険。1回の開きにつき1度きり）
+let fsRetry = false;
+addEventListener('pointerdown', () => {
+  if (fsRetry || stage !== 'read' || fsOn()) return;
+  fsRetry = true;
+  fsEnter();
+}, { capture: true });
 
 // ============================================================ 開く演出（作品最大の一発）
 // 台本（秒。openBookSound は 0.85s に鳴らし、その内部タイミング＝紙2枚 0/0.55、革の着地 1.30 に合わせる）
@@ -142,6 +146,11 @@ let openT0 = 0, lifting = false;
 
 function beginRead(mode: string, title?: string): void {
   if (stage !== 'book') return;
+  // 2026-09-09 KEI: 開くたびに自動で全画面。ダブルタップ／「しおりから読む」「お気に入りを読む」／
+  // Enter・Space のどれもこの関数へ直に来るので、ここが「利用者の操作の中」。
+  // **await や setTimeout より前**に呼ばないとブラウザに断られる。
+  fsEnter();
+  fsRetry = false;
   void title;
   setStage('opening');
   ui.setLocked(true);

@@ -71,11 +71,29 @@ await sleep(600);
 const afterMenu = await measure();
 phase = 'read';
 
+// 全画面の要求を数える見張りを仕掛ける（headless/CDP の Chrome は全画面を断ることがある。
+// その時でも「開く操作の中で requestFullscreen を呼んだか」だけは確かめられる・2026-09-09）
+await page.evaluate(() => {
+  window.__fsCalls = 0;
+  const el = document.documentElement;
+  const orig = el.requestFullscreen;
+  if (orig) el.requestFullscreen = function (...a) { window.__fsCalls++; return orig.apply(this, a); };
+});
+
 // ダブルタップで開く
 await page.mouse.click(cx, cy);
 await sleep(120);
 await page.mouse.click(cx, cy);
-await sleep(3000);
+await sleep(600);
+// 開く操作で自動的に全画面へ入ったか（ボタンは廃止・2026-09-09 KEI）
+const fullscreen = await page.evaluate(() => ({
+  element: !!(document.fullscreenElement || document.webkitFullscreenElement),
+  requestCalls: window.__fsCalls || 0,
+}));
+console.log('fullscreen', JSON.stringify(fullscreen),
+  fullscreen.element ? 'OK(全画面に入った)'
+    : fullscreen.requestCalls > 0 ? 'OK(要求は出た。この Chrome が断った)' : 'NG(要求すら出ていない)');
+await sleep(2400);
 await shot('05-opening');           // 開く演出の途中
 await sleep(5000);
 await shot('06-read');              // 読書
@@ -108,12 +126,12 @@ try {
   await page.click('#backBtn', { timeout: 6000, force: true });
   await sleep(5000);
   await shot('10-back');
-} catch (e) { console.log('back skipped:', e.message.split(chr(10))[0]); }
+} catch (e) { console.log('back skipped:', e.message.split(String.fromCharCode(10))[0]); }
 
 const dbg = await page.evaluate(() => ({ stage: window.__app.stage, reader: window.__app.reader, audio: window.__app.audio }));
 
 console.log(JSON.stringify({
-  initial, afterMenu, readDone, errors, dbg,
+  initial, afterMenu, readDone, fullscreen, errors, dbg,
 }, null, 2));
 
 await page.close();
