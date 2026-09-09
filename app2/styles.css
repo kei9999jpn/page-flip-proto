@@ -65,6 +65,9 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
   font-size:clamp(10px,3.2vw,15px);letter-spacing:.06em;text-indent:.06em;
   border-width:10px;border-image-width:10px}
 .seal[hidden]{display:none}
+/* 2026-09-09 KEI: 下段の右端に「全画面」。3文字なので幅は文字ぶんだけ取る（横長2つを狭めない） */
+.seal.wide.fs{flex:0 0 auto;width:auto;max-width:none;padding:4px 10px}
+.seal.off{opacity:.55}
 .ico.off{opacity:.55}
 .ico{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.22em;text-indent:.22em;color:var(--paper2);white-space:nowrap;cursor:pointer;
   width:88px;height:72px;box-sizing:border-box;padding:0;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;
@@ -151,7 +154,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #ribbon.sway{animation:ribbonSway 7s ease-in-out infinite alternate}
 @keyframes ribbonSway{from{transform:rotate(-.55deg)}to{transform:rotate(.55deg)}}
 /* 読んでいる間はUIを闇へ溶かす（2.5秒操作なし）。画面の下側に触れれば戻る */
-#reader.uihide #favBtn,#reader.uihide #favListBtn,#reader.uihide #setBtn,#reader.uihide #seen,#reader.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
+#reader.uihide #favBtn,#reader.uihide #favListBtn,#reader.uihide #setBtn,#reader.uihide #fsBtn,#reader.uihide #seen,#reader.uihide #backBtn{opacity:0 !important;transition:opacity 1.6s ease}
 /* 紙は机の上の「物」。全体をわずかに傾け、接地影を足す（KEI 2026-09-07 Phase 4）。
    当たり判定は傾けない座標系のまま（横方向のドラッグ量で決まるので 2.2° では実質ずれない）。 */
 #book{--tilt:0deg;position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) scale(.97) rotate(var(--tilt));z-index:2;
@@ -191,17 +194,19 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #veil{position:fixed;inset:0;pointer-events:none;z-index:23;background:#000;opacity:0}
 
 /* ---- 読書画面の下ボタン列（栞／音／印）と 戻る・N枚目 ---- */
-#favBtn,#favListBtn,#setBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 1.2vh);bottom:calc(env(safe-area-inset-bottom,0px) + 1.2dvh);z-index:27;width:104px;box-sizing:border-box;
+#favBtn,#favListBtn,#setBtn,#fsBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 1.2vh);bottom:calc(env(safe-area-inset-bottom,0px) + 1.2dvh);z-index:27;width:98px;box-sizing:border-box;
   display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--ui);font-size:clamp(11px,3.1vmin,13px);letter-spacing:.2em;text-indent:.2em;
   color:#b8a98a;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;height:80px;padding:0;cursor:pointer;user-select:none;opacity:0;transition:opacity 1s,color .18s;filter:drop-shadow(0 8px 16px rgba(0,0,0,.6))}
-#favBtn b,#favListBtn b,#setBtn b{display:block;font-family:serif;font-size:clamp(15px,4vmin,17px);letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal;height:18px;line-height:18px}
-#favListBtn b svg,#setBtn b svg{vertical-align:top}
-#favListBtn{left:calc(50% - 160px)}
-#setBtn{left:calc(50% - 52px);display:none}
+#favBtn b,#favListBtn b,#setBtn b,#fsBtn b{display:block;font-family:serif;font-size:clamp(15px,4vmin,17px);letter-spacing:0;text-indent:0;margin-bottom:3px;color:#c9a24a;font-weight:normal;height:18px;line-height:18px}
+#favListBtn b svg,#setBtn b svg,#fsBtn b svg{vertical-align:top}
+#favListBtn{left:calc(50% - 200px)}
+#setBtn{left:calc(50% - 100px);display:none}
 #setBtn.show{display:flex}
-#favBtn{left:calc(50% + 56px)}
-#favBtn.show,#favListBtn.show,#setBtn.show{opacity:.92;pointer-events:auto}
-#setBtn.show.off{opacity:.6}
+#fsBtn{left:50%;display:none}
+#fsBtn.show{display:flex}
+#favBtn{left:calc(50% + 100px)}
+#favBtn.show,#favListBtn.show,#setBtn.show,#fsBtn.show{opacity:.92;pointer-events:auto}
+#setBtn.show.off,#fsBtn.show.off{opacity:.6}
 #seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 16px);z-index:27;color:#b8a98a;font-family:var(--ui);font-size:clamp(11px,3.1vmin,13px);letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
 #seen.show{opacity:.85}
 #seen b{font-weight:normal;font-family:serif;font-size:18px;letter-spacing:.05em;margin-right:.25em;color:#c9a24a}
