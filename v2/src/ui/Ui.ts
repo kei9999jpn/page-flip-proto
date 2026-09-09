@@ -1,6 +1,7 @@
 // ============================================================
 // 本の画面のUI（KEI指示 2026-09-07 夜・前の形に戻す）
-//   - 下に「この本の説明」＋ 横長ボタン2つ「しおりから読む」「お気に入りを読む」（中身がある時だけ・必ず横並び）
+//   - 下は縦1列（2026-09-10 KEI）: 上から「しおりから読む」「お気に入りを読む」「この本の説明」。
+//     3つとも同じ幅 min(78vw,320px)・同じ高さ 48px・間隔 10px。栞／印が無い行は隠し、列は中央・下端そろえのまま
 //     2026-09-09 KEI: 本の画面に音のボタンは置かない。音の入切は読書画面の「音」ボタン
 //     2026-09-09 KEI: 全画面の札も置かない。本を開く操作そのものの中で勝手に全画面へ入る（main.ts）
 //     「この本を読む」ボタンは置かない（2回タップで開く）。2026-09-09 KEI: 小さな「栞」「印」の札は意味が分からないので廃止
@@ -37,11 +38,9 @@ export class Ui {
     wrap.innerHTML = `
 <div id="hint"><div class="rule"></div><div class="txt">2回タップで、本を読む</div></div>
 <div id="ui">
-  <button class="seal sub" id="bInfo">この本の説明</button>
-  <div class="row">
-    <button class="seal wide" id="bResume" aria-label="しおりから読む" hidden>しおりから読む</button>
-    <button class="seal wide" id="bFav" aria-label="お気に入りを読む" hidden>お気に入りを読む</button>
-  </div>
+  <button class="seal wide" id="bResume" aria-label="しおりから読む" hidden>しおりから読む</button>
+  <button class="seal wide" id="bFav" aria-label="お気に入りを読む" hidden>お気に入りを読む</button>
+  <button class="seal wide" id="bInfo">この本の説明</button>
 </div>
 <div id="a2hs"><span>ホーム画面に追加すると、枠のない全画面で読める</span><button id="a2hsX" aria-label="閉じる">✕</button></div>
 <div class="ov" id="menu"><div class="box frame">

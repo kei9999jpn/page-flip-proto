@@ -48,6 +48,11 @@ await page.evaluate(async () => {
   try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } catch {}
   try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch {}
 });
+// 初期画面の縦3列を必ず全部出すため、栞1本とお気に入り1件を仕込む（2026-09-10）
+await page.evaluate(() => {
+  localStorage.setItem('bookexp-favs', JSON.stringify([3]));
+  localStorage.setItem('bookexp-bookmark', JSON.stringify({ list: [{ deck: [1, 2, 3, 4, 5], index: 2, ts: Date.now(), fav: false }] }));
+});
 bytes.length = 0;
 await page.reload({ waitUntil: 'load' });
 await sleep(3500);
@@ -55,6 +60,60 @@ await shot('01-initial');           // 本だけ・ボタンなし
 
 await sleep(3000);
 await shot('02-hint');              // 5秒後の一文
+
+// 初期画面のボタン配置を測る（縦3列・重なりが無いか・2026-09-10 KEI）
+const layout = async (w, h) => {
+  await page.setViewportSize({ width: w, height: h });
+  await sleep(900);
+  return page.evaluate(() => {
+    const r = el => { if (!el || el.hidden) return null; const b = el.getBoundingClientRect(); return { x: +b.x.toFixed(1), y: +b.y.toFixed(1), w: +b.width.toFixed(1), h: +b.height.toFixed(1), bottom: +b.bottom.toFixed(1) }; };
+    const ids = ['bResume', 'bFav', 'bInfo'];
+    const boxes = {}; ids.forEach(id => { boxes[id] = r(document.getElementById(id)); });
+    const hint = r(document.getElementById('hint'));
+    const top = Math.min(...ids.map(id => boxes[id] ? boxes[id].y : Infinity));
+    // 本（3D）の画面上の当たり範囲を投影して測る
+    let book = null;
+    try {
+      const sc = window.__app.scene, cam = sc.camera, obj = sc.book;
+      const V3 = cam.position.constructor;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      obj.updateWorldMatrix(true, true);
+      const put = (a, b, c, d) => { if (a < x0) x0 = a; if (b > x1) x1 = b; if (c < y0) y0 = c; if (d > y1) y1 = d; };
+      obj.traverse(m => {
+        const g = m.geometry; if (!m.isMesh || !g || !g.attributes || !g.attributes.position) return;
+        if (!g.boundingBox) g.computeBoundingBox();
+        const bb = g.boundingBox;
+        let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
+        for (let i = 0; i < 8; i++) {
+          const v = new V3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
+          v.applyMatrix4(m.matrixWorld).project(cam);
+          if (!isFinite(v.x) || !isFinite(v.y)) continue;
+          const px = (v.x * 0.5 + 0.5) * innerWidth, py = (-v.y * 0.5 + 0.5) * innerHeight;
+          if (px < a) a = px; if (px > b) b = px; if (py < c) c = py; if (py > d) d = py;
+        }
+        // 本体でない大物（画面いっぱいの塵・影の板など）は当たり範囲から外す
+        if (b - a > innerWidth * 3 || d - c > innerHeight * 3) return;
+        put(a, b, c, d);
+      });
+      book = { x: +x0.toFixed(1), y: +y0.toFixed(1), w: +(x1 - x0).toFixed(1), h: +(y1 - y0).toFixed(1), bottom: +y1.toFixed(1) };
+    } catch (e) { book = { err: String(e).slice(0, 80) }; }
+    return {
+      vp: innerWidth + 'x' + innerHeight, boxes, hint, book,
+      columnTop: top,
+      hintOverlap: !!(hint && hint.bottom > top),
+      bookOverlap: !!(book && book.bottom > top),
+      gapHintToColumn: hint ? +(top - hint.bottom).toFixed(1) : null,
+      gapBookToColumn: book && book.bottom ? +(top - book.bottom).toFixed(1) : null,
+      uiPointerEvents: getComputedStyle(document.getElementById('ui')).pointerEvents,
+    };
+  });
+};
+const L430 = await layout(430, 860);
+const L375 = await layout(375, 667);
+console.log('layout430', JSON.stringify(L430));
+console.log('layout375', JSON.stringify(L375));
+await page.setViewportSize({ width: 430, height: 860 });
+await sleep(600);
 
 const cx = 215, cy = 430;
 await page.mouse.click(cx, cy);
