@@ -8,7 +8,7 @@
 //    - 紙は丸めすぎない（peel の P1/P2 係数）
 //    - finishFlip の dur / イージング / commitTo のしきい値
 // ============================================================
-import { asset, MOBILE, QP, S, loadFavs, saveFavs, loadBookmark, saveBookmark, clearBookmark, type Bookmark } from '../state';
+import { asset, MOBILE, QP, S, loadFavs, saveFavs, loadBookmark, saveBookmark, clearBookmark, bookmarkPages, removeBookmarkPage, type Bookmark } from '../state';
 import { pageSound, sealSound, ribbonSound, uiClick, haptic, ensureAudio } from '../audio';
 
 const N = 790;
@@ -122,12 +122,12 @@ export class Reader {
 <canvas id="dust"></canvas>
 <div id="seen"></div>
 <div id="backBtn">‹ 戻る</div>
-<div id="favBtn"><b>♡</b><span>印</span></div>
-<div id="favListBtn"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b><span>栞</span></div>
-<div id="setBtn"><b></b><span>音</span></div>
+<div id="favBtn" role="button" tabindex="0" aria-label="お気に入り"><b>♡</b><span>お気に入り</span></div>
+<div id="favListBtn" role="button" tabindex="0" aria-label="栞"><b><svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#c9a24a" stroke-width="1.3"><path d="M2 1h10v16l-5-4-5 4z"/></svg></b><span>栞</span></div>
+<div id="setBtn" role="button" tabindex="0" aria-label="音の入切"><b></b><span>音</span></div>
 <div id="toast"></div>
-<div id="favPanel"><div class="box"><h2>印のページ</h2>
-<div class="empty" id="favEmpty">まだ印のページがない</div><button class="close" id="favClose">閉じる</button></div></div>`;
+<div id="favPanel"><div class="box"><h2>お気に入りのページ</h2>
+<div class="empty" id="favEmpty">まだお気に入りのページがない</div><button class="close" id="favClose">閉じる</button></div></div>`;
     document.body.appendChild(this.root);
 
     const q = <T extends HTMLElement>(id: string) => this.root.querySelector<T>('#' + id)!;
@@ -363,12 +363,11 @@ export class Reader {
   }
   private updateFavUI(): void {
     this.updateSeen();
-    const bm = loadBookmark();
-    const bmHere = !!(bm && bm.deck[bm.index] === this.deck[this.index]);   // 同じ言葉のページなら並びが違っても栞は現れる
+    const bmHere = bookmarkPages().includes(this.deck[this.index]);   // 同じ言葉のページなら並びが違っても栞は現れる
     this.el.favListBtn.classList.toggle('on', bmHere);
     if (bmHere) this.showRibbon(false); else this.hideRibbon();
     const on = this.favs.includes(this.deck[this.index]);
-    this.el.favBtn.querySelector('span')!.textContent = '印';
+    this.el.favBtn.querySelector('span')!.textContent = 'お気に入り';
     this.el.favBtn.querySelector('b')!.textContent = on ? '♥' : '♡';
     this.el.favBtn.classList.toggle('on', on);
   }
@@ -402,6 +401,8 @@ export class Reader {
     this.updateFavUI();
   }
   paintSound(on: boolean): void {
+    this.el.setBtn.setAttribute('aria-label', on ? '音を消す' : '音を出す');
+    this.el.setBtn.classList.toggle('off', !on);
     const b = this.el.setBtn.querySelector('b');
     if (!b) return;
     b.innerHTML = on
@@ -903,8 +904,8 @@ export class Reader {
       this.firstTouch();
       const p = this.deck[this.index];
       const i = this.favs.indexOf(p);
-      if (i >= 0) { this.favs.splice(i, 1); sealSound(false); haptic(6); this.toast('印を外しました'); }
-      else { this.favs.push(p); this.favStamp = { t0: performance.now() }; sealSound(true); haptic([10, 20, 15]); this.stampAnim(); this.toast('このページに印をつけました'); }
+      if (i >= 0) { this.favs.splice(i, 1); sealSound(false); haptic(6); this.toast('お気に入りを外しました'); }
+      else { this.favs.push(p); this.favStamp = { t0: performance.now() }; sealSound(true); haptic([10, 20, 15]); this.stampAnim(); this.toast('このページをお気に入りにしました'); }
       saveFavs(this.favs); this.updateFavUI();
       this.hooks.onFav({ count: this.favs.length, on: i < 0 });
     });
@@ -912,15 +913,16 @@ export class Reader {
       this.uiWake();
       if (performance.now() - this.uiJustWoke < 400) return;
       this.firstTouch();
-      // 栞のあるページでもう一度押す＝栞を外す。次に開く時は混ぜ直した初期状態から（2026-09-08 KEI）
-      const cur = loadBookmark();
-      if (cur && cur.deck[cur.index] === this.deck[this.index]) {
-        clearBookmark(); this.hideRibbon(true); ribbonSound(); haptic(6);
+      // 2026-09-09 KEI: 栞は何本でも挟める。挟んでも外しても、本は閉じない。
+      const page = this.deck[this.index];
+      // 栞のあるページでもう一度押す＝そのページの栞だけを外す（他の栞は残る）
+      if (bookmarkPages().includes(page)) {
+        removeBookmarkPage(page); this.hideRibbon(true); ribbonSound(); haptic(6);
         this.toast('栞を外しました'); this.el.favListBtn.classList.remove('on');
         this.hooks.onBookmark({ off: true });
         return;
       }
-      // 栞を挟む＝そのページを覚えて本を閉じる（閉じるのはシェル側 onBookmark）
+      // 栞を挟む＝そのページを覚える（本は閉じない）
       const b: Bookmark = { deck: this.deck, index: this.index, ts: Date.now(), fav: this.favMode, seen: [...this.seenSet] };
       saveBookmark(b);
       this.toast('栞を挟みました');

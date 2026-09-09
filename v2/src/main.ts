@@ -106,8 +106,9 @@ const reader = new Reader({
     void info;
   },
   onFav: info => { activity(); track('seal', { on: info.on, count: info.count }); },
-  // 栞を挟む＝そこで本を閉じる。次に開いた時は栞のページから（2026-09-07 夜 KEI）
-  onBookmark: info => { activity(); scene.setRibbonVisible(!info.off); track('bookmark', { off: info.off }); if (!info.off) setTimeout(() => closeBook(), 1400); },
+  // 2026-09-09 KEI: 栞を挟んでも外しても、本は閉じない（外した時に閉じるバグの元だった予約閉じを廃止）。
+  // 次に開いた時は、一番あとに挟んだ栞のページから始まる。
+  onBookmark: info => { activity(); scene.setRibbonVisible(hasBookmark()); track('bookmark', { off: info.off }); },
   onActivity: () => activity(),
   onFirstTouch: () => { bgmWant(); ensureAudio(); activity(); },
   onSoundToggle: () => { toggleSound(); activity(); },

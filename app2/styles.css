@@ -46,17 +46,25 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 .box::-webkit-scrollbar{display:none}
 
 /* ---- 1タップで出る周りのUI: 右上「メニュー」1つだけ ---- */
-/* 本の画面の下段UI（2026-09-07 夜 KEI: 前の形に戻す。常に表示・「この本の説明」＋ 栞／音量／印） */
+/* 本の画面の下段UI（2026-09-09 KEI: 入口ボタン2つ ＋「この本の説明」＋ 音量。常に表示） */
 #ui{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 2.6vh);bottom:calc(env(safe-area-inset-bottom,0px) + 2.6dvh);z-index:7;
   display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;opacity:0;transition:opacity .9s}
 #ui.show{opacity:1}
 #ui.show .ico,#ui.show .seal{pointer-events:auto}
-#ui .row{display:flex;gap:10px;width:284px;justify-content:space-between}   /* 3つの角＝「この本の説明」の枠の両端に揃える（88×3＋10×2＝284） */
+/* 下段は1列: 音量の四角 ＋ 横長ボタン2つ。狭い画面でも縦積みせず、文字と余白を詰めて1行に収める（2026-09-09 KEI） */
+#ui .row{display:flex;gap:8px;width:min(94vw,584px);justify-content:center;align-items:center;flex-wrap:nowrap}
 .seal{font-family:var(--serif);font-size:clamp(15px,4.5vmin,18px);letter-spacing:.42em;text-indent:.42em;color:var(--gold2);white-space:nowrap;cursor:pointer;
   width:284px;box-sizing:border-box;padding:8px 0;background:none;border:14px solid transparent;border-image:url(../assets/ui2/button.webp) 70 fill / 14px stretch;filter:drop-shadow(0 10px 22px rgba(0,0,0,.7));
   transition:transform .18s ease,color .18s}
 .seal:active{transform:translateY(1px) scale(.985);color:#fff2c4}
 .seal.sub{width:284px;font-size:clamp(12px,3.4vmin,14px);letter-spacing:.3em;text-indent:.3em;padding:3px 0;border-width:11px;border-image-width:11px;color:var(--paper2)}
+/* 入口ボタン（2026-09-09 KEI: 小さな「栞」「印」の札をやめ、意味の分かる横長ボタンに）
+   中身がある時だけ出す（hidden）。残りの幅を等分し、文字は幅に追従して縮む */
+.seal.wide{flex:1 1 0;min-width:0;width:auto;max-width:284px;min-height:44px;
+  display:flex;align-items:center;justify-content:center;padding:4px 0;
+  font-size:clamp(10px,3.2vw,15px);letter-spacing:.06em;text-indent:.06em;
+  border-width:10px;border-image-width:10px}
+.seal[hidden]{display:none}
 .ico.off{opacity:.55}
 .ico{font-family:var(--ui);font-size:var(--t-sm);letter-spacing:.22em;text-indent:.22em;color:var(--paper2);white-space:nowrap;cursor:pointer;
   width:88px;height:72px;box-sizing:border-box;padding:0;background:url(../assets/ui2/small.png) center/100% 100% no-repeat;border:none;
@@ -193,6 +201,7 @@ html,body{margin:0;overflow:hidden;overscroll-behavior:none;font-family:var(--se
 #setBtn.show{display:flex}
 #favBtn{left:calc(50% + 56px)}
 #favBtn.show,#favListBtn.show,#setBtn.show{opacity:.92;pointer-events:auto}
+#setBtn.show.off{opacity:.6}
 #seen{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 16px);z-index:27;color:#b8a98a;font-family:var(--ui);font-size:clamp(11px,3.1vmin,13px);letter-spacing:.18em;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 1px 3px #000}
 #seen.show{opacity:.85}
 #seen b{font-weight:normal;font-family:serif;font-size:18px;letter-spacing:.05em;margin-right:.25em;color:#c9a24a}
